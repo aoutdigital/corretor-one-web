@@ -1,8 +1,78 @@
 @import "tailwindcss";
+@plugin "flowbite/plugin";
+@source "../node_modules/flowbite-react/dist/esm/**/*.mjs";
+@source "../node_modules/flowbite/**/*.js";
+
+@font-face {
+  font-family: "dunbar-tall";
+  src: url("/fonts/DunbarTall-Light.woff2") format("woff2"),
+    url("/fonts/DunbarTall-Light.woff") format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "dunbar-tall";
+  src: url("/fonts/DunbarTall-Light-Italic.woff2") format("woff2"),
+    url("/fonts/DunbarTall-Light-Italic.woff") format("woff");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "dunbar-tall";
+  src: url("/fonts/DunbarTall-Book.woff2") format("woff2"),
+    url("/fonts/DunbarTall-Book.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "dunbar-tall";
+  src: url("/fonts/DunbarTall-Book-italic.woff2") format("woff2"),
+    url("/fonts/DunbarTall-Book-Italic.woff") format("woff");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "dunbar-tall";
+  src: url("/fonts/DunbarTall-Bold.woff2") format("woff2"),
+    url("/fonts/DunbarTall-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "dunbar-tall";
+  src: url("/fonts/DunbarTall-Bold-Italic.woff2") format("woff2"),
+    url("/fonts/DunbarTall-Bold-italic.woff") format("woff");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --grey-olive: #918b76;
+  --black: #000000;
+  --blue-slate: #59656f;
+  --primary-scarlet: #e5232b;
+  --white: #ffffff;
+
+  --background: var(--white);
+  --foreground: var(--black);
+  --surface: #f5f6f8;
+  --surface-2: #eceff2;
+  --border: #d3d9df;
+  --muted: var(--blue-slate);
+  --primary: var(--primary-scarlet);
+
+  --font-brand: "dunbar-tall", var(--font-geist-sans), "Segoe UI", sans-serif;
 }
 
 @theme inline {
@@ -12,15 +82,19 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-brand);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "dunbar-tall", var(--font-geist-sans), "Segoe UI", sans-serif;
+  font-weight: 400 !important; /* Dunbar Book as heading default */
+  letter-spacing: 0.01em;
 }

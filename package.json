@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
+    "@supabase/supabase-js": "^2.95.3",
+    "flowbite": "^4.0.1",
+    "flowbite-react": "^0.12.17",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
