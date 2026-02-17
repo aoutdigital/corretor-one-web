@@ -105,7 +105,7 @@ export default function NegociosPage() {
           <h3 className="mb-3 text-lg font-semibold">Novo negocio</h3>
           <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-3">
             <div>
-              <Label htmlFor="lead-id" value="Lead ID" />
+              <Label htmlFor="lead-id">Lead ID</Label>
               <TextInput
                 id="lead-id"
                 value={leadId}
@@ -116,7 +116,7 @@ export default function NegociosPage() {
             </div>
 
             <div>
-              <Label htmlFor="titulo" value="Titulo" />
+              <Label htmlFor="titulo">Titulo</Label>
               <TextInput
                 id="titulo"
                 value={titulo}
@@ -126,7 +126,7 @@ export default function NegociosPage() {
             </div>
 
             <div>
-              <Label htmlFor="etapa" value="Etapa" />
+              <Label htmlFor="etapa">Etapa</Label>
               <Select id="etapa" value={etapa} onChange={(event) => setEtapa(event.target.value)}>
                 <option value="NOVO">NOVO</option>
                 <option value="CONTATO">CONTATO</option>
@@ -138,8 +138,8 @@ export default function NegociosPage() {
             </div>
 
             <div className="md:col-span-3">
-              <Button type="submit" color="blue" isProcessing={saving}>
-                Criar negocio
+              <Button type="submit" color="blue" disabled={saving}>
+                {saving ? "Criando..." : "Criar negocio"}
               </Button>
             </div>
           </form>
