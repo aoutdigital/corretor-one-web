@@ -87,19 +87,23 @@ export async function uploadMidia(
     .single();
 
   if (midiaInsert.error) return mapDbError(midiaInsert.error);
+  if (!midiaInsert.data) return fail("DATABASE_ERROR", "Media insert returned no data");
 
   if (input.ref_tipo && input.ref_id) {
-    const relInsert = await db.from("midia_relacoes").insert({
-      owner_id: user.id,
-      ref_tipo: input.ref_tipo,
-      ref_id: input.ref_id,
-      midia_id: midiaInsert.data.id,
-      grupo: input.grupo ?? null,
-      ordem: input.ordem ?? 0,
-    });
+    const relInsert = await db
+      .from("midia_relacoes")
+      .insert({
+        owner_id: user.id,
+        ref_tipo: input.ref_tipo,
+        ref_id: input.ref_id,
+        midia_id: midiaInsert.data.id,
+        grupo: input.grupo ?? null,
+        ordem: input.ordem ?? 0,
+      })
+      .select("id")
+      .single();
     if (relInsert.error) return mapDbError(relInsert.error);
   }
 
   return ok(midiaInsert.data as UploadMidiaResult);
 }
-

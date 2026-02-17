@@ -14,6 +14,39 @@ type DbErrorLike = {
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
+type UfEnum = Database["public"]["Enums"]["uf"];
+
+const UF_LIST = [
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
+] as const;
+
+const UF_VALUES = new Set<UfEnum>(UF_LIST);
 
 type OwnProfile = Pick<
   ProfileRow,
@@ -92,7 +125,7 @@ function extractNameParts(user: User): { primeiroNome: string; sobrenome: string
 }
 
 function extractCreciMetadata(user: User): {
-  creciUf?: string;
+  creciUf?: UfEnum;
   creciNumero?: string;
   creciSufixo?: "F";
 } {
@@ -101,7 +134,7 @@ function extractCreciMetadata(user: User): {
   const creciNumeroRaw = typeof metadata?.creci_numero === "string" ? metadata.creci_numero.trim() : null;
   const creciSufixoRaw = typeof metadata?.creci_sufixo === "string" ? metadata.creci_sufixo.toUpperCase() : "F";
 
-  if (!creciUfRaw || !/^[A-Z]{2}$/.test(creciUfRaw)) {
+  if (!creciUfRaw || !UF_VALUES.has(creciUfRaw as UfEnum)) {
     return {};
   }
 
@@ -114,7 +147,7 @@ function extractCreciMetadata(user: User): {
   }
 
   return {
-    creciUf: creciUfRaw,
+    creciUf: creciUfRaw as UfEnum,
     creciNumero: creciNumeroRaw,
     creciSufixo: "F",
   };

@@ -104,6 +104,7 @@ export async function createEmpreendimento(
     .single();
 
   if (result.error) return mapDbError(result.error);
+  if (!result.data) return fail("DATABASE_ERROR", "Empreendimento insert returned no data");
   return ok({ id: result.data.id as string });
 }
 

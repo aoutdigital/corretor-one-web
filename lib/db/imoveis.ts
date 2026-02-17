@@ -117,6 +117,7 @@ export async function createImovel(
     .single();
 
   if (result.error) return mapDbError(result.error);
+  if (!result.data) return fail("DATABASE_ERROR", "Imovel insert returned no data");
   return ok({ id: result.data.id as string });
 }
 
