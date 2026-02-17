@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-const UF_VALUES = new Set([
+const UF_LIST = [
   "AC",
   "AL",
   "AP",
@@ -30,7 +30,15 @@ const UF_VALUES = new Set([
   "SP",
   "SE",
   "TO",
-]);
+] as const;
+
+type Uf = (typeof UF_LIST)[number];
+
+const UF_VALUES = new Set<Uf>(UF_LIST);
+
+function isUf(value: string): value is Uf {
+  return UF_VALUES.has(value as Uf);
+}
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -46,7 +54,7 @@ export async function POST(request: Request) {
   const uf = String((body as Record<string, unknown>)?.uf ?? "").toUpperCase();
   const creciNumero = String((body as Record<string, unknown>)?.creci_numero ?? "").trim();
 
-  if (!UF_VALUES.has(uf)) {
+  if (!isUf(uf)) {
     return NextResponse.json(
       { ok: false, error: { code: "VALIDATION_ERROR", message: "UF invalida" } },
       { status: 400 },
