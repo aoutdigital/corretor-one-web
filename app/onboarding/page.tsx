@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import DualImageCropper from "@/app/_components/cropimage";
 import { apiFetchWithAuth, getAccessToken } from "@/lib/client/auth-api";
@@ -96,7 +96,7 @@ const UF_OPTIONS = [
 
 const TOTAL_STEPS = 8;
 
-export default function OnboardingPage() {
+function OnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -1325,6 +1325,14 @@ export default function OnboardingPage() {
         />
       ) : null}
     </main>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen px-6 py-12">Carregando onboarding...</main>}>
+      <OnboardingPageContent />
+    </Suspense>
   );
 }
 
