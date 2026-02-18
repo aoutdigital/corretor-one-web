@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle, EnvelopeSimple, ShieldCheck } from "@phosphor-icons/react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 
 import {
   evaluatePasswordPolicy,
@@ -42,7 +42,7 @@ const UF_OPTIONS = [
   "TO",
 ] as const;
 
-export default function CriarContaPage() {
+function CriarContaPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -612,5 +612,13 @@ export default function CriarContaPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function CriarContaPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen px-6 py-12">Carregando...</main>}>
+      <CriarContaPageContent />
+    </Suspense>
   );
 }
