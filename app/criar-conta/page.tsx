@@ -2,10 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle, EnvelopeSimple, ShieldCheck } from "@phosphor-icons/react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import {
+  evaluatePasswordPolicy,
+  passwordStrengthLabel,
+} from "@/lib/security/password-policy";
 import { supabase } from "@/lib/supabaseClient";
 
 const UF_OPTIONS = [
@@ -40,12 +44,14 @@ const UF_OPTIONS = [
 
 export default function CriarContaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [step, setStep] = useState<1 | 2>(1);
   const [validatingCreci, setValidatingCreci] = useState(false);
   const [creatingEmailAccount, setCreatingEmailAccount] = useState(false);
   const [creatingGoogleAccount, setCreatingGoogleAccount] = useState(false);
   const [signupMethod, setSignupMethod] = useState<"email" | null>(null);
+  const [emailSignupCompleted, setEmailSignupCompleted] = useState(false);
 
   const [uf, setUf] = useState("");
   const [creciNumero, setCreciNumero] = useState("");
@@ -63,10 +69,23 @@ export default function CriarContaPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const desiredPlanSlug = useMemo(() => {
+    const raw = (searchParams.get("plano") ?? "").toLowerCase().trim();
+    if (!raw) return null;
+    if (!/^[a-z0-9-]{2,35}$/.test(raw)) return null;
+    return raw;
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!desiredPlanSlug) return;
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("co_signup_plano_slug", desiredPlanSlug);
+  }, [desiredPlanSlug]);
 
   const creciLabel = useMemo(() => (uf ? `CRECI/${uf}` : "CRECI/UF"), [uf]);
   const creciInputValue = useMemo(() => (creciNumero ? `${creciNumero}-F` : ""), [creciNumero]);
   const creciDisplay = `${creciNumero || "______"}-F`;
+  const passwordPolicy = useMemo(() => evaluatePasswordPolicy(password), [password]);
   const inputBaseClass =
     "w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none transition focus:ring-2";
 
@@ -157,8 +176,9 @@ export default function CriarContaPage() {
       nextErrors.email = "Informe um e-mail válido.";
     }
 
-    if (password.length < 8) {
-      nextErrors.password = "A senha deve ter no mínimo 8 caracteres.";
+    if (!passwordPolicy.isValid) {
+      nextErrors.password =
+        "Senha inválida. Use no mínimo 8 caracteres, 1 letra maiúscula e 1 número.";
     }
 
     if (password !== confirmPassword) {
@@ -172,11 +192,15 @@ export default function CriarContaPage() {
 
     setCreatingEmailAccount(true);
 
+    const onboardingPath = desiredPlanSlug
+      ? `/onboarding?plano=${encodeURIComponent(desiredPlanSlug)}`
+      : "/onboarding";
+
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/onboarding`,
+        emailRedirectTo: `${window.location.origin}${onboardingPath}`,
         data: {
           creci_uf: uf,
           creci_numero: creciNumero,
@@ -197,13 +221,18 @@ export default function CriarContaPage() {
         "co_signup_creci",
         JSON.stringify({ creci_uf: uf, creci_numero: creciNumero, creci_sufixo: "F" }),
       );
+      if (desiredPlanSlug) {
+        window.localStorage.setItem("co_signup_plano_slug", desiredPlanSlug);
+      }
     }
 
     if (data.session) {
-      router.push("/onboarding");
+      router.push(onboardingPath);
       return;
     }
 
+    setSignupMethod(null);
+    setEmailSignupCompleted(true);
     setMessage("Conta criada. Verifique seu e-mail para confirmar o acesso.");
   }
 
@@ -223,12 +252,19 @@ export default function CriarContaPage() {
         "co_signup_creci",
         JSON.stringify({ creci_uf: uf, creci_numero: creciNumero, creci_sufixo: "F" }),
       );
+      if (desiredPlanSlug) {
+        window.localStorage.setItem("co_signup_plano_slug", desiredPlanSlug);
+      }
     }
+
+    const onboardingPath = desiredPlanSlug
+      ? `/onboarding?plano=${encodeURIComponent(desiredPlanSlug)}`
+      : "/onboarding";
 
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/onboarding`,
+        redirectTo: `${window.location.origin}${onboardingPath}`,
       },
     });
 
@@ -371,12 +407,30 @@ export default function CriarContaPage() {
               </form>
             ) : (
               <div className="space-y-4">
-                <h2 className="text-lg font-bold">Como deseja criar sua conta?</h2>
-                <p className="text-sm font-light text-emerald-700">
-                  Dados recebidos com sucesso. Agora escolha a forma de acesso.
-                </p>
+                {!emailSignupCompleted ? (
+                  <>
+                    <h2 className="text-lg font-bold">Como deseja criar sua conta?</h2>
+                    <p className="text-sm font-light text-emerald-700">
+                      Dados recebidos com sucesso. Agora escolha a forma de acesso.
+                    </p>
+                  </>
+                ) : null}
 
-                {!signupMethod ? (
+                {emailSignupCompleted ? (
+                  <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                    <h2 className="text-lg font-bold text-emerald-900">Conta criada com sucesso</h2>
+                    <p className="text-sm font-light text-emerald-800">
+                      Enviamos um e-mail de confirmação. Acesse sua caixa de entrada, confirme o cadastro e depois
+                      entre para continuar o onboarding.
+                    </p>
+                    <Link
+                      href="/entrar"
+                      className="inline-flex cursor-pointer rounded-lg bg-[var(--primary-scarlet)] px-4 py-2 text-sm font-bold text-white transition hover:brightness-95"
+                    >
+                      Ir para entrar
+                    </Link>
+                  </div>
+                ) : !signupMethod ? (
                   <div className="space-y-3">
                     <button
                       type="button"
@@ -432,10 +486,47 @@ export default function CriarContaPage() {
                           setFieldErrors((prev) => ({ ...prev, password: undefined }));
                         }}
                         className={getInputClass(Boolean(fieldErrors.password))}
-                        minLength={8}
                         required
                         aria-invalid={Boolean(fieldErrors.password)}
                       />
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                            <div
+                              className={`h-full transition-all ${
+                                passwordPolicy.strength === "strong"
+                                  ? "bg-emerald-500"
+                                  : passwordPolicy.strength === "medium"
+                                    ? "bg-amber-500"
+                                    : "bg-rose-500"
+                              }`}
+                              style={{ width: `${(passwordPolicy.score / 3) * 100}%` }}
+                            />
+                          </div>
+                          <span
+                            className={`text-xs font-semibold ${
+                              passwordPolicy.strength === "strong"
+                                ? "text-emerald-700"
+                                : passwordPolicy.strength === "medium"
+                                  ? "text-amber-700"
+                                  : "text-rose-700"
+                            }`}
+                          >
+                            {passwordStrengthLabel(passwordPolicy.strength)}
+                          </span>
+                        </div>
+                        <ul className="space-y-1 text-xs text-slate-600">
+                          <li className={passwordPolicy.lengthOk ? "text-emerald-700" : ""}>
+                            Mínimo de 8 caracteres
+                          </li>
+                          <li className={passwordPolicy.hasUppercase ? "text-emerald-700" : ""}>
+                            Pelo menos 1 letra maiúscula
+                          </li>
+                          <li className={passwordPolicy.hasNumber ? "text-emerald-700" : ""}>
+                            Pelo menos 1 número
+                          </li>
+                        </ul>
+                      </div>
                       {fieldErrors.password ? (
                         <p className="-mt-1 text-xs font-light text-[var(--primary-scarlet)]">
                           {fieldErrors.password}

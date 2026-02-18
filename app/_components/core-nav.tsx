@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { OnboardingGate } from "@/app/_components/onboarding-gate";
 
 const links = [
   { href: "/", label: "Home" },
@@ -16,21 +17,24 @@ const links = [
 
 export function CoreNav() {
   return (
-    <nav style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
-      {links.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          style={{
-            padding: "8px 12px",
-            border: "1px solid #2f3542",
-            borderRadius: 8,
-            textDecoration: "none",
-          }}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </nav>
+    <>
+      <OnboardingGate />
+      <nav style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
+        {links.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            style={{
+              padding: "8px 12px",
+              border: "1px solid #2f3542",
+              borderRadius: 8,
+              textDecoration: "none",
+            }}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+    </>
   );
 }

@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      assinaturas: {
+        Row: {
+          cancelado_em: string | null
+          created_at: string
+          fim_em: string | null
+          id: string
+          inicio_em: string
+          owner_id: string
+          plano_id: string
+          status: Database["public"]["Enums"]["status_assinatura"]
+        }
+        Insert: {
+          cancelado_em?: string | null
+          created_at?: string
+          fim_em?: string | null
+          id?: string
+          inicio_em?: string
+          owner_id: string
+          plano_id: string
+          status?: Database["public"]["Enums"]["status_assinatura"]
+        }
+        Update: {
+          cancelado_em?: string | null
+          created_at?: string
+          fim_em?: string | null
+          id?: string
+          inicio_em?: string
+          owner_id?: string
+          plano_id?: string
+          status?: Database["public"]["Enums"]["status_assinatura"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assinaturas_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assinaturas_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       atividades: {
         Row: {
           concluida_em: string | null
@@ -904,6 +952,57 @@ export type Database = {
           },
         ]
       }
+      planos: {
+        Row: {
+          ativo: boolean
+          ayka_franquia_mensal: number
+          created_at: string
+          id: string
+          limite_emails_mes: number | null
+          limite_imoveis: number | null
+          limite_storage_mb: number | null
+          limite_whatsapp_mes: number | null
+          nome: string
+          preco_anual: number | null
+          preco_mensal: number
+          recursos: Json
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          ayka_franquia_mensal?: number
+          created_at?: string
+          id?: string
+          limite_emails_mes?: number | null
+          limite_imoveis?: number | null
+          limite_storage_mb?: number | null
+          limite_whatsapp_mes?: number | null
+          nome: string
+          preco_anual?: number | null
+          preco_mensal?: number
+          recursos?: Json
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          ayka_franquia_mensal?: number
+          created_at?: string
+          id?: string
+          limite_emails_mes?: number | null
+          limite_imoveis?: number | null
+          limite_storage_mb?: number | null
+          limite_whatsapp_mes?: number | null
+          nome?: string
+          preco_anual?: number | null
+          preco_mensal?: number
+          recursos?: Json
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       portal_users: {
         Row: {
           aceite_marketing_em: string | null
@@ -960,6 +1059,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           cidades_foco: string[] | null
+          cidades_foco_json: Json | null
           created_at: string
           creci_aprovacao: boolean
           creci_documento_midia_id: string | null
@@ -1005,6 +1105,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           cidades_foco?: string[] | null
+          cidades_foco_json?: Json | null
           created_at?: string
           creci_aprovacao?: boolean
           creci_documento_midia_id?: string | null
@@ -1050,6 +1151,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           cidades_foco?: string[] | null
+          cidades_foco_json?: Json | null
           created_at?: string
           creci_aprovacao?: boolean
           creci_documento_midia_id?: string | null
@@ -1162,6 +1264,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      referencia_localidades: {
+        Row: {
+          codigo_ibge: number
+          id: string
+          nome: string
+          payload: Json
+          tipo: Database["public"]["Enums"]["ref_localidade_tipo"]
+          uf: Database["public"]["Enums"]["uf"] | null
+          updated_at: string
+        }
+        Insert: {
+          codigo_ibge: number
+          id?: string
+          nome: string
+          payload?: Json
+          tipo: Database["public"]["Enums"]["ref_localidade_tipo"]
+          uf?: Database["public"]["Enums"]["uf"] | null
+          updated_at?: string
+        }
+        Update: {
+          codigo_ibge?: number
+          id?: string
+          nome?: string
+          payload?: Json
+          tipo?: Database["public"]["Enums"]["ref_localidade_tipo"]
+          uf?: Database["public"]["Enums"]["uf"] | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       timeline_eventos: {
         Row: {
@@ -1442,6 +1574,51 @@ export type Database = {
           },
         ]
       }
+      verificacoes_contato: {
+        Row: {
+          canal: Database["public"]["Enums"]["canal_contato"]
+          codigo_hash: string
+          created_at: string
+          destino: string
+          enviado_em: string
+          expira_em: string
+          id: string
+          status: Database["public"]["Enums"]["status_verificacao"]
+          tentativas: number
+          user_id: string
+          user_tipo: Database["public"]["Enums"]["user_tipo"]
+          verificado_em: string | null
+        }
+        Insert: {
+          canal: Database["public"]["Enums"]["canal_contato"]
+          codigo_hash: string
+          created_at?: string
+          destino: string
+          enviado_em?: string
+          expira_em: string
+          id?: string
+          status?: Database["public"]["Enums"]["status_verificacao"]
+          tentativas?: number
+          user_id: string
+          user_tipo: Database["public"]["Enums"]["user_tipo"]
+          verificado_em?: string | null
+        }
+        Update: {
+          canal?: Database["public"]["Enums"]["canal_contato"]
+          codigo_hash?: string
+          created_at?: string
+          destino?: string
+          enviado_em?: string
+          expira_em?: string
+          id?: string
+          status?: Database["public"]["Enums"]["status_verificacao"]
+          tentativas?: number
+          user_id?: string
+          user_tipo?: Database["public"]["Enums"]["user_tipo"]
+          verificado_em?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1606,6 +1783,7 @@ export type Database = {
         | "OUTRO"
       papel_imobiliaria: "DONO" | "ADMIN" | "CORRETOR"
       periodicidade: "MENSAL" | "ANUAL"
+      ref_localidade_tipo: "UF" | "CIDADE"
       ref_tipo:
         | "IMOVEL"
         | "EMPREENDIMENTO"
@@ -1613,6 +1791,7 @@ export type Database = {
         | "CAMPANHA"
         | "TEMPLATE"
         | "OUTRO"
+      status_assinatura: "ATIVA" | "PENDENTE" | "ATRASADA" | "CANCELADA"
       status_atividade: "PENDENTE" | "CONCLUIDA" | "CANCELADA"
       status_dominio:
         | "NAO_CONFIGURADO"
@@ -1643,6 +1822,7 @@ export type Database = {
         | "RECUSADA"
         | "EXPIRADA"
       status_usuario: "ATIVO" | "PENDENTE" | "BLOQUEADO"
+      status_verificacao: "PENDENTE" | "VERIFICADO" | "EXPIRADO" | "BLOQUEADO"
       storage_provider: "SUPABASE" | "S3"
       subtipo_imovel:
         | "COBERTURA"
@@ -1713,6 +1893,7 @@ export type Database = {
         | "SP"
         | "SE"
         | "TO"
+      user_tipo: "PORTAL" | "CORRETOR"
       vaga_cobertura: "COBERTA" | "DESCOBERTA"
       vaga_tamanho: "PEQUENA" | "MEDIA" | "GRANDE"
       vaga_tipo: "PRIVATIVA" | "LIVRE"
@@ -2013,6 +2194,7 @@ export const Constants = {
       ],
       papel_imobiliaria: ["DONO", "ADMIN", "CORRETOR"],
       periodicidade: ["MENSAL", "ANUAL"],
+      ref_localidade_tipo: ["UF", "CIDADE"],
       ref_tipo: [
         "IMOVEL",
         "EMPREENDIMENTO",
@@ -2021,6 +2203,7 @@ export const Constants = {
         "TEMPLATE",
         "OUTRO",
       ],
+      status_assinatura: ["ATIVA", "PENDENTE", "ATRASADA", "CANCELADA"],
       status_atividade: ["PENDENTE", "CONCLUIDA", "CANCELADA"],
       status_dominio: [
         "NAO_CONFIGURADO",
@@ -2055,6 +2238,7 @@ export const Constants = {
         "EXPIRADA",
       ],
       status_usuario: ["ATIVO", "PENDENTE", "BLOQUEADO"],
+      status_verificacao: ["PENDENTE", "VERIFICADO", "EXPIRADO", "BLOQUEADO"],
       storage_provider: ["SUPABASE", "S3"],
       subtipo_imovel: [
         "COBERTURA",
@@ -2129,6 +2313,7 @@ export const Constants = {
         "SE",
         "TO",
       ],
+      user_tipo: ["PORTAL", "CORRETOR"],
       vaga_cobertura: ["COBERTA", "DESCOBERTA"],
       vaga_tamanho: ["PEQUENA", "MEDIA", "GRANDE"],
       vaga_tipo: ["PRIVATIVA", "LIVRE"],

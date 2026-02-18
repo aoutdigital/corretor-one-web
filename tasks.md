@@ -136,3 +136,24 @@ Critério de pronto (F7):
 
 Critério de pronto (F8):
 - [ ] Navegação principal em produção com controle de acesso por papel.
+
+## Tier List — Pendências (Dependências Externas)
+### T1 (Alta prioridade, bloqueado por credencial)
+- [ ] Integração API do provedor de e-mail profissional (`nickname@corretor.one`):
+  - [ ] criar mailbox no provedor ao aprovar solicitação.
+  - [ ] trocar senha da mailbox via API do provedor.
+  - [ ] sincronizar status (`SOLICITADO`, `ATIVO`, `ERRO`) na tabela `emails_profissionais`.
+  - [ ] mapear erros técnicos do provedor para mensagens amigáveis no app.
+  - [ ] **pendente de chaves e documentação final de endpoints**.
+
+### T2 (Alta prioridade, bloqueado por credencial)
+- [ ] Integração Stripe (upgrade/downgrade de plano):
+  - [ ] criar checkout por plano pago.
+  - [ ] webhook para atualizar `assinaturas` e `profiles.plano_id`.
+  - [ ] bloquear/liberar recursos por plano no backend.
+  - [ ] **pendente de chaves Stripe (publishable/secret + webhook secret)**.
+
+### T3 (Média prioridade)
+- [ ] Central de ajuda para e-mail profissional:
+  - [ ] instruções IMAP/SMTP por cliente de e-mail.
+  - [ ] FAQ de troca de senha e acesso ao webmail.

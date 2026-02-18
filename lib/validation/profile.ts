@@ -34,6 +34,8 @@ const UF_VALUES = new Set([
 const NICKNAME_REGEX = /^[a-z0-9]{1,35}$/;
 const NICKNAME_BLOCKED_TERMS_REGEX = /(corret|imob|imov|aparta|casa)/i;
 const CRECI_NUMERO_REGEX = /^[0-9]{1,6}$/;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const ALLOWED_PROFILE_PATCH_KEYS = new Set([
   "primeiro_nome",
@@ -47,9 +49,18 @@ const ALLOWED_PROFILE_PATCH_KEYS = new Set([
   "bio",
   "uf",
   "cidades_foco",
+  "imoveis_residenciais",
+  "imoveis_comerciais",
+  "imoveis_industriais",
+  "imoveis_alto_padrao",
+  "imoveis_luxo",
+  "imoveis_medio_padrao",
+  "imoveis_baixa_renda",
   "creci_uf",
   "creci_numero",
   "creci_sufixo",
+  "creci_documento_midia_id",
+  "plano_id",
   "instagram",
   "linkedin",
   "pinterest",
@@ -70,9 +81,18 @@ export type UpdateProfileInput = {
   bio?: string | null;
   uf?: string | null;
   cidades_foco?: string[] | null;
+  imoveis_residenciais?: boolean;
+  imoveis_comerciais?: boolean;
+  imoveis_industriais?: boolean;
+  imoveis_alto_padrao?: boolean;
+  imoveis_luxo?: boolean;
+  imoveis_medio_padrao?: boolean;
+  imoveis_baixa_renda?: boolean;
   creci_uf?: string | null;
   creci_numero?: string | null;
   creci_sufixo?: string | null;
+  creci_documento_midia_id?: string | null;
+  plano_id?: string | null;
   instagram?: string | null;
   linkedin?: string | null;
   pinterest?: string | null;
@@ -185,6 +205,24 @@ export function validateProfilePatch(payload: unknown): ApiResult<UpdateProfileI
     parsed.creci_sufixo = result.data;
   }
 
+  if ("creci_documento_midia_id" in payload) {
+    const result = parseNullableString(payload.creci_documento_midia_id, "creci_documento_midia_id");
+    if (!result.ok) return result;
+    if (result.data && !UUID_REGEX.test(result.data)) {
+      return fail("VALIDATION_ERROR", "creci_documento_midia_id must be a valid UUID");
+    }
+    parsed.creci_documento_midia_id = result.data;
+  }
+
+  if ("plano_id" in payload) {
+    const result = parseNullableString(payload.plano_id, "plano_id");
+    if (!result.ok) return result;
+    if (result.data && !UUID_REGEX.test(result.data)) {
+      return fail("VALIDATION_ERROR", "plano_id must be a valid UUID");
+    }
+    parsed.plano_id = result.data;
+  }
+
   if ("cidades_foco" in payload) {
     const value = payload.cidades_foco;
     if (value === null) {
@@ -196,6 +234,21 @@ export function validateProfilePatch(payload: unknown): ApiResult<UpdateProfileI
     }
   }
 
+  for (const field of [
+    "imoveis_residenciais",
+    "imoveis_comerciais",
+    "imoveis_industriais",
+    "imoveis_alto_padrao",
+    "imoveis_luxo",
+    "imoveis_medio_padrao",
+    "imoveis_baixa_renda",
+  ] as const) {
+    if (!(field in payload)) continue;
+    if (typeof payload[field] !== "boolean") {
+      return fail("VALIDATION_ERROR", `${field} must be a boolean`);
+    }
+    parsed[field] = payload[field];
+  }
+
   return ok(parsed);
 }
-

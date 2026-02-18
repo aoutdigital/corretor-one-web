@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { Button, Card } from "flowbite-react";
 import { useEffect, useState } from "react";
 
-import { CoreNav } from "@/app/_components/core-nav";
+import { AppShell } from "@/app/_components/app-shell";
 import { apiFetchWithAuth } from "@/lib/client/auth-api";
 
 type Empreendimento = {
@@ -33,31 +34,33 @@ export default function EmpreendimentosPage() {
   }, []);
 
   return (
-    <main style={{ maxWidth: 960, margin: "32px auto", padding: 20 }}>
-      <CoreNav />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1 style={{ fontSize: 28 }}>Empreendimentos</h1>
-        <Link href="/empreendimentos/novo">Novo empreendimento</Link>
-      </div>
-
-      {error ? <p style={{ color: "#ff6b6b" }}>{error}</p> : null}
-
-      <div style={{ marginTop: 20, display: "grid", gap: 10 }}>
-        {items.map((item) => (
-          <Link
-            key={item.id}
-            href={`/empreendimentos/${item.id}`}
-            style={{ border: "1px solid #2f3542", borderRadius: 10, padding: 12, textDecoration: "none" }}
-          >
-            <strong>{item.nome}</strong>
-            <p>
-              {item.cidade}/{item.estado} - {item.status}
-            </p>
-          </Link>
-        ))}
-
-        {items.length === 0 ? <p>Nenhum empreendimento cadastrado.</p> : null}
-      </div>
-    </main>
+    <AppShell
+      title="Empreendimentos"
+      subtitle="Gestão de condomínios e lançamentos"
+      rightSlot={
+        <Button as={Link} href="/empreendimentos/novo" color="blue" size="sm">
+          Novo empreendimento
+        </Button>
+      }
+    >
+      <Card>
+        {error ? <p className="mb-3 text-sm text-rose-600">{error}</p> : null}
+        <div className="grid gap-3">
+          {items.map((item) => (
+            <Link
+              key={item.id}
+              href={`/empreendimentos/${item.id}`}
+              className="rounded-xl border border-slate-200 p-4 transition hover:bg-slate-50"
+            >
+              <p className="text-base">{item.nome}</p>
+              <p className="text-sm text-slate-500">
+                {item.cidade}/{item.estado} • {item.status}
+              </p>
+            </Link>
+          ))}
+          {items.length === 0 ? <p className="text-sm text-slate-500">Nenhum empreendimento cadastrado.</p> : null}
+        </div>
+      </Card>
+    </AppShell>
   );
 }

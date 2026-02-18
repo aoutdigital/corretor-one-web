@@ -57,13 +57,24 @@ type OwnProfile = Pick<
   | "nickname"
   | "genero"
   | "telefone"
+  | "whatsapp_verificado_em"
   | "whatsapp"
   | "bio"
   | "uf"
   | "cidades_foco"
+  | "imoveis_residenciais"
+  | "imoveis_comerciais"
+  | "imoveis_industriais"
+  | "imoveis_alto_padrao"
+  | "imoveis_luxo"
+  | "imoveis_medio_padrao"
+  | "imoveis_baixa_renda"
   | "creci_uf"
   | "creci_numero"
   | "creci_sufixo"
+  | "creci_documento_midia_id"
+  | "creci_aprovacao"
+  | "plano_id"
   | "avatar_url"
   | "imagem_capa_url"
   | "instagram"
@@ -221,7 +232,7 @@ export async function getOwnProfile(accessToken: string): Promise<ApiResult<OwnP
   const result = await client
     .from("profiles")
     .select(
-      "id,email,primeiro_nome,sobrenome,nickname,genero,telefone,whatsapp,bio,uf,cidades_foco,creci_uf,creci_numero,creci_sufixo,avatar_url,imagem_capa_url,instagram,linkedin,pinterest,tiktok,twitter,youtube,created_at,updated_at",
+      "id,email,primeiro_nome,sobrenome,nickname,genero,telefone,whatsapp_verificado_em,whatsapp,bio,uf,cidades_foco,imoveis_residenciais,imoveis_comerciais,imoveis_industriais,imoveis_alto_padrao,imoveis_luxo,imoveis_medio_padrao,imoveis_baixa_renda,creci_uf,creci_numero,creci_sufixo,creci_documento_midia_id,creci_aprovacao,plano_id,avatar_url,imagem_capa_url,instagram,linkedin,pinterest,tiktok,twitter,youtube,created_at,updated_at",
     )
     .eq("id", user.id)
     .maybeSingle<OwnProfile>();

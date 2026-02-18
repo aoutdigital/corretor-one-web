@@ -14,6 +14,7 @@ import {
   TrendUp,
   UserSwitch,
 } from "@phosphor-icons/react/dist/ssr";
+import { PublicPricingSection } from "@/app/_components/public-pricing-section";
 
 const dores = [
   "Depende da estrutura da imobiliária",
@@ -255,28 +256,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="planos" className="mx-auto max-w-7xl px-6 py-16">
-          <h2 className="text-3xl font-bold">Comece grátis. Cresça com estrutura.</h2>
-          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[
-              { nome: "Grátis", destaque: "Entrada no ecossistema", cor: "border-slate-300" },
-              { nome: "Presença", destaque: "Imagem profissional", cor: "border-[var(--grey-olive)]" },
-              { nome: "Destaque", destaque: "Mais visibilidade", cor: "border-[var(--blue-slate)]" },
-              { nome: "Autoridade", destaque: "Posicionamento premium", cor: "border-[var(--primary-scarlet)]" },
-            ].map((plano) => (
-              <article key={plano.nome} className={`rounded-2xl border bg-white p-5 ${plano.cor}`}>
-                <h3 className="text-xl font-bold">{plano.nome}</h3>
-                <p className="mt-2 font-light text-[var(--blue-slate)]">{plano.destaque}</p>
-                <Link
-                  href="/criar-conta"
-                  className="mt-6 inline-flex rounded-lg bg-black px-4 py-2 text-sm font-light text-white transition hover:bg-slate-800"
-                >
-                  Começar agora
-                </Link>
-              </article>
-            ))}
-          </div>
-        </section>
+        <PublicPricingSection />
 
         <section className="border-t border-slate-200 bg-[var(--black)]">
           <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 px-6 py-16 md:flex-row md:items-center">
