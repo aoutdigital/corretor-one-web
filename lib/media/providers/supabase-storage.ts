@@ -7,7 +7,7 @@ export class SupabaseStorageProvider implements MediaStorageProvider {
 
     const upload = await client.storage.from(input.bucket).upload(input.path, input.file, {
       contentType: input.contentType ?? input.file.type,
-      upsert: false,
+      upsert: input.upsert ?? false,
     });
 
     if (upload.error) {
@@ -32,4 +32,3 @@ export class SupabaseStorageProvider implements MediaStorageProvider {
     }
   }
 }
-

@@ -1,0 +1,5 @@
+id,caracteristica_chave,provedor_codigo,external_key,external_label,xml_path,valor_verdadeiro,valor_falso,transformacao,ativo,observacoes
+,ACADEMIA,ZAP,,,,,,,true,
+,PISCINA,ZAP,,,,,,,true,
+,PORTARIA_24H,IMOVELWEB,,,,,,,true,
+,VARANDA_GOURMET,CHAVES_NA_MAO,,,,,,,true,

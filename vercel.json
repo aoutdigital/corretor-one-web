@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/imoveis/delete-jobs/process",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/midia/delete-jobs/process",
+      "schedule": "*/15 * * * *"
+    }
+  ]
+}

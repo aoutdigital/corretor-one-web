@@ -10,6 +10,8 @@ type AtividadeUpdate = Database["public"]["Tables"]["atividades"]["Update"];
 export type CreateAtividadeInput = {
   lead_id: string;
   negocio_id?: string | null;
+  categoria: Atividade["categoria"];
+  modelo: Atividade["modelo"];
   tipo: Atividade["tipo"];
   titulo: string;
   descricao?: string | null;

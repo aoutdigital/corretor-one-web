@@ -34,6 +34,7 @@ type AppShellProps = {
   subtitle?: string;
   children: React.ReactNode;
   rightSlot?: React.ReactNode;
+  mainClassName?: string;
 };
 
 type NavItem = {
@@ -60,6 +61,7 @@ const MAIN_ITEMS: NavItem[] = [
 
 const BUSINESS_ITEMS: NavItem[] = [
   { href: "/negocios", label: "Leads", icon: Chats },
+  { href: "/negocios/funil", label: "Funil", icon: Waveform },
   { href: "/negocios/atividades", label: "Atividades", icon: ChartBar },
   { href: "/propostas", label: "Propostas", icon: FileText, disabled: true },
 ];
@@ -70,7 +72,7 @@ const MARKETING_ITEMS: NavItem[] = [
   { href: "/integracoes", label: "Integração Portais", icon: Stack, disabled: true },
 ];
 
-export function AppShell({ title, subtitle, children, rightSlot }: AppShellProps) {
+export function AppShell({ title, subtitle, children, rightSlot, mainClassName }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(() => {
@@ -267,7 +269,11 @@ export function AppShell({ title, subtitle, children, rightSlot }: AppShellProps
             </div>
           </header>
 
-          <main className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">{children}</main>
+          <main
+            className={mainClassName ?? "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"}
+          >
+            {children}
+          </main>
         </div>
       </div>
     </div>

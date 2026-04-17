@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { statusFromErrorCode } from "@/lib/api/result";
 import { uploadMidia } from "@/lib/db/midia";
 import { getBearerTokenFromRequest } from "@/lib/http/auth";
+import { inspectImage } from "@/lib/media/image-metadata";
 
 function unauthorizedResponse() {
   return NextResponse.json(
@@ -59,8 +60,46 @@ export async function POST(request: Request) {
   const altValue = form.get("alt");
   const legendaValue = form.get("legenda");
 
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const inspection = inspectImage(bytes, { fileName: file.name, mimeType: file.type });
+  const allowedFormats = new Set(["JPEG", "PNG", "WEBP", "HEIC", "HEIF", "UNKNOWN"]);
+
+  if (inspection.format !== "UNKNOWN") {
+    if (!allowedFormats.has(inspection.format)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Formato de imagem não permitido.",
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    if (inspection.isAnimated) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Imagens animadas não são permitidas.",
+          },
+        },
+        { status: 400 },
+      );
+    }
+  }
+
+  // Recreate File because arrayBuffer() can consume stream in some runtimes.
+  const normalizedFile = new File([bytes], file.name, {
+    type: file.type || "application/octet-stream",
+    lastModified: file.lastModified,
+  });
+
   const result = await uploadMidia(accessToken, {
-    file,
+    file: normalizedFile,
     ref_tipo:
       typeof refTipoValue === "string" && refTipoValue.length > 0
         ? (refTipoValue as Parameters<typeof uploadMidia>[1]["ref_tipo"])
@@ -81,4 +120,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json(result, { status: 201 });
 }
-

@@ -9,7 +9,7 @@ type PropostaUpdate = Database["public"]["Tables"]["propostas"]["Update"];
 
 export type CreatePropostaInput = {
   lead_id: string;
-  negocio_id?: string | null;
+  negocio_id: string | null;
   titulo: string;
   tipo: Proposta["tipo"];
   status?: Proposta["status"];
@@ -17,6 +17,7 @@ export type CreatePropostaInput = {
   conteudo?: Json | null;
   arquivo_midia_id?: string | null;
   enviada_em?: string | null;
+  vencimento_em?: string | null;
 };
 
 export type UpdatePropostaInput = Partial<Omit<CreatePropostaInput, "lead_id" | "tipo">>;
@@ -44,8 +45,8 @@ export async function createProposta(
   const auth = await authenticateByAccessToken(accessToken);
   if (!auth.ok) return auth;
 
-  if (!input.lead_id || !input.titulo || !input.tipo) {
-    return fail("VALIDATION_ERROR", "lead_id, titulo and tipo are required");
+  if (!input.lead_id || !input.negocio_id || !input.titulo || !input.tipo) {
+    return fail("VALIDATION_ERROR", "lead_id, negocio_id, titulo and tipo are required");
   }
 
   const { user, client } = auth.data;

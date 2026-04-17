@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview Loading Ayka</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family: "Sora", "Inter", system-ui, -apple-system, sans-serif;
+      }
+      .screen {
+        position: relative;
+        min-height: 100vh;
+        overflow: hidden;
+        background: linear-gradient(135deg, #cf0f3a 0%, #b1042f 48%, #820021 100%);
+        color: #fff;
+      }
+      .glow {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 40%),
+          radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.2), transparent 45%);
+      }
+      .network {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .node {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: #fff;
+        box-shadow: 0 0 16px rgba(255, 255, 255, 0.8);
+        animation: pulseNode 1.8s ease-in-out infinite;
+      }
+      .link {
+        position: absolute;
+        height: 2px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.55);
+        transform-origin: left center;
+        animation: flowLink 2.2s ease-in-out infinite;
+      }
+      .content {
+        position: relative;
+        z-index: 2;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .panel {
+        width: min(780px, 100%);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 28px;
+        box-shadow: 0 24px 50px rgba(0, 0, 0, 0.25);
+        text-align: center;
+        padding: 32px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 999px;
+        font-size: 11px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        padding: 8px 14px;
+        margin-bottom: 16px;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(26px, 4vw, 40px);
+        line-height: 1.15;
+      }
+      p {
+        margin: 14px auto 0;
+        max-width: 58ch;
+        font-size: clamp(14px, 1.7vw, 18px);
+        color: rgba(255, 255, 255, 0.92);
+      }
+      .dots {
+        margin-top: 24px;
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #fff;
+        animation: jumpDot 1s ease-in-out infinite;
+      }
+      .dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes pulseNode {
+        0%,
+        100% {
+          opacity: 0.55;
+          transform: scale(0.8);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.25);
+        }
+      }
+      @keyframes flowLink {
+        0%,
+        100% {
+          opacity: 0.2;
+        }
+        50% {
+          opacity: 0.9;
+        }
+      }
+      @keyframes jumpDot {
+        0%,
+        80%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.5;
+        }
+        40% {
+          transform: translateY(-8px);
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="screen">
+      <div class="glow"></div>
+
+      <div class="network">
+        <span class="link" style="top: 18%; left: 15%; width: 21%; transform: rotate(18deg)"></span>
+        <span class="link" style="top: 24%; left: 35%; width: 24%; transform: rotate(-8deg); animation-delay: 0.2s"></span>
+        <span class="link" style="top: 24%; left: 57%; width: 22%; transform: rotate(20deg); animation-delay: 0.4s"></span>
+        <span class="link" style="top: 36%; left: 24%; width: 23%; transform: rotate(10deg); animation-delay: 0.15s"></span>
+        <span class="link" style="top: 42%; left: 45%; width: 23%; transform: rotate(-7deg); animation-delay: 0.3s"></span>
+        <span class="link" style="top: 56%; left: 13%; width: 22%; transform: rotate(15deg); animation-delay: 0.35s"></span>
+        <span class="link" style="top: 62%; left: 33%; width: 24%; transform: rotate(-4deg); animation-delay: 0.5s"></span>
+        <span class="link" style="top: 70%; left: 54%; width: 24%; transform: rotate(14deg); animation-delay: 0.65s"></span>
+
+        <span class="node" style="top: 12%; left: 14%"></span>
+        <span class="node" style="top: 24%; left: 34%; animation-delay: 0.2s"></span>
+        <span class="node" style="top: 18%; left: 58%; animation-delay: 0.4s"></span>
+        <span class="node" style="top: 30%; left: 78%; animation-delay: 0.1s"></span>
+        <span class="node" style="top: 46%; left: 22%; animation-delay: 0.6s"></span>
+        <span class="node" style="top: 50%; left: 46%; animation-delay: 0.3s"></span>
+        <span class="node" style="top: 44%; left: 68%; animation-delay: 0.5s"></span>
+        <span class="node" style="top: 64%; left: 12%; animation-delay: 0.2s"></span>
+        <span class="node" style="top: 70%; left: 34%; animation-delay: 0.7s"></span>
+        <span class="node" style="top: 68%; left: 56%; animation-delay: 0.1s"></span>
+        <span class="node" style="top: 76%; left: 78%; animation-delay: 0.4s"></span>
+        <span class="node" style="top: 86%; left: 44%; animation-delay: 0.25s"></span>
+      </div>
+
+      <div class="content">
+        <section class="panel">
+          <div class="badge">Neural Engine Ayka</div>
+          <h1>Ayka está construindo sua descrição</h1>
+          <p>
+            Analisando contexto, conectando ideias e montando uma versão incrível para o corretor.
+          </p>
+          <div class="dots">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>
+

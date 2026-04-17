@@ -15,13 +15,15 @@ export async function apiFetchWithAuth<T>(
     return { ok: false, error: "Sessao expirada. Faca login novamente.", status: 401 };
   }
 
+  const headers = new Headers(init?.headers ?? {});
+  headers.set("Authorization", `Bearer ${token}`);
+  if (!(init?.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const response = await fetch(path, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(init?.headers ?? {}),
-    },
+    headers,
   });
 
   const payload = (await response.json().catch(() => null)) as

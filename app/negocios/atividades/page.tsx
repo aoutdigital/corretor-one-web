@@ -4,10 +4,21 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { CoreNav } from "@/app/_components/core-nav";
 import { apiFetchWithAuth } from "@/lib/client/auth-api";
+import {
+  ACTIVITY_CATEGORY_ORDER,
+  getActivityCategoryMeta,
+  getActivityModelMeta,
+  inferActivityTypeFromModel,
+  listActivityModelsByCategory,
+  type ActivityCategory,
+  type ActivityModel,
+} from "@/lib/crm/activity-playbook";
 
 type Atividade = {
   id: string;
   lead_id: string;
+  categoria: ActivityCategory;
+  modelo: ActivityModel;
   tipo: string;
   titulo: string;
   status: string;
@@ -19,7 +30,8 @@ export default function NegociosAtividadesPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [leadId, setLeadId] = useState("");
-  const [tipo, setTipo] = useState("LIGACAO");
+  const [categoria, setCategoria] = useState<ActivityCategory>("QUALIFICACAO");
+  const [modelo, setModelo] = useState<ActivityModel>("QUALIFICACAO_PRIMEIRO_CONTATO");
   const [titulo, setTitulo] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -50,7 +62,13 @@ export default function NegociosAtividadesPage() {
 
     const result = await apiFetchWithAuth<{ id: string }>("/api/atividades", {
       method: "POST",
-      body: JSON.stringify({ lead_id: leadId, tipo, titulo }),
+      body: JSON.stringify({
+        lead_id: leadId,
+        categoria,
+        modelo,
+        tipo: inferActivityTypeFromModel(modelo),
+        titulo,
+      }),
     });
 
     setSaving(false);
@@ -78,13 +96,26 @@ export default function NegociosAtividadesPage() {
 
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: 10, marginTop: 16, marginBottom: 20 }}>
         <input value={leadId} onChange={(event) => setLeadId(event.target.value)} placeholder="Lead ID" required />
-        <select value={tipo} onChange={(event) => setTipo(event.target.value)}>
-          <option value="LIGACAO">LIGACAO</option>
-          <option value="WHATSAPP">WHATSAPP</option>
-          <option value="EMAIL">EMAIL</option>
-          <option value="VISITA">VISITA</option>
-          <option value="TAREFA">TAREFA</option>
-          <option value="OUTRO">OUTRO</option>
+        <select
+          value={categoria}
+          onChange={(event) => {
+            const nextCategory = event.target.value as ActivityCategory;
+            setCategoria(nextCategory);
+            setModelo(listActivityModelsByCategory(nextCategory)[0].model);
+          }}
+        >
+          {ACTIVITY_CATEGORY_ORDER.map((item) => (
+            <option key={item} value={item}>
+              {getActivityCategoryMeta(item).label}
+            </option>
+          ))}
+        </select>
+        <select value={modelo} onChange={(event) => setModelo(event.target.value as ActivityModel)}>
+          {listActivityModelsByCategory(categoria).map((item) => (
+            <option key={item.model} value={item.model}>
+              {item.label}
+            </option>
+          ))}
         </select>
         <input value={titulo} onChange={(event) => setTitulo(event.target.value)} placeholder="Titulo" required />
         <button type="submit" disabled={saving}>
@@ -98,6 +129,9 @@ export default function NegociosAtividadesPage() {
         {items.map((item) => (
           <div key={item.id} style={{ border: "1px solid #2f3542", borderRadius: 10, padding: 12 }}>
             <strong>{item.titulo}</strong>
+            <p>
+              {getActivityCategoryMeta(item.categoria).label} / {getActivityModelMeta(item.modelo).label}
+            </p>
             <p>
               {item.tipo} - {item.status}
             </p>

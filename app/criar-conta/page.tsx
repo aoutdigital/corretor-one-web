@@ -384,7 +384,7 @@ function CriarContaPageContent() {
                       pattern="[0-9]{1,6}-F"
                       maxLength={8}
                       placeholder="123456-F"
-                      className="w-full border-none bg-transparent text-sm outline-none placeholder:text-slate-300"
+                      className="w-full border-none bg-transparent text-sm outline-none"
                       required
                       aria-invalid={Boolean(fieldErrors.creciNumero)}
                       disabled={!uf}

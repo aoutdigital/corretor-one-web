@@ -70,6 +70,7 @@
   --surface-2: #eceff2;
   --border: #d3d9df;
   --muted: var(--blue-slate);
+  --placeholder: #93a0ad;
   --primary: var(--primary-scarlet);
 
   --font-brand: "dunbar-tall", var(--font-geist-sans), "Segoe UI", sans-serif;
@@ -88,6 +89,17 @@ body {
   font-family: var(--font-brand);
 }
 
+:is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+        [type="file"]
+      ):not([type="color"]),
+    textarea
+  )::placeholder {
+  color: var(--placeholder);
+  font-style: italic;
+  opacity: 1;
+}
+
 h1,
 h2,
 h3,
@@ -97,4 +109,218 @@ h6 {
   font-family: "dunbar-tall", var(--font-geist-sans), "Segoe UI", sans-serif;
   font-weight: 400 !important; /* Dunbar Book as heading default */
   letter-spacing: 0.01em;
+}
+
+/* Padrão global de foco: dourado da marca */
+:is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.opportunity-modal-input),
+    select,
+    textarea:not(.opportunity-modal-textarea),
+    [contenteditable="true"]
+  ):focus,
+:is(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(.opportunity-modal-input),
+    select,
+    textarea:not(.opportunity-modal-textarea),
+    [contenteditable="true"]
+  ):focus-visible {
+  border-color: var(--grey-olive) !important;
+  outline: 0 !important;
+  --tw-ring-color: rgba(145, 139, 118, 0.28) !important;
+  box-shadow: 0 0 0 2px rgba(145, 139, 118, 0.18) !important;
+}
+
+#create-opportunity-modal input.opportunity-modal-input:focus,
+#create-opportunity-modal input.opportunity-modal-input:focus-visible,
+#create-opportunity-modal textarea.opportunity-modal-textarea:focus,
+#create-opportunity-modal textarea.opportunity-modal-textarea:focus-visible {
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Affordance global para ações clicáveis */
+:is(
+    button,
+    [role="button"],
+    input[type="button"],
+    input[type="submit"],
+    input[type="reset"]
+  ):not(:disabled):not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+:is(
+    button,
+    [role="button"],
+    input[type="button"],
+    input[type="submit"],
+    input[type="reset"]
+  ):is(:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :is(
+      button,
+      [role="button"],
+      input[type="button"],
+      input[type="submit"],
+      input[type="reset"]
+    ):not(:disabled):not([aria-disabled="true"]) {
+    transition:
+      transform 0.14s ease,
+      filter 0.14s ease,
+      box-shadow 0.14s ease;
+    will-change: transform;
+  }
+
+  :is(
+      button,
+      [role="button"],
+      input[type="button"],
+      input[type="submit"],
+      input[type="reset"]
+    ):not(:disabled):not([aria-disabled="true"]):hover {
+    transform: translateY(-1px);
+    filter: contrast(1.02);
+  }
+
+  :is(
+      button,
+      [role="button"],
+      input[type="button"],
+      input[type="submit"],
+      input[type="reset"]
+    ):not(:disabled):not([aria-disabled="true"]):active {
+    transform: translateY(0);
+    filter: contrast(1);
+  }
+}
+
+.wobble-hor-bottom {
+  -webkit-animation: wobble-hor-bottom 0.8s both;
+  animation: wobble-hor-bottom 0.8s both;
+}
+
+@-webkit-keyframes wobble-hor-bottom {
+  0%,
+  100% {
+    -webkit-transform: translateX(0%);
+    transform: translateX(0%);
+    -webkit-transform-origin: 50% 50%;
+    transform-origin: 50% 50%;
+  }
+  15% {
+    -webkit-transform: translateX(-30px) rotate(-6deg);
+    transform: translateX(-30px) rotate(-6deg);
+  }
+  30% {
+    -webkit-transform: translateX(15px) rotate(6deg);
+    transform: translateX(15px) rotate(6deg);
+  }
+  45% {
+    -webkit-transform: translateX(-15px) rotate(-3.6deg);
+    transform: translateX(-15px) rotate(-3.6deg);
+  }
+  60% {
+    -webkit-transform: translateX(9px) rotate(2.4deg);
+    transform: translateX(9px) rotate(2.4deg);
+  }
+  75% {
+    -webkit-transform: translateX(-6px) rotate(-1.2deg);
+    transform: translateX(-6px) rotate(-1.2deg);
+  }
+}
+
+@keyframes wobble-hor-bottom {
+  0%,
+  100% {
+    -webkit-transform: translateX(0%);
+    transform: translateX(0%);
+    -webkit-transform-origin: 50% 50%;
+    transform-origin: 50% 50%;
+  }
+  15% {
+    -webkit-transform: translateX(-30px) rotate(-6deg);
+    transform: translateX(-30px) rotate(-6deg);
+  }
+  30% {
+    -webkit-transform: translateX(15px) rotate(6deg);
+    transform: translateX(15px) rotate(6deg);
+  }
+  45% {
+    -webkit-transform: translateX(-15px) rotate(-3.6deg);
+    transform: translateX(-15px) rotate(-3.6deg);
+  }
+  60% {
+    -webkit-transform: translateX(9px) rotate(2.4deg);
+    transform: translateX(9px) rotate(2.4deg);
+  }
+  75% {
+    -webkit-transform: translateX(-6px) rotate(-1.2deg);
+    transform: translateX(-6px) rotate(-1.2deg);
+  }
+}
+
+.slide-in-top {
+  -webkit-animation: slide-in-top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  animation: slide-in-top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@-webkit-keyframes slide-in-top {
+  0% {
+    -webkit-transform: translateY(-1000px);
+    transform: translateY(-1000px);
+    opacity: 0;
+  }
+  100% {
+    -webkit-transform: translateY(0);
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-top {
+  0% {
+    -webkit-transform: translateY(-1000px);
+    transform: translateY(-1000px);
+    opacity: 0;
+  }
+  100% {
+    -webkit-transform: translateY(0);
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.slide-out-bottom {
+  -webkit-animation: slide-out-bottom 0.5s cubic-bezier(0.55, 0.085, 0.68, 0.53) both;
+  animation: slide-out-bottom 0.5s cubic-bezier(0.55, 0.085, 0.68, 0.53) both;
+}
+
+@-webkit-keyframes slide-out-bottom {
+  0% {
+    -webkit-transform: translateY(0);
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    -webkit-transform: translateY(1000px);
+    transform: translateY(1000px);
+    opacity: 0;
+  }
+}
+
+@keyframes slide-out-bottom {
+  0% {
+    -webkit-transform: translateY(0);
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    -webkit-transform: translateY(1000px);
+    transform: translateY(1000px);
+    opacity: 0;
+  }
 }

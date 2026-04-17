@@ -1,0 +1,4 @@
+id,codigo,nome,formato,ativo,observacoes
+,ZAP,Zap Imóveis,XML,true,
+,IMOVELWEB,Imovelweb,XML,true,
+,CHAVES_NA_MAO,Chaves na Mão,XML,true,

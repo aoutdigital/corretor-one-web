@@ -64,11 +64,13 @@ export type Database = {
       }
       atividades: {
         Row: {
+          categoria: Database["public"]["Enums"]["categoria_atividade"]
           concluida_em: string | null
           created_at: string
           descricao: string | null
           id: string
           lead_id: string
+          modelo: Database["public"]["Enums"]["modelo_atividade"]
           negocio_id: string | null
           owner_id: string
           quando_em: string | null
@@ -78,11 +80,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          categoria?: Database["public"]["Enums"]["categoria_atividade"]
           concluida_em?: string | null
           created_at?: string
           descricao?: string | null
           id?: string
           lead_id: string
+          modelo?: Database["public"]["Enums"]["modelo_atividade"]
           negocio_id?: string | null
           owner_id: string
           quando_em?: string | null
@@ -92,11 +96,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          categoria?: Database["public"]["Enums"]["categoria_atividade"]
           concluida_em?: string | null
           created_at?: string
           descricao?: string | null
           id?: string
           lead_id?: string
+          modelo?: Database["public"]["Enums"]["modelo_atividade"]
           negocio_id?: string | null
           owner_id?: string
           quando_em?: string | null
@@ -149,17 +155,26 @@ export type Database = {
           imobiliaria_id: string | null
           incorporadora: string | null
           lat: number | null
+          localizacao_contexto: Json
           lng: number | null
           logradouro: string
+          keywords: string[]
+          meta_description: string | null
+          meta_title: string | null
           n_andares: number | null
           n_torres: number | null
           n_unidades: number | null
+          qtd_elevadores: number | null
+          unidades_cobertura: number | null
+          unidades_por_andar: number | null
+          unidades_terreo: number | null
           nome: string
           numero: string
           owner_id: string
           previsao_entrega_em: string | null
           publicado_em: string | null
-          slug_publico: string
+          resumo_curto: string | null
+          slug_publico: string | null
           status: Database["public"]["Enums"]["status_empreendimento"]
           updated_at: string
         }
@@ -182,17 +197,26 @@ export type Database = {
           imobiliaria_id?: string | null
           incorporadora?: string | null
           lat?: number | null
+          localizacao_contexto?: Json
           lng?: number | null
           logradouro: string
+          meta_description?: string | null
+          meta_title?: string | null
           n_andares?: number | null
           n_torres?: number | null
           n_unidades?: number | null
+          keywords?: string[]
+          resumo_curto?: string | null
+          qtd_elevadores?: number | null
+          unidades_cobertura?: number | null
+          unidades_por_andar?: number | null
+          unidades_terreo?: number | null
           nome: string
           numero: string
           owner_id: string
           previsao_entrega_em?: string | null
           publicado_em?: string | null
-          slug_publico: string
+          slug_publico?: string | null
           status?: Database["public"]["Enums"]["status_empreendimento"]
           updated_at?: string
         }
@@ -215,17 +239,26 @@ export type Database = {
           imobiliaria_id?: string | null
           incorporadora?: string | null
           lat?: number | null
+          localizacao_contexto?: Json
           lng?: number | null
           logradouro?: string
+          meta_description?: string | null
+          meta_title?: string | null
           n_andares?: number | null
           n_torres?: number | null
           n_unidades?: number | null
+          keywords?: string[]
+          resumo_curto?: string | null
+          qtd_elevadores?: number | null
+          unidades_cobertura?: number | null
+          unidades_por_andar?: number | null
+          unidades_terreo?: number | null
           nome?: string
           numero?: string
           owner_id?: string
           previsao_entrega_em?: string | null
           publicado_em?: string | null
-          slug_publico?: string
+          slug_publico?: string | null
           status?: Database["public"]["Enums"]["status_empreendimento"]
           updated_at?: string
         }
@@ -239,6 +272,86 @@ export type Database = {
           },
           {
             foreignKeyName: "empreendimentos_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      empreendimento_midia_publica: {
+        Row: {
+          created_at: string
+          empreendimento_id: string
+          id: string
+          indice_publico: number
+          midia_id: string
+          midia_relacao_id: string
+          ordem: number
+          owner_id: string
+          slug_publico: string
+          storage_bucket: string
+          storage_path: string
+          storage_provider: Database["public"]["Enums"]["storage_provider"]
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          empreendimento_id: string
+          id?: string
+          indice_publico: number
+          midia_id: string
+          midia_relacao_id: string
+          ordem?: number
+          owner_id: string
+          slug_publico: string
+          storage_bucket: string
+          storage_path: string
+          storage_provider?: Database["public"]["Enums"]["storage_provider"]
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          empreendimento_id?: string
+          id?: string
+          indice_publico?: number
+          midia_id?: string
+          midia_relacao_id?: string
+          ordem?: number
+          owner_id?: string
+          slug_publico?: string
+          storage_bucket?: string
+          storage_path?: string
+          storage_provider?: Database["public"]["Enums"]["storage_provider"]
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empreendimento_midia_publica_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "empreendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empreendimento_midia_publica_midia_id_fkey"
+            columns: ["midia_id"]
+            isOneToOne: false
+            referencedRelation: "midia"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empreendimento_midia_publica_midia_relacao_id_fkey"
+            columns: ["midia_relacao_id"]
+            isOneToOne: false
+            referencedRelation: "midia_relacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empreendimento_midia_publica_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -299,7 +412,11 @@ export type Database = {
       }
       imoveis: {
         Row: {
+          aceita_parceria_status:
+            | Database["public"]["Enums"]["aceita_parceria_status"]
+            | null
           aceita_permuta: boolean
+          aceite_corretor_exclusivo: boolean
           address_json: Json
           andar: number | null
           ano_construcao: number | null
@@ -307,26 +424,50 @@ export type Database = {
           area_total: number | null
           area_util: number | null
           bairro: string
-          bairro_comercial: boolean
+          bairro_comercial: string | null
           banheiros: number | null
           caracteristicas: string[] | null
           cep: string | null
           chaves_na_mao: boolean
           cidade: string
-          codigo: string
+          codigo: string | null
+          captacao_corretor_parceiro: boolean
+          comissao_captador_percentual: number | null
+          comissao_locacao: string | null
+          comissao_venda_percentual: number | null
+          comissao_vendedor_percentual: number | null
           condominio: number | null
+          cozinhas: number | null
           created_at: string
+          corretor_parceiro_email: string | null
+          corretor_parceiro_nome: string | null
+          corretor_parceiro_telefone: string | null
           descricao: string
+          descricao_permuta: string | null
           descricao_curta: string | null
           destaque: boolean
+          disponibilizar_no_bolsao_parceria: boolean
+          bolsao_permitir_download_midia_kit: boolean
+          bolsao_permitir_mudanca_preco: boolean
+          bolsao_somente_visitas_agendadas: boolean
+          bolsao_somente_visitas_com_minha_presenca: boolean
+          divisao_comissao_parceria: string | null
           dormitorios: number | null
+          enderecovisualizacao: Database["public"]["Enums"]["endereco_visualizacao_imovel"]
           empreendimento_id: string | null
+          empreendimento_tipo_id: string | null
+          empreendimento_tipologia_label: string | null
           endereco_complemento: string | null
           estado: Database["public"]["Enums"]["uf"]
           estado_conservacao:
             | Database["public"]["Enums"]["estado_conservacao"]
             | null
           exclusividade: boolean
+          exclusividade_comissao_minha_percentual: number | null
+          exclusividade_comissao_parceiro_percentual: number | null
+          exclusividade_outras_comissoes_percentual: number | null
+          exclusividade_data_vencimento: string | null
+          exclusividade_observacoes: string | null
           favoritos_count: number
           finalidade: Database["public"]["Enums"]["finalidade"]
           financiavel: boolean
@@ -341,32 +482,45 @@ export type Database = {
           iptu_periodicidade:
             | Database["public"]["Enums"]["periodicidade"]
             | null
+          lateral_1_metros: number | null
+          lateral_2_metros: number | null
           lat: number | null
           lavabos: number | null
+          localizacao_contexto: Json
           lng: number | null
           logradouro: string
           meta_description: string | null
           meta_title: string | null
+          mostrar_andar_no_anuncio: boolean
+          mostrar_complemento_no_anuncio: boolean
           numero: string
           ocultar_numero_publico: boolean
           origem_cadastro: Database["public"]["Enums"]["origem_imovel"]
           owner_id: string
+          ocupacao_imovel: Database["public"]["Enums"]["ocupacao_imovel"] | null
+          observacoes_gerais: string | null
+          outras_comissoes_percentual: number | null
           permite_visita_imediata: boolean
           placa_no_local: boolean
           preco_locacao: number | null
           preco_venda: number | null
           publicado_em: string | null
-          slug_publico: string
+          regra_geral_exclusividade: string | null
+          salas: number | null
+          slug_publico: string | null
           status: Database["public"]["Enums"]["status_imovel"]
+          step_rascunho: number
           subtipo: Database["public"]["Enums"]["subtipo_imovel"] | null
           suites: number | null
           tipo: Database["public"]["Enums"]["tipo_imovel"]
+          tipo_negociacao: Database["public"]["Enums"]["tipo_negociacao"] | null
           titulo: string
           ultimo_andar: boolean
           unidade_numero: string | null
           updated_at: string
           usar_caracteristicas_empreendimento: boolean
           usar_midias_empreendimento: boolean
+          veio_do_bolsao: boolean
           vaga_coberturas:
             | Database["public"]["Enums"]["vaga_cobertura"][]
             | null
@@ -374,11 +528,16 @@ export type Database = {
           vaga_tipos: Database["public"]["Enums"]["vaga_tipo"][] | null
           vagas: number | null
           valor_m2: number | null
+          minimo_aceito_em_maos: number | null
           views_count: number
           vista: Database["public"]["Enums"]["tipo_vista"] | null
         }
         Insert: {
+          aceita_parceria_status?:
+            | Database["public"]["Enums"]["aceita_parceria_status"]
+            | null
           aceita_permuta?: boolean
+          aceite_corretor_exclusivo?: boolean
           address_json: Json
           andar?: number | null
           ano_construcao?: number | null
@@ -386,26 +545,50 @@ export type Database = {
           area_total?: number | null
           area_util?: number | null
           bairro: string
-          bairro_comercial?: boolean
+          bairro_comercial?: string | null
           banheiros?: number | null
           caracteristicas?: string[] | null
           cep?: string | null
           chaves_na_mao?: boolean
           cidade: string
-          codigo: string
+          codigo?: string | null
+          captacao_corretor_parceiro?: boolean
+          comissao_captador_percentual?: number | null
+          comissao_locacao?: string | null
+          comissao_venda_percentual?: number | null
+          comissao_vendedor_percentual?: number | null
           condominio?: number | null
+          cozinhas?: number | null
           created_at?: string
+          corretor_parceiro_email?: string | null
+          corretor_parceiro_nome?: string | null
+          corretor_parceiro_telefone?: string | null
           descricao: string
+          descricao_permuta?: string | null
           descricao_curta?: string | null
           destaque?: boolean
+          disponibilizar_no_bolsao_parceria?: boolean
+          bolsao_permitir_download_midia_kit?: boolean
+          bolsao_permitir_mudanca_preco?: boolean
+          bolsao_somente_visitas_agendadas?: boolean
+          bolsao_somente_visitas_com_minha_presenca?: boolean
+          divisao_comissao_parceria?: string | null
           dormitorios?: number | null
+          enderecovisualizacao?: Database["public"]["Enums"]["endereco_visualizacao_imovel"]
           empreendimento_id?: string | null
+          empreendimento_tipo_id?: string | null
+          empreendimento_tipologia_label?: string | null
           endereco_complemento?: string | null
           estado: Database["public"]["Enums"]["uf"]
           estado_conservacao?:
             | Database["public"]["Enums"]["estado_conservacao"]
             | null
           exclusividade?: boolean
+          exclusividade_comissao_minha_percentual?: number | null
+          exclusividade_comissao_parceiro_percentual?: number | null
+          exclusividade_outras_comissoes_percentual?: number | null
+          exclusividade_data_vencimento?: string | null
+          exclusividade_observacoes?: string | null
           favoritos_count?: number
           finalidade: Database["public"]["Enums"]["finalidade"]
           financiavel?: boolean
@@ -420,32 +603,45 @@ export type Database = {
           iptu_periodicidade?:
             | Database["public"]["Enums"]["periodicidade"]
             | null
+          lateral_1_metros?: number | null
+          lateral_2_metros?: number | null
           lat?: number | null
           lavabos?: number | null
+          localizacao_contexto?: Json
           lng?: number | null
           logradouro: string
           meta_description?: string | null
           meta_title?: string | null
+          mostrar_andar_no_anuncio?: boolean
+          mostrar_complemento_no_anuncio?: boolean
           numero: string
           ocultar_numero_publico?: boolean
           origem_cadastro?: Database["public"]["Enums"]["origem_imovel"]
           owner_id: string
+          ocupacao_imovel?: Database["public"]["Enums"]["ocupacao_imovel"] | null
+          observacoes_gerais?: string | null
+          outras_comissoes_percentual?: number | null
           permite_visita_imediata?: boolean
           placa_no_local?: boolean
           preco_locacao?: number | null
           preco_venda?: number | null
           publicado_em?: string | null
-          slug_publico: string
+          regra_geral_exclusividade?: string | null
+          salas?: number | null
+          slug_publico?: string | null
           status?: Database["public"]["Enums"]["status_imovel"]
+          step_rascunho?: number
           subtipo?: Database["public"]["Enums"]["subtipo_imovel"] | null
           suites?: number | null
           tipo: Database["public"]["Enums"]["tipo_imovel"]
+          tipo_negociacao?: Database["public"]["Enums"]["tipo_negociacao"] | null
           titulo: string
           ultimo_andar?: boolean
           unidade_numero?: string | null
           updated_at?: string
           usar_caracteristicas_empreendimento?: boolean
           usar_midias_empreendimento?: boolean
+          veio_do_bolsao?: boolean
           vaga_coberturas?:
             | Database["public"]["Enums"]["vaga_cobertura"][]
             | null
@@ -453,11 +649,16 @@ export type Database = {
           vaga_tipos?: Database["public"]["Enums"]["vaga_tipo"][] | null
           vagas?: number | null
           valor_m2?: number | null
+          minimo_aceito_em_maos?: number | null
           views_count?: number
           vista?: Database["public"]["Enums"]["tipo_vista"] | null
         }
         Update: {
+          aceita_parceria_status?:
+            | Database["public"]["Enums"]["aceita_parceria_status"]
+            | null
           aceita_permuta?: boolean
+          aceite_corretor_exclusivo?: boolean
           address_json?: Json
           andar?: number | null
           ano_construcao?: number | null
@@ -465,26 +666,50 @@ export type Database = {
           area_total?: number | null
           area_util?: number | null
           bairro?: string
-          bairro_comercial?: boolean
+          bairro_comercial?: string | null
           banheiros?: number | null
           caracteristicas?: string[] | null
           cep?: string | null
           chaves_na_mao?: boolean
           cidade?: string
-          codigo?: string
+          codigo?: string | null
+          captacao_corretor_parceiro?: boolean
+          comissao_captador_percentual?: number | null
+          comissao_locacao?: string | null
+          comissao_venda_percentual?: number | null
+          comissao_vendedor_percentual?: number | null
           condominio?: number | null
+          cozinhas?: number | null
           created_at?: string
+          corretor_parceiro_email?: string | null
+          corretor_parceiro_nome?: string | null
+          corretor_parceiro_telefone?: string | null
           descricao?: string
+          descricao_permuta?: string | null
           descricao_curta?: string | null
           destaque?: boolean
+          disponibilizar_no_bolsao_parceria?: boolean
+          bolsao_permitir_download_midia_kit?: boolean
+          bolsao_permitir_mudanca_preco?: boolean
+          bolsao_somente_visitas_agendadas?: boolean
+          bolsao_somente_visitas_com_minha_presenca?: boolean
+          divisao_comissao_parceria?: string | null
           dormitorios?: number | null
+          enderecovisualizacao?: Database["public"]["Enums"]["endereco_visualizacao_imovel"]
           empreendimento_id?: string | null
+          empreendimento_tipo_id?: string | null
+          empreendimento_tipologia_label?: string | null
           endereco_complemento?: string | null
           estado?: Database["public"]["Enums"]["uf"]
           estado_conservacao?:
             | Database["public"]["Enums"]["estado_conservacao"]
             | null
           exclusividade?: boolean
+          exclusividade_comissao_minha_percentual?: number | null
+          exclusividade_comissao_parceiro_percentual?: number | null
+          exclusividade_outras_comissoes_percentual?: number | null
+          exclusividade_data_vencimento?: string | null
+          exclusividade_observacoes?: string | null
           favoritos_count?: number
           finalidade?: Database["public"]["Enums"]["finalidade"]
           financiavel?: boolean
@@ -499,32 +724,45 @@ export type Database = {
           iptu_periodicidade?:
             | Database["public"]["Enums"]["periodicidade"]
             | null
+          lateral_1_metros?: number | null
+          lateral_2_metros?: number | null
           lat?: number | null
           lavabos?: number | null
+          localizacao_contexto?: Json
           lng?: number | null
           logradouro?: string
           meta_description?: string | null
           meta_title?: string | null
+          mostrar_andar_no_anuncio?: boolean
+          mostrar_complemento_no_anuncio?: boolean
           numero?: string
           ocultar_numero_publico?: boolean
           origem_cadastro?: Database["public"]["Enums"]["origem_imovel"]
           owner_id?: string
+          ocupacao_imovel?: Database["public"]["Enums"]["ocupacao_imovel"] | null
+          observacoes_gerais?: string | null
+          outras_comissoes_percentual?: number | null
           permite_visita_imediata?: boolean
           placa_no_local?: boolean
           preco_locacao?: number | null
           preco_venda?: number | null
           publicado_em?: string | null
-          slug_publico?: string
+          regra_geral_exclusividade?: string | null
+          salas?: number | null
+          slug_publico?: string | null
           status?: Database["public"]["Enums"]["status_imovel"]
+          step_rascunho?: number
           subtipo?: Database["public"]["Enums"]["subtipo_imovel"] | null
           suites?: number | null
           tipo?: Database["public"]["Enums"]["tipo_imovel"]
+          tipo_negociacao?: Database["public"]["Enums"]["tipo_negociacao"] | null
           titulo?: string
           ultimo_andar?: boolean
           unidade_numero?: string | null
           updated_at?: string
           usar_caracteristicas_empreendimento?: boolean
           usar_midias_empreendimento?: boolean
+          veio_do_bolsao?: boolean
           vaga_coberturas?:
             | Database["public"]["Enums"]["vaga_cobertura"][]
             | null
@@ -532,6 +770,7 @@ export type Database = {
           vaga_tipos?: Database["public"]["Enums"]["vaga_tipo"][] | null
           vagas?: number | null
           valor_m2?: number | null
+          minimo_aceito_em_maos?: number | null
           views_count?: number
           vista?: Database["public"]["Enums"]["tipo_vista"] | null
         }
@@ -544,6 +783,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "imoveis_empreendimento_tipo_id_fkey"
+            columns: ["empreendimento_tipo_id"]
+            isOneToOne: false
+            referencedRelation: "empreendimento_tipos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "imoveis_geolocacao_id_fkey"
             columns: ["geolocacao_id"]
             isOneToOne: false
@@ -552,6 +798,190 @@ export type Database = {
           },
           {
             foreignKeyName: "imoveis_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      imovel_ambientes: {
+        Row: {
+          area_m2: number | null
+          created_at: string
+          dados: Json
+          id: string
+          imovel_id: string
+          ordem: number
+          owner_id: string
+          principal: boolean
+          tipo_ambiente: Database["public"]["Enums"]["tipo_ambiente_imovel"]
+          updated_at: string
+        }
+        Insert: {
+          area_m2?: number | null
+          created_at?: string
+          dados?: Json
+          id?: string
+          imovel_id: string
+          ordem?: number
+          owner_id: string
+          principal?: boolean
+          tipo_ambiente: Database["public"]["Enums"]["tipo_ambiente_imovel"]
+          updated_at?: string
+        }
+        Update: {
+          area_m2?: number | null
+          created_at?: string
+          dados?: Json
+          id?: string
+          imovel_id?: string
+          ordem?: number
+          owner_id?: string
+          principal?: boolean
+          tipo_ambiente?: Database["public"]["Enums"]["tipo_ambiente_imovel"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imovel_ambientes_imovel_id_fkey"
+            columns: ["imovel_id"]
+            isOneToOne: false
+            referencedRelation: "imoveis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "imovel_ambientes_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      imovel_delete_jobs: {
+        Row: {
+          created_at: string
+          erro: string | null
+          finished_at: string | null
+          id: string
+          imovel_id: string
+          next_retry_at: string | null
+          owner_id: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["status_imovel_delete_job"]
+          tentativas: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          erro?: string | null
+          finished_at?: string | null
+          id?: string
+          imovel_id: string
+          next_retry_at?: string | null
+          owner_id: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["status_imovel_delete_job"]
+          tentativas?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          erro?: string | null
+          finished_at?: string | null
+          id?: string
+          imovel_id?: string
+          next_retry_at?: string | null
+          owner_id?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["status_imovel_delete_job"]
+          tentativas?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imovel_delete_jobs_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      imovel_midia_publica: {
+        Row: {
+          created_at: string
+          id: string
+          imovel_id: string
+          indice_publico: number
+          midia_id: string
+          midia_relacao_id: string
+          ordem: number
+          owner_id: string
+          slug_publico: string
+          storage_bucket: string
+          storage_path: string
+          storage_provider: Database["public"]["Enums"]["storage_provider"]
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          imovel_id: string
+          indice_publico: number
+          midia_id: string
+          midia_relacao_id: string
+          ordem?: number
+          owner_id: string
+          slug_publico: string
+          storage_bucket: string
+          storage_path: string
+          storage_provider?: Database["public"]["Enums"]["storage_provider"]
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          imovel_id?: string
+          indice_publico?: number
+          midia_id?: string
+          midia_relacao_id?: string
+          ordem?: number
+          owner_id?: string
+          slug_publico?: string
+          storage_bucket?: string
+          storage_path?: string
+          storage_provider?: Database["public"]["Enums"]["storage_provider"]
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imovel_midia_publica_imovel_id_fkey"
+            columns: ["imovel_id"]
+            isOneToOne: false
+            referencedRelation: "imoveis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "imovel_midia_publica_midia_id_fkey"
+            columns: ["midia_id"]
+            isOneToOne: false
+            referencedRelation: "midia"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "imovel_midia_publica_midia_relacao_id_fkey"
+            columns: ["midia_relacao_id"]
+            isOneToOne: false
+            referencedRelation: "midia_relacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "imovel_midia_publica_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -594,6 +1024,158 @@ export type Database = {
           },
           {
             foreignKeyName: "lead_imoveis_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_briefings: {
+        Row: {
+          area_util_max: number | null
+          area_util_max_comercial: number | null
+          area_util_min: number | null
+          area_util_min_comercial: number | null
+          canais: Database["public"]["Enums"]["canal_contato"][] | null
+          caracteristicas_comerciais:
+            | Database["public"]["Enums"]["caracteristica_comercial"][]
+            | null
+          caracteristicas_residenciais:
+            | Database["public"]["Enums"]["caracteristica_imovel"][]
+            | null
+          categoriaimovel: string[] | null
+          subcategoriaimovel: string[] | null
+          construcao: Database["public"]["Enums"]["tipo_construcao"][] | null
+          conteudos: Database["public"]["Enums"]["tipo_conteudo"][] | null
+          created_at: string
+          geolocacao_id: string | null
+          id: string
+          objetivolead: Database["public"]["Enums"]["objetivo_lead"][] | null
+          intencao_compra: Database["public"]["Enums"]["intencao_compra"] | null
+          lat: number | null
+          lead_id: string
+          lng: number | null
+          localizacao_texto: string | null
+          owner_id: string
+          quartos_min: number | null
+          raio_km: number | null
+          suites_min: number | null
+          texto_livre: string | null
+          tipoimovel: Database["public"]["Enums"]["tipo_imovel"][] | null
+          tiponegociacao:
+            | Database["public"]["Enums"]["tipo_negociacao"][]
+            | null
+          tipouso: Database["public"]["Enums"]["tipo_uso"] | null
+          updated_at: string
+          vagas_min: number | null
+          vagas_min_comercial: number | null
+          valor_max: number | null
+          valor_min: number | null
+        }
+        Insert: {
+          area_util_max?: number | null
+          area_util_max_comercial?: number | null
+          area_util_min?: number | null
+          area_util_min_comercial?: number | null
+          canais?: Database["public"]["Enums"]["canal_contato"][] | null
+          caracteristicas_comerciais?:
+            | Database["public"]["Enums"]["caracteristica_comercial"][]
+            | null
+          caracteristicas_residenciais?:
+            | Database["public"]["Enums"]["caracteristica_imovel"][]
+            | null
+          categoriaimovel?: string[] | null
+          subcategoriaimovel?: string[] | null
+          construcao?: Database["public"]["Enums"]["tipo_construcao"][] | null
+          conteudos?: Database["public"]["Enums"]["tipo_conteudo"][] | null
+          created_at?: string
+          geolocacao_id?: string | null
+          id?: string
+          objetivolead?: Database["public"]["Enums"]["objetivo_lead"][] | null
+          intencao_compra?:
+            | Database["public"]["Enums"]["intencao_compra"]
+            | null
+          lat?: number | null
+          lead_id: string
+          lng?: number | null
+          localizacao_texto?: string | null
+          owner_id: string
+          quartos_min?: number | null
+          raio_km?: number | null
+          suites_min?: number | null
+          texto_livre?: string | null
+          tipoimovel?: Database["public"]["Enums"]["tipo_imovel"][] | null
+          tiponegociacao?:
+            | Database["public"]["Enums"]["tipo_negociacao"][]
+            | null
+          tipouso?: Database["public"]["Enums"]["tipo_uso"] | null
+          updated_at?: string
+          vagas_min?: number | null
+          vagas_min_comercial?: number | null
+          valor_max?: number | null
+          valor_min?: number | null
+        }
+        Update: {
+          area_util_max?: number | null
+          area_util_max_comercial?: number | null
+          area_util_min?: number | null
+          area_util_min_comercial?: number | null
+          canais?: Database["public"]["Enums"]["canal_contato"][] | null
+          caracteristicas_comerciais?:
+            | Database["public"]["Enums"]["caracteristica_comercial"][]
+            | null
+          caracteristicas_residenciais?:
+            | Database["public"]["Enums"]["caracteristica_imovel"][]
+            | null
+          categoriaimovel?: string[] | null
+          subcategoriaimovel?: string[] | null
+          construcao?: Database["public"]["Enums"]["tipo_construcao"][] | null
+          conteudos?: Database["public"]["Enums"]["tipo_conteudo"][] | null
+          created_at?: string
+          geolocacao_id?: string | null
+          id?: string
+          objetivolead?: Database["public"]["Enums"]["objetivo_lead"][] | null
+          intencao_compra?:
+            | Database["public"]["Enums"]["intencao_compra"]
+            | null
+          lat?: number | null
+          lead_id?: string
+          lng?: number | null
+          localizacao_texto?: string | null
+          owner_id?: string
+          quartos_min?: number | null
+          raio_km?: number | null
+          suites_min?: number | null
+          texto_livre?: string | null
+          tipoimovel?: Database["public"]["Enums"]["tipo_imovel"][] | null
+          tiponegociacao?:
+            | Database["public"]["Enums"]["tipo_negociacao"][]
+            | null
+          tipouso?: Database["public"]["Enums"]["tipo_uso"] | null
+          updated_at?: string
+          vagas_min?: number | null
+          vagas_min_comercial?: number | null
+          valor_max?: number | null
+          valor_min?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_briefings_geolocacao_id_fkey"
+            columns: ["geolocacao_id"]
+            isOneToOne: false
+            referencedRelation: "geolocacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_briefings_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_briefings_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -657,7 +1239,13 @@ export type Database = {
       }
       leads: {
         Row: {
+          aguardando_produto: boolean
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          complemento: string | null
           created_at: string
+          endereco: string | null
           email: string | null
           email_lower: string | null
           id: string
@@ -667,16 +1255,26 @@ export type Database = {
             | Database["public"]["Enums"]["motivo_desqualificacao"]
             | null
           nome: string
+          numero: string | null
           origem: Database["public"]["Enums"]["origem_lead"]
           owner_id: string
+          pais: string | null
+          profissao: string | null
           status: Database["public"]["Enums"]["status_lead"]
           telefone: string | null
           telefone_e164: string | null
+          uf: Database["public"]["Enums"]["uf"] | null
           updated_at: string
           utm: Json | null
         }
         Insert: {
+          aguardando_produto?: boolean
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
           created_at?: string
+          endereco?: string | null
           email?: string | null
           email_lower?: string | null
           id?: string
@@ -686,16 +1284,26 @@ export type Database = {
             | Database["public"]["Enums"]["motivo_desqualificacao"]
             | null
           nome: string
+          numero?: string | null
           origem: Database["public"]["Enums"]["origem_lead"]
           owner_id: string
+          pais?: string | null
+          profissao?: string | null
           status?: Database["public"]["Enums"]["status_lead"]
           telefone?: string | null
           telefone_e164?: string | null
+          uf?: Database["public"]["Enums"]["uf"] | null
           updated_at?: string
           utm?: Json | null
         }
         Update: {
+          aguardando_produto?: boolean
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
           created_at?: string
+          endereco?: string | null
           email?: string | null
           email_lower?: string | null
           id?: string
@@ -705,11 +1313,15 @@ export type Database = {
             | Database["public"]["Enums"]["motivo_desqualificacao"]
             | null
           nome?: string
+          numero?: string | null
           origem?: Database["public"]["Enums"]["origem_lead"]
           owner_id?: string
+          pais?: string | null
+          profissao?: string | null
           status?: Database["public"]["Enums"]["status_lead"]
           telefone?: string | null
           telefone_e164?: string | null
+          uf?: Database["public"]["Enums"]["uf"] | null
           updated_at?: string
           utm?: Json | null
         }
@@ -883,59 +1495,312 @@ export type Database = {
           },
         ]
       }
+      negocio_corretores: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          negocio_id: string
+          nome: string
+          owner_id: string
+          percentual_comissao: number | null
+          telefone: string | null
+          updated_at: string
+          valor_comissao: number | null
+          vinculado_corretor_parceiro: boolean
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          negocio_id: string
+          nome: string
+          owner_id: string
+          percentual_comissao?: number | null
+          telefone?: string | null
+          updated_at?: string
+          valor_comissao?: number | null
+          vinculado_corretor_parceiro?: boolean
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          negocio_id?: string
+          nome?: string
+          owner_id?: string
+          percentual_comissao?: number | null
+          telefone?: string | null
+          updated_at?: string
+          valor_comissao?: number | null
+          vinculado_corretor_parceiro?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "negocio_corretores_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "negocios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "negocio_corretores_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      negocio_parte_pessoas: {
+        Row: {
+          bairro: string
+          cep: string
+          cidade: string
+          complemento: string | null
+          cpf: string
+          created_at: string
+          email: string
+          endereco: string
+          id: string
+          negocio_parte_id: string
+          nome_completo: string
+          numero: string
+          owner_id: string
+          pais: string
+          telefone: string | null
+          uf: Database["public"]["Enums"]["uf"]
+          updated_at: string
+        }
+        Insert: {
+          bairro: string
+          cep: string
+          cidade: string
+          complemento?: string | null
+          cpf: string
+          created_at?: string
+          email: string
+          endereco: string
+          id?: string
+          negocio_parte_id: string
+          nome_completo: string
+          numero: string
+          owner_id: string
+          pais: string
+          telefone?: string | null
+          uf: Database["public"]["Enums"]["uf"]
+          updated_at?: string
+        }
+        Update: {
+          bairro?: string
+          cep?: string
+          cidade?: string
+          complemento?: string | null
+          cpf?: string
+          created_at?: string
+          email?: string
+          endereco?: string
+          id?: string
+          negocio_parte_id?: string
+          nome_completo?: string
+          numero?: string
+          owner_id?: string
+          pais?: string
+          telefone?: string | null
+          uf?: Database["public"]["Enums"]["uf"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "negocio_parte_pessoas_negocio_parte_id_fkey"
+            columns: ["negocio_parte_id"]
+            isOneToOne: false
+            referencedRelation: "negocio_partes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "negocio_parte_pessoas_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      negocio_partes: {
+        Row: {
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          cnpj: string | null
+          complemento: string | null
+          created_at: string
+          endereco: string | null
+          id: string
+          negocio_id: string
+          numero: string | null
+          owner_id: string
+          pais: string | null
+          papel: Database["public"]["Enums"]["papel_parte_negocio"]
+          razao_social: string | null
+          tipo_pessoa: Database["public"]["Enums"]["tipo_pessoa_negocio"]
+          uf: Database["public"]["Enums"]["uf"] | null
+          updated_at: string
+        }
+        Insert: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          complemento?: string | null
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          negocio_id: string
+          numero?: string | null
+          owner_id: string
+          pais?: string | null
+          papel: Database["public"]["Enums"]["papel_parte_negocio"]
+          razao_social?: string | null
+          tipo_pessoa: Database["public"]["Enums"]["tipo_pessoa_negocio"]
+          uf?: Database["public"]["Enums"]["uf"] | null
+          updated_at?: string
+        }
+        Update: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          complemento?: string | null
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          negocio_id?: string
+          numero?: string | null
+          owner_id?: string
+          pais?: string | null
+          papel?: Database["public"]["Enums"]["papel_parte_negocio"]
+          razao_social?: string | null
+          tipo_pessoa?: Database["public"]["Enums"]["tipo_pessoa_negocio"]
+          uf?: Database["public"]["Enums"]["uf"] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "negocio_partes_negocio_id_fkey"
+            columns: ["negocio_id"]
+            isOneToOne: false
+            referencedRelation: "negocios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "negocio_partes_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       negocios: {
         Row: {
+          comissaopercentual: number | null
+          comissaovalor: number | null
           created_at: string
           empreendimento_id: string | null
           etapa: Database["public"]["Enums"]["etapa_negocio"]
+          fase: Database["public"]["Enums"]["fase_negocio"]
           fechado_em: string | null
           finalidade: Database["public"]["Enums"]["finalidade"] | null
+          fgtsvalor: number | null
+          financiamentovalor: number | null
+          ganho_em: string | null
           id: string
           imovel_id: string | null
           lead_id: string
           lista_id: string | null
+          modalidade: Database["public"]["Enums"]["modalidade_negocio"]
           notas: string | null
+          observacoes: string | null
+          outrosrecursosvalor: number | null
           owner_id: string
+          perdido_em: string | null
           proxima_acao_em: string | null
+          recursopropriovalor: number | null
+          subfase_juridica: Database["public"]["Enums"]["subfase_juridica_negocio"] | null
           titulo: string | null
           updated_at: string
+          valor: number | null
           valor_estimado: number | null
         }
         Insert: {
+          comissaopercentual?: number | null
+          comissaovalor?: number | null
           created_at?: string
           empreendimento_id?: string | null
           etapa?: Database["public"]["Enums"]["etapa_negocio"]
+          fase?: Database["public"]["Enums"]["fase_negocio"]
           fechado_em?: string | null
           finalidade?: Database["public"]["Enums"]["finalidade"] | null
+          fgtsvalor?: number | null
+          financiamentovalor?: number | null
+          ganho_em?: string | null
           id?: string
           imovel_id?: string | null
           lead_id: string
           lista_id?: string | null
+          modalidade?: Database["public"]["Enums"]["modalidade_negocio"]
           notas?: string | null
+          observacoes?: string | null
+          outrosrecursosvalor?: number | null
           owner_id: string
+          perdido_em?: string | null
           proxima_acao_em?: string | null
+          recursopropriovalor?: number | null
+          subfase_juridica?: Database["public"]["Enums"]["subfase_juridica_negocio"] | null
           titulo?: string | null
           updated_at?: string
+          valor?: number | null
           valor_estimado?: number | null
         }
         Update: {
+          comissaopercentual?: number | null
+          comissaovalor?: number | null
           created_at?: string
           empreendimento_id?: string | null
           etapa?: Database["public"]["Enums"]["etapa_negocio"]
+          fase?: Database["public"]["Enums"]["fase_negocio"]
           fechado_em?: string | null
           finalidade?: Database["public"]["Enums"]["finalidade"] | null
+          fgtsvalor?: number | null
+          financiamentovalor?: number | null
+          ganho_em?: string | null
           id?: string
           imovel_id?: string | null
           lead_id?: string
           lista_id?: string | null
+          modalidade?: Database["public"]["Enums"]["modalidade_negocio"]
           notas?: string | null
+          observacoes?: string | null
+          outrosrecursosvalor?: number | null
           owner_id?: string
+          perdido_em?: string | null
           proxima_acao_em?: string | null
+          recursopropriovalor?: number | null
+          subfase_juridica?: Database["public"]["Enums"]["subfase_juridica_negocio"] | null
           titulo?: string | null
           updated_at?: string
+          valor?: number | null
           valor_estimado?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "negocios_imovel_id_fkey"
+            columns: ["imovel_id"]
+            isOneToOne: false
+            referencedRelation: "imoveis"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "negocios_lead_id_fkey"
             columns: ["lead_id"]
@@ -1066,6 +1931,7 @@ export type Database = {
           creci_numero: string | null
           creci_sufixo: string | null
           creci_uf: Database["public"]["Enums"]["uf"] | null
+          corretor_one_registro: number
           dominio_custom: string | null
           dominio_status: Database["public"]["Enums"]["status_dominio"]
           email: string
@@ -1083,6 +1949,8 @@ export type Database = {
           imoveis_residenciais: boolean
           instagram: string | null
           linkedin: string | null
+          logo_nickname_url: string | null
+          logo_nickname_white_url: string | null
           nickname: string | null
           papel_imobiliaria:
             | Database["public"]["Enums"]["papel_imobiliaria"]
@@ -1112,6 +1980,7 @@ export type Database = {
           creci_numero?: string | null
           creci_sufixo?: string | null
           creci_uf?: Database["public"]["Enums"]["uf"] | null
+          corretor_one_registro?: number
           dominio_custom?: string | null
           dominio_status?: Database["public"]["Enums"]["status_dominio"]
           email: string
@@ -1129,6 +1998,8 @@ export type Database = {
           imoveis_residenciais?: boolean
           instagram?: string | null
           linkedin?: string | null
+          logo_nickname_url?: string | null
+          logo_nickname_white_url?: string | null
           nickname?: string | null
           papel_imobiliaria?:
             | Database["public"]["Enums"]["papel_imobiliaria"]
@@ -1158,6 +2029,7 @@ export type Database = {
           creci_numero?: string | null
           creci_sufixo?: string | null
           creci_uf?: Database["public"]["Enums"]["uf"] | null
+          corretor_one_registro?: number
           dominio_custom?: string | null
           dominio_status?: Database["public"]["Enums"]["status_dominio"]
           email?: string
@@ -1175,6 +2047,8 @@ export type Database = {
           imoveis_residenciais?: boolean
           instagram?: string | null
           linkedin?: string | null
+          logo_nickname_url?: string | null
+          logo_nickname_white_url?: string | null
           nickname?: string | null
           papel_imobiliaria?:
             | Database["public"]["Enums"]["papel_imobiliaria"]
@@ -1201,6 +2075,7 @@ export type Database = {
           conteudo: Json | null
           created_at: string
           enviada_em: string | null
+          vencimento_em: string | null
           id: string
           lead_id: string
           negocio_id: string | null
@@ -1216,6 +2091,7 @@ export type Database = {
           conteudo?: Json | null
           created_at?: string
           enviada_em?: string | null
+          vencimento_em?: string | null
           id?: string
           lead_id: string
           negocio_id?: string | null
@@ -1231,6 +2107,7 @@ export type Database = {
           conteudo?: Json | null
           created_at?: string
           enviada_em?: string | null
+          vencimento_em?: string | null
           id?: string
           lead_id?: string
           negocio_id?: string | null
@@ -1365,6 +2242,7 @@ export type Database = {
             | Database["public"]["Enums"]["caracteristica_imovel"][]
             | null
           categoriaimovel: string[] | null
+          subcategoriaimovel: string[] | null
           construcao: Database["public"]["Enums"]["tipo_construcao"][] | null
           conteudos: Database["public"]["Enums"]["tipo_conteudo"][] | null
           corretor_id: string | null
@@ -1372,6 +2250,7 @@ export type Database = {
           escopo: Database["public"]["Enums"]["escopo_briefing"]
           geolocacao_id: string | null
           id: string
+          objetivolead: Database["public"]["Enums"]["objetivo_lead"][] | null
           intencao_compra: Database["public"]["Enums"]["intencao_compra"] | null
           lat: number | null
           lng: number | null
@@ -1406,6 +2285,7 @@ export type Database = {
             | Database["public"]["Enums"]["caracteristica_imovel"][]
             | null
           categoriaimovel?: string[] | null
+          subcategoriaimovel?: string[] | null
           construcao?: Database["public"]["Enums"]["tipo_construcao"][] | null
           conteudos?: Database["public"]["Enums"]["tipo_conteudo"][] | null
           corretor_id?: string | null
@@ -1413,6 +2293,7 @@ export type Database = {
           escopo: Database["public"]["Enums"]["escopo_briefing"]
           geolocacao_id?: string | null
           id?: string
+          objetivolead?: Database["public"]["Enums"]["objetivo_lead"][] | null
           intencao_compra?:
             | Database["public"]["Enums"]["intencao_compra"]
             | null
@@ -1449,6 +2330,7 @@ export type Database = {
             | Database["public"]["Enums"]["caracteristica_imovel"][]
             | null
           categoriaimovel?: string[] | null
+          subcategoriaimovel?: string[] | null
           construcao?: Database["public"]["Enums"]["tipo_construcao"][] | null
           conteudos?: Database["public"]["Enums"]["tipo_conteudo"][] | null
           corretor_id?: string | null
@@ -1456,6 +2338,7 @@ export type Database = {
           escopo?: Database["public"]["Enums"]["escopo_briefing"]
           geolocacao_id?: string | null
           id?: string
+          objetivolead?: Database["public"]["Enums"]["objetivo_lead"][] | null
           intencao_compra?:
             | Database["public"]["Enums"]["intencao_compra"]
             | null
@@ -1734,10 +2617,18 @@ export type Database = {
         | "OPORTUNIDADE"
         | "CLIENTE"
         | "DESQUALIFICADO"
+      fase_negocio: "NEGOCIACAO" | "JURIDICO" | "PERDIDO" | "GANHO"
       fase_empreendimento: "NA_PLANTA" | "EM_CONSTRUCAO" | "ENTREGUE"
       finalidade: "COMPRAR" | "ALUGAR"
+      aceita_parceria_status: "SIM" | "NAO" | "SOB_ANALISE"
+      endereco_visualizacao_imovel:
+        | "END_SEM_COMPLEMENTO"
+        | "END_COMPLETO"
+        | "END_BAIRRO"
+        | "END_SEM_NUMERO"
       genero: "MASCULINO" | "FEMININO" | "NAO_INFORMAR"
       intencao_compra: "MORADIA" | "INVESTIMENTO"
+      objetivo_lead: "COMPRAR" | "ALUGAR" | "VENDER"
       motivo_desqualificacao:
         | "NAO_RESPONDEU_TENTATIVAS_DE_CONTATO"
         | "CONTATO_INVALIDO"
@@ -1781,7 +2672,9 @@ export type Database = {
         | "IMOVEIS_CURITIBA"
         | "WHATSAPP_BUSINESS"
         | "OUTRO"
+      modalidade_negocio: "VENDA" | "LOCACAO" | "CAPTACAO"
       papel_imobiliaria: "DONO" | "ADMIN" | "CORRETOR"
+      papel_parte_negocio: "COMPRADOR" | "VENDEDOR"
       periodicidade: "MENSAL" | "ANUAL"
       ref_localidade_tipo: "UF" | "CIDADE"
       ref_tipo:
@@ -1791,6 +2684,44 @@ export type Database = {
         | "CAMPANHA"
         | "TEMPLATE"
         | "OUTRO"
+      categoria_atividade:
+        | "QUALIFICACAO"
+        | "EM_ATENDIMENTO"
+        | "NEGOCIACAO"
+        | "FECHAMENTO"
+        | "POS_VENDA"
+        | "OUTROS"
+      modelo_atividade:
+        | "QUALIFICACAO_PRIMEIRO_CONTATO"
+        | "QUALIFICACAO_RECONTATO"
+        | "QUALIFICACAO_VALIDAR_PERFIL"
+        | "QUALIFICACAO_CONFIRMAR_INTERESSE"
+        | "QUALIFICACAO_ENTENDER_URGENCIA"
+        | "QUALIFICACAO_ENVIAR_APRESENTACAO"
+        | "EM_ATENDIMENTO_FOLLOW_UP"
+        | "EM_ATENDIMENTO_ENVIAR_SELECAO"
+        | "EM_ATENDIMENTO_AGENDAR_VISITA"
+        | "EM_ATENDIMENTO_CONFIRMAR_VISITA"
+        | "EM_ATENDIMENTO_VISITA_PRESENCIAL"
+        | "EM_ATENDIMENTO_VISITA_VIRTUAL"
+        | "EM_ATENDIMENTO_RETORNO_POS_VISITA"
+        | "NEGOCIACAO_APRESENTAR_PROPOSTA"
+        | "NEGOCIACAO_AVALIAR_PROPOSTA"
+        | "NEGOCIACAO_TRABALHAR_CONTRAPROPOSTA"
+        | "NEGOCIACAO_ALINHAR_CONDICOES"
+        | "NEGOCIACAO_SOLICITAR_DOCUMENTOS"
+        | "NEGOCIACAO_CONFIRMAR_SINAL"
+        | "FECHAMENTO_ELABORAR_CONTRATO"
+        | "FECHAMENTO_ACOMPANHAR_JURIDICO"
+        | "FECHAMENTO_ASSINATURA"
+        | "FECHAMENTO_APROVACAO_CADASTRAL"
+        | "FECHAMENTO_VISTORIA_FINAL"
+        | "FECHAMENTO_ENTREGA_CHAVES"
+        | "POS_VENDA_AGRADECIMENTO"
+        | "POS_VENDA_PEDIR_INDICACAO"
+        | "POS_VENDA_RELACIONAMENTO"
+        | "POS_VENDA_NOVA_DEMANDA"
+        | "OUTROS_ACAO_PERSONALIZADA"
       status_assinatura: "ATIVA" | "PENDENTE" | "ATRASADA" | "CANCELADA"
       status_atividade: "PENDENTE" | "CONCLUIDA" | "CANCELADA"
       status_dominio:
@@ -1806,6 +2737,7 @@ export type Database = {
         | "VENDIDO"
         | "ALUGADO"
         | "INATIVO"
+      status_imovel_delete_job: "PENDENTE" | "PROCESSANDO" | "CONCLUIDO" | "ERRO"
       status_lead:
         | "NOVO"
         | "ABERTO"
@@ -1821,6 +2753,17 @@ export type Database = {
         | "ACEITA"
         | "RECUSADA"
         | "EXPIRADA"
+      subfase_juridica_negocio:
+        | "DOCUMENTOS_RECEBIDOS"
+        | "ANALISE_DOCUMENTAL"
+        | "PENDENCIA_DOCUMENTAL"
+        | "DOCUMENTACAO_APROVADA"
+        | "MINUTA_DE_CONTRATO_ENVIADA"
+        | "MINUTA_DE_CONTRATO_APROVADA"
+        | "ASSINATURA_AGENDADA"
+        | "CONTRATO_ASSINADO"
+        | "REGISTRO_EM_CARTORIO"
+        | "REGISTRO_CONCLUIDO"
       status_usuario: "ATIVO" | "PENDENTE" | "BLOQUEADO"
       status_verificacao: "PENDENTE" | "VERIFICADO" | "EXPIRADO" | "BLOQUEADO"
       storage_provider: "SUPABASE" | "S3"
@@ -1831,6 +2774,14 @@ export type Database = {
         | "GARDEN"
         | "LOFT"
         | "CONJUNTO_COMERCIAL"
+        | "ANDAR_INTEIRO"
+        | "MEIO_ANDAR"
+        | "LOJA_BOX"
+        | "COBERTURA_PADRAO"
+        | "COBERTURA_DUPLEX"
+        | "COBERTURA_TRIPLEX"
+        | "SOBRADO"
+        | "GEMINADA"
       tipo_atividade:
         | "LIGACAO"
         | "WHATSAPP"
@@ -1856,11 +2807,19 @@ export type Database = {
         | "HOTEL_MOTEL_POUSADA"
         | "LOFT"
         | "LOTE_TERRENO"
+        | "SHOPPING"
         | "PONTO_COMERCIAL_LOJA_BOX"
         | "PREDIO_EDIFICIO_INTEIRO"
+        | "SELF_STORAGE"
         | "STUDIO"
+      tipo_ambiente_imovel: "DORMITORIO" | "COZINHA" | "SALA" | "VARANDA"
       tipo_midia: "IMAGEM" | "VIDEO" | "PDF"
       tipo_negociacao: "VENDA" | "ALUGUEL" | "VENDA_E_ALUGUEL"
+      tipo_pessoa_negocio: "FISICA" | "JURIDICA"
+      ocupacao_imovel:
+        | "PROPRIETARIO_RESIDE_NO_IMOVEL"
+        | "IMOVEL_DESOCUPADO"
+        | "IMOVEL_COM_INQUILINO"
       tipo_proposta: "SELECAO" | "IMOVEL" | "EMPREENDIMENTO" | "COMERCIAL"
       tipo_timeline: "STATUS" | "PROPOSTA" | "ATIVIDADE" | "NOTA" | "SISTEMA"
       tipo_uso: "RESIDENCIAL" | "COMERCIAL"
@@ -1896,7 +2855,7 @@ export type Database = {
       user_tipo: "PORTAL" | "CORRETOR"
       vaga_cobertura: "COBERTA" | "DESCOBERTA"
       vaga_tamanho: "PEQUENA" | "MEDIA" | "GRANDE"
-      vaga_tipo: "PRIVATIVA" | "LIVRE"
+      vaga_tipo: "PRIVATIVA" | "LIVRE" | "DEMARCADA"
       variante_tipo:
         | "THUMB_150"
         | "W240"
@@ -2143,10 +3102,19 @@ export const Constants = {
         "CLIENTE",
         "DESQUALIFICADO",
       ],
+      fase_negocio: ["NEGOCIACAO", "JURIDICO", "PERDIDO", "GANHO"],
       fase_empreendimento: ["NA_PLANTA", "EM_CONSTRUCAO", "ENTREGUE"],
       finalidade: ["COMPRAR", "ALUGAR"],
+      aceita_parceria_status: ["SIM", "NAO", "SOB_ANALISE"],
+      endereco_visualizacao_imovel: [
+        "END_SEM_COMPLEMENTO",
+        "END_COMPLETO",
+        "END_BAIRRO",
+        "END_SEM_NUMERO",
+      ],
       genero: ["MASCULINO", "FEMININO", "NAO_INFORMAR"],
       intencao_compra: ["MORADIA", "INVESTIMENTO"],
+      objetivo_lead: ["COMPRAR", "ALUGAR", "VENDER"],
       motivo_desqualificacao: [
         "NAO_RESPONDEU_TENTATIVAS_DE_CONTATO",
         "CONTATO_INVALIDO",
@@ -2192,7 +3160,9 @@ export const Constants = {
         "WHATSAPP_BUSINESS",
         "OUTRO",
       ],
+      modalidade_negocio: ["VENDA", "LOCACAO", "CAPTACAO"],
       papel_imobiliaria: ["DONO", "ADMIN", "CORRETOR"],
+      papel_parte_negocio: ["COMPRADOR", "VENDEDOR"],
       periodicidade: ["MENSAL", "ANUAL"],
       ref_localidade_tipo: ["UF", "CIDADE"],
       ref_tipo: [
@@ -2202,6 +3172,46 @@ export const Constants = {
         "CAMPANHA",
         "TEMPLATE",
         "OUTRO",
+      ],
+      categoria_atividade: [
+        "QUALIFICACAO",
+        "EM_ATENDIMENTO",
+        "NEGOCIACAO",
+        "FECHAMENTO",
+        "POS_VENDA",
+        "OUTROS",
+      ],
+      modelo_atividade: [
+        "QUALIFICACAO_PRIMEIRO_CONTATO",
+        "QUALIFICACAO_RECONTATO",
+        "QUALIFICACAO_VALIDAR_PERFIL",
+        "QUALIFICACAO_CONFIRMAR_INTERESSE",
+        "QUALIFICACAO_ENTENDER_URGENCIA",
+        "QUALIFICACAO_ENVIAR_APRESENTACAO",
+        "EM_ATENDIMENTO_FOLLOW_UP",
+        "EM_ATENDIMENTO_ENVIAR_SELECAO",
+        "EM_ATENDIMENTO_AGENDAR_VISITA",
+        "EM_ATENDIMENTO_CONFIRMAR_VISITA",
+        "EM_ATENDIMENTO_VISITA_PRESENCIAL",
+        "EM_ATENDIMENTO_VISITA_VIRTUAL",
+        "EM_ATENDIMENTO_RETORNO_POS_VISITA",
+        "NEGOCIACAO_APRESENTAR_PROPOSTA",
+        "NEGOCIACAO_AVALIAR_PROPOSTA",
+        "NEGOCIACAO_TRABALHAR_CONTRAPROPOSTA",
+        "NEGOCIACAO_ALINHAR_CONDICOES",
+        "NEGOCIACAO_SOLICITAR_DOCUMENTOS",
+        "NEGOCIACAO_CONFIRMAR_SINAL",
+        "FECHAMENTO_ELABORAR_CONTRATO",
+        "FECHAMENTO_ACOMPANHAR_JURIDICO",
+        "FECHAMENTO_ASSINATURA",
+        "FECHAMENTO_APROVACAO_CADASTRAL",
+        "FECHAMENTO_VISTORIA_FINAL",
+        "FECHAMENTO_ENTREGA_CHAVES",
+        "POS_VENDA_AGRADECIMENTO",
+        "POS_VENDA_PEDIR_INDICACAO",
+        "POS_VENDA_RELACIONAMENTO",
+        "POS_VENDA_NOVA_DEMANDA",
+        "OUTROS_ACAO_PERSONALIZADA",
       ],
       status_assinatura: ["ATIVA", "PENDENTE", "ATRASADA", "CANCELADA"],
       status_atividade: ["PENDENTE", "CONCLUIDA", "CANCELADA"],
@@ -2237,6 +3247,18 @@ export const Constants = {
         "RECUSADA",
         "EXPIRADA",
       ],
+      subfase_juridica_negocio: [
+        "DOCUMENTOS_RECEBIDOS",
+        "ANALISE_DOCUMENTAL",
+        "PENDENCIA_DOCUMENTAL",
+        "DOCUMENTACAO_APROVADA",
+        "MINUTA_DE_CONTRATO_ENVIADA",
+        "MINUTA_DE_CONTRATO_APROVADA",
+        "ASSINATURA_AGENDADA",
+        "CONTRATO_ASSINADO",
+        "REGISTRO_EM_CARTORIO",
+        "REGISTRO_CONCLUIDO",
+      ],
       status_usuario: ["ATIVO", "PENDENTE", "BLOQUEADO"],
       status_verificacao: ["PENDENTE", "VERIFICADO", "EXPIRADO", "BLOQUEADO"],
       storage_provider: ["SUPABASE", "S3"],
@@ -2247,6 +3269,14 @@ export const Constants = {
         "GARDEN",
         "LOFT",
         "CONJUNTO_COMERCIAL",
+        "ANDAR_INTEIRO",
+        "MEIO_ANDAR",
+        "LOJA_BOX",
+        "COBERTURA_PADRAO",
+        "COBERTURA_DUPLEX",
+        "COBERTURA_TRIPLEX",
+        "SOBRADO",
+        "GEMINADA",
       ],
       tipo_atividade: [
         "LIGACAO",
@@ -2274,12 +3304,21 @@ export const Constants = {
         "HOTEL_MOTEL_POUSADA",
         "LOFT",
         "LOTE_TERRENO",
+        "SHOPPING",
         "PONTO_COMERCIAL_LOJA_BOX",
         "PREDIO_EDIFICIO_INTEIRO",
+        "SELF_STORAGE",
         "STUDIO",
       ],
+      tipo_ambiente_imovel: ["DORMITORIO", "COZINHA", "SALA", "VARANDA"],
       tipo_midia: ["IMAGEM", "VIDEO", "PDF"],
       tipo_negociacao: ["VENDA", "ALUGUEL", "VENDA_E_ALUGUEL"],
+      tipo_pessoa_negocio: ["FISICA", "JURIDICA"],
+      ocupacao_imovel: [
+        "PROPRIETARIO_RESIDE_NO_IMOVEL",
+        "IMOVEL_DESOCUPADO",
+        "IMOVEL_COM_INQUILINO",
+      ],
       tipo_proposta: ["SELECAO", "IMOVEL", "EMPREENDIMENTO", "COMERCIAL"],
       tipo_timeline: ["STATUS", "PROPOSTA", "ATIVIDADE", "NOTA", "SISTEMA"],
       tipo_uso: ["RESIDENCIAL", "COMERCIAL"],
@@ -2316,7 +3355,7 @@ export const Constants = {
       user_tipo: ["PORTAL", "CORRETOR"],
       vaga_cobertura: ["COBERTA", "DESCOBERTA"],
       vaga_tamanho: ["PEQUENA", "MEDIA", "GRANDE"],
-      vaga_tipo: ["PRIVATIVA", "LIVRE"],
+      vaga_tipo: ["PRIVATIVA", "LIVRE", "DEMARCADA"],
       variante_tipo: [
         "THUMB_150",
         "W240",

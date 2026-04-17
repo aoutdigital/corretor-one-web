@@ -35,20 +35,11 @@ export async function POST(request: Request) {
   const accessToken = getBearerTokenFromRequest(request);
   if (!accessToken) return unauthorizedResponse();
 
-  let body: unknown;
+  let body: unknown = {};
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: {
-          code: "VALIDATION_ERROR",
-          message: "Invalid JSON body",
-        },
-      },
-      { status: 400 },
-    );
+    // Accept empty body for quick draft creation.
   }
 
   const result = await createImovel(accessToken, body as Parameters<typeof createImovel>[1]);
@@ -60,4 +51,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json(result, { status: 201 });
 }
-

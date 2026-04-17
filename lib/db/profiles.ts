@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 
 import { fail, ok, type ApiResult } from "@/lib/api/result";
+import { ensureProfileNicknameLogos } from "@/lib/branding/profile-logo";
 import type { Database } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { UpdateProfileInput } from "@/lib/validation/profile";
@@ -77,6 +78,8 @@ type OwnProfile = Pick<
   | "plano_id"
   | "avatar_url"
   | "imagem_capa_url"
+  | "logo_nickname_url"
+  | "logo_nickname_white_url"
   | "instagram"
   | "linkedin"
   | "pinterest"
@@ -232,7 +235,7 @@ export async function getOwnProfile(accessToken: string): Promise<ApiResult<OwnP
   const result = await client
     .from("profiles")
     .select(
-      "id,email,primeiro_nome,sobrenome,nickname,genero,telefone,whatsapp_verificado_em,whatsapp,bio,uf,cidades_foco,imoveis_residenciais,imoveis_comerciais,imoveis_industriais,imoveis_alto_padrao,imoveis_luxo,imoveis_medio_padrao,imoveis_baixa_renda,creci_uf,creci_numero,creci_sufixo,creci_documento_midia_id,creci_aprovacao,plano_id,avatar_url,imagem_capa_url,instagram,linkedin,pinterest,tiktok,twitter,youtube,created_at,updated_at",
+      "id,email,primeiro_nome,sobrenome,nickname,genero,telefone,whatsapp_verificado_em,whatsapp,bio,uf,cidades_foco,imoveis_residenciais,imoveis_comerciais,imoveis_industriais,imoveis_alto_padrao,imoveis_luxo,imoveis_medio_padrao,imoveis_baixa_renda,creci_uf,creci_numero,creci_sufixo,creci_documento_midia_id,creci_aprovacao,plano_id,avatar_url,imagem_capa_url,logo_nickname_url,logo_nickname_white_url,instagram,linkedin,pinterest,tiktok,twitter,youtube,created_at,updated_at",
     )
     .eq("id", user.id)
     .maybeSingle<OwnProfile>();
@@ -276,6 +279,29 @@ export async function updateOwnProfile(
 
   if (!result.data) {
     return fail("NOT_FOUND", "Profile not found");
+  }
+
+  const hasPlanoPatch =
+    Object.prototype.hasOwnProperty.call(patch, "plano_id") &&
+    typeof patch.plano_id === "string" &&
+    patch.plano_id.trim().length > 0;
+  const hasNicknamePatch =
+    Object.prototype.hasOwnProperty.call(patch, "nickname") &&
+    typeof patch.nickname === "string" &&
+    patch.nickname.trim().length > 0;
+  const shouldGenerateNicknameLogos = hasPlanoPatch || hasNicknamePatch;
+
+  if (shouldGenerateNicknameLogos) {
+    const logoResult = await ensureProfileNicknameLogos(user.id, {
+      force: hasNicknamePatch,
+    });
+    if (!logoResult.ok) {
+      console.error("[updateOwnProfile] failed to ensure nickname logos", {
+        ownerId: user.id,
+        code: logoResult.error.code,
+        message: logoResult.error.message,
+      });
+    }
   }
 
   return ok({ id: result.data.id });

@@ -157,3 +157,21 @@ Critério de pronto (F8):
 - [ ] Central de ajuda para e-mail profissional:
   - [ ] instruções IMAP/SMTP por cliente de e-mail.
   - [ ] FAQ de troca de senha e acesso ao webmail.
+
+## Checklist — Pré-publicação (Produção)
+- [ ] Aplicar migrations pendentes no Supabase (inclui F31 e F32).
+- [ ] Configurar envs no Vercel:
+  - [ ] `NEXT_PUBLIC_SUPABASE_URL`
+  - [ ] `SUPABASE_SERVICE_ROLE_KEY`
+  - [ ] `INTERNAL_CRON_SECRET`
+- [ ] Garantir cron no Vercel para fila de exclusão de mídia:
+  - [ ] `vercel.json` com `path=/api/midia/delete-jobs/process`
+  - [ ] schedule `0 2 * * *` (02:00 UTC)
+- [ ] Validar endpoint de processamento de fila em produção:
+  - [ ] `GET /api/midia/delete-jobs/process?limit=20`
+  - [ ] header `x-cron-secret` válido
+  - [ ] retorno `ok: true`
+- [ ] Confirmar fluxo fim a fim:
+  - [ ] remover mídia na UI (remoção otimista imediata)
+  - [ ] checar criação de `midia_delete_jobs` com status `PENDENTE`
+  - [ ] checar transição para `CONCLUIDO` após execução do processador

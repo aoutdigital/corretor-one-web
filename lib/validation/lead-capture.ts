@@ -28,6 +28,7 @@ const ORIGEM_LEAD_VALUES = new Set([
 
 export type LeadCaptureInput = {
   owner_id: string;
+  portal_user_id?: string | null;
   nome?: string | null;
   email?: string | null;
   telefone?: string | null;
@@ -69,6 +70,9 @@ export function validateLeadCaptureInput(payload: unknown): ApiResult<LeadCaptur
   const nome = parseNullableString(payload.nome, "nome");
   if (!nome.ok) return nome;
 
+  const portalUserId = parseNullableString(payload.portal_user_id, "portal_user_id");
+  if (!portalUserId.ok) return portalUserId;
+
   const email = parseNullableString(payload.email, "email");
   if (!email.ok) return email;
 
@@ -95,6 +99,7 @@ export function validateLeadCaptureInput(payload: unknown): ApiResult<LeadCaptur
 
   return ok({
     owner_id: ownerId.trim(),
+    portal_user_id: portalUserId.data,
     nome: nome.data,
     email: email.data,
     telefone: telefone.data,
@@ -105,4 +110,3 @@ export function validateLeadCaptureInput(payload: unknown): ApiResult<LeadCaptur
     utm: (utm as Record<string, unknown> | null | undefined) ?? null,
   });
 }
-

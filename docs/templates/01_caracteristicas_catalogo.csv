@@ -1,0 +1,6 @@
+id,chave,label_pt,descricao,escopos,tipos_uso,tipos_imovel,subtipos_imovel,categoria_ui,subcategoria_ui,ordem,ativo,sinonimos,observacoes
+,ACADEMIA,Academia,Academia do condomínio,"EMPREENDIMENTO","RESIDENCIAL",,,Lazer,Bem-estar,10,true,"fitness|gym",""
+,ACESSO_PARA_DEFICIENTES,Acesso para deficientes,Acessibilidade para PCD,"IMOVEL|EMPREENDIMENTO","RESIDENCIAL|COMERCIAL",,,Acessibilidade,Geral,20,true,"pcd|acessibilidade",""
+,PISCINA,Piscina,Piscina (validar contexto no vínculo),"IMOVEL|EMPREENDIMENTO","RESIDENCIAL",Lazer,Água,30,true,"pool","
+,VARANDA_GOURMET,Varanda gourmet,Característica exclusiva de imóvel,"IMOVEL","RESIDENCIAL",Acabamentos,Varanda,40,true,"varanda com churrasqueira","
+,PORTARIA_24H,Portaria 24h,Portaria com funcionamento 24 horas,"EMPREENDIMENTO","RESIDENCIAL|COMERCIAL",Segurança,Controle de acesso,50,true,"portaria integral","

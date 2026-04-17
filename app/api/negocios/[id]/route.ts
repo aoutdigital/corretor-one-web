@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { statusFromErrorCode } from "@/lib/api/result";
-import { deleteNegocio, updateNegocio } from "@/lib/db/negocios";
+import { deleteNegocio, getNegocioWorkspace, updateNegocio } from "@/lib/db/negocios";
 import { getBearerTokenFromRequest } from "@/lib/http/auth";
 import { validateUpdateNegocio } from "@/lib/validation/crm";
 
@@ -20,6 +20,21 @@ function unauthorizedResponse() {
     },
     { status: 401 },
   );
+}
+
+export async function GET(request: Request, { params }: Params) {
+  const accessToken = getBearerTokenFromRequest(request);
+  if (!accessToken) return unauthorizedResponse();
+
+  const { id } = await params;
+  const result = await getNegocioWorkspace(accessToken, id);
+  if (!result.ok) {
+    return NextResponse.json(result, {
+      status: statusFromErrorCode(result.error.code),
+    });
+  }
+
+  return NextResponse.json(result);
 }
 
 export async function PATCH(request: Request, { params }: Params) {

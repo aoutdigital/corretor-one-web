@@ -40,6 +40,8 @@
 > Observação: todas as rotas abaixo ficam sob o namespace do corretor.
 
 - **/[nickname]/** — Perfil do corretor
+- **/[nickname]/logo.png** — Logo público do corretor (padrão)
+- **/[nickname]/logo-white.png** — Logo público do corretor (white para marca d’água)
 
 ### Empreendimentos
 - **/[nickname]/empreendimentos/** — Listagem de empreendimentos
@@ -86,7 +88,9 @@
 - **/midia** — Biblioteca
 
 ### App — CRM (Negócios)
-- **/negocios** — Pipeline (Kanban) + Listagem (filtros)
+- **/negocios** — Leads (lista + busca + filtros + ações)
+- **/negocios/funil** — Pipeline (Kanban)
+- **/negocios/[id]** — Oportunidade (abas: negociação, jurídico, atividades, timeline; com cards de partes e propostas dentro de negociação)
 - **/lead/[id]** — Lead (detalhe + timeline)
 - **/lead/[id]/propostas/[proposta_id]** — Proposta
 - **/negocios/atividades** — Atividades
@@ -175,4 +179,3 @@
 - **/ayka/custos**
 - **/ayka/catalogo**
 - **/ayka/recompensas**
-

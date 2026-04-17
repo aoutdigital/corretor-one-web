@@ -1,0 +1,163 @@
+chave,label_pt,escopo,tipos_uso,tipos_imovel,subtipos_imovel,descricao,categoria_ui,subcategoria_ui,ordem,ativo,sinonimos,observacoes,chave_normalizada
+ACADEMIA,Academia,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,,,Academia (empreendimento),Lazer,Esporte,10,true,academia,,ACADEMIA
+ACEITA_ANIMAIS,Aceita animais,IMOVEL,RESIDENCIAL,,,Aceita animais (imovel),Lifestyle,Pets,20,true,aceita animais,,ACEITA_ANIMAIS
+ACESSO_PCD,Acesso para deficientes,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Acesso para deficientes (imovel|empreendimento),Infraestrutura,Operação,30,true,acesso para deficientes,,ACESSO_PCD
+AMBIENTES_INTEGRADOS,Ambientes integrados,IMOVEL,RESIDENCIAL|COMERCIAL,Ambientes integrados (imovel),Imóvel,Comercial,40,true,ambientes integrados,,AMBIENTES_INTEGRADOS
+ANDAR_INTEIRO,Andar inteiro,IMOVEL,RESIDENCIAL|COMERCIAL,Andar inteiro (imovel),Imóvel,Comercial,50,true,andar inteiro,,ANDAR_INTEIRO
+AQUARIO,Aquário,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Aquário (imovel|empreendimento),Ambiente,Natureza e vista,60,true,aquário,,AQUARIO
+AR_CONDICIONADO,Ar-condicionado,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Ar-condicionado (imovel|empreendimento),Geral,Outros,70,true,ar-condicionado,,AR_CONDICIONADO
+AREA_LAZER,Área de lazer,EMPREENDIMENTO,RESIDENCIAL,Área de lazer (empreendimento),Empreendimento,Residencial,80,true,área de lazer,,AREA_LAZER
+AREA_SERVICO,Área de serviço,IMOVEL,RESIDENCIAL|COMERCIAL,Área de serviço (imovel),Imóvel,Ambientes,90,true,área de serviço,,AREA_SERVICO
+ARMARIO_QUARTO,Armário embutido no quarto,IMOVEL,RESIDENCIAL,Armário embutido no quarto (imovel),Imóvel,Acabamentos e conforto,100,true,armário embutido no quarto,,ARMARIO_QUARTO
+ARMARIO_COZINHA,Armário na cozinha,IMOVEL,RESIDENCIAL,Armário na cozinha (imovel),Imóvel,Acabamentos e conforto,110,true,armário na cozinha,,ARMARIO_COZINHA
+ARMARIO_BANHEIRO,Armário no banheiro,IMOVEL,RESIDENCIAL|COMERCIAL,Armário no banheiro (imovel),Imóvel,Acabamentos e conforto,120,true,armário no banheiro,,ARMARIO_BANHEIRO
+ARVORE_FRUTIFERA,Árvore frutífera,EMPREENDIMENTO,RESIDENCIAL,Árvore frutífera (empreendimento),Ambiente,Natureza e vista,130,true,árvore frutífera,,ARVORE_FRUTIFERA
+ARVORISMO,Arvorismo,EMPREENDIMENTO,RESIDENCIAL,Arvorismo (empreendimento),Ambiente,Natureza e vista,140,true,arvorismo,,ARVORISMO
+BANHEIRA,Banheira,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Banheira (imovel|empreendimento),Imóvel,Acabamentos e conforto,150,true,banheira,,BANHEIRA
+BANHEIRO_SERVICO,Banheiro de serviço,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Banheiro de serviço (imovel|empreendimento),Imóvel,Ambientes,160,true,banheiro de serviço,,BANHEIRO_SERVICO
+BAR,Bar,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Bar (imovel|empreendimento),Geral,Outros,170,true,bar,,BAR
+BAR_PISCINA,Bar na piscina,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Bar na piscina (imovel|empreendimento),Lazer,Água e bem-estar,180,true,bar na piscina,,BAR_PISCINA
+BIBLIOTECA,Biblioteca,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Biblioteca (imovel|empreendimento),Serviços,Conveniência,190,true,biblioteca,,BIBLIOTECA
+BICICLETARIO,Bicicletário,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Bicicletário (empreendimento),Infraestrutura,Operação,200,true,bicicletário,,BICICLETARIO
+BOX_BLINDEX,Box blindex,IMOVEL,RESIDENCIAL,Box blindex (imovel),Imóvel,Acabamentos e conforto,210,true,box blindex,,BOX_BLINDEX
+BRINQUEDOTECA,Brinquedoteca,EMPREENDIMENTO,RESIDENCIAL,Brinquedoteca (empreendimento),Empreendimento,Residencial,220,true,brinquedoteca,,BRINQUEDOTECA
+CAMERA_SEGURANCA,Câmera de segurança,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Câmera de segurança (imovel|empreendimento),Segurança,Controle de acesso,230,true,câmera de segurança,,CAMERA_SEGURANCA
+CAMPO_FUTEBOL,Campo de futebol,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Campo de futebol (imovel|empreendimento),Lazer,Esporte,240,true,campo de futebol,,CAMPO_FUTEBOL
+CAMPO_GOLFE,Campo de golfe,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Campo de golfe (imovel|empreendimento),Lazer,Esporte,250,true,campo de golfe,,CAMPO_GOLFE
+CANIL,Canil,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Canil (imovel|empreendimento),Lifestyle,Pets,260,true,canil,,CANIL
+CARPETE,Carpete,IMOVEL,RESIDENCIAL,Carpete (imovel),Imóvel,Residencial,270,true,carpete,,CARPETE
+CASA_CASEIRO,Casa de caseiro,IMOVEL,RESIDENCIAL,Casa de caseiro (imovel),Rural,Estrutura,280,true,casa de caseiro,,CASA_CASEIRO
+CASA_FUNDO,Casa de fundo,IMOVEL,RESIDENCIAL,Casa de fundo (imovel),Rural,Estrutura,290,true,casa de fundo,,CASA_FUNDO
+CASA_SEDE,Casa sede,IMOVEL,RESIDENCIAL,Casa sede (imovel),Rural,Estrutura,300,true,casa sede,,CASA_SEDE
+CELEIRO,Celeiro,IMOVEL,RESIDENCIAL,Celeiro (imovel),Rural,Estrutura,310,true,celeiro,,CELEIRO
+CENTRO_ESTETICA,Centro de estética,EMPREENDIMENTO,RESIDENCIAL,Centro de estética (empreendimento),Serviços,Conveniência,320,true,centro de estética,,CENTRO_ESTETICA
+CERCA,Cerca,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Cerca (imovel|empreendimento),Segurança,Controle de acesso,330,true,cerca,,CERCA
+CHILDREN_CARE,Children care,EMPREENDIMENTO,RESIDENCIAL,Children care (empreendimento),Serviços,Conveniência,340,true,children care,,CHILDREN_CARE
+CHURRASQUEIRA,Churrasqueira,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Churrasqueira (imovel|empreendimento),Geral,Outros,350,true,churrasqueira,,CHURRASQUEIRA
+CHURRASQUEIRA_VARANDA,Churrasqueira na varanda,IMOVEL,RESIDENCIAL,Churrasqueira na varanda (imovel),Imóvel,Acabamentos e conforto,360,true,churrasqueira na varanda,,CHURRASQUEIRA_VARANDA
+CHUVEIRO_GAS,Chuveiro a gás,IMOVEL,RESIDENCIAL|COMERCIAL,Chuveiro a gás (imovel),Imóvel,Comercial,370,true,chuveiro a gás,,CHUVEIRO_GAS
+CIMENTO_QUEIMADO,Cimento queimado,IMOVEL,RESIDENCIAL,Cimento queimado (imovel),Imóvel,Acabamentos e conforto,380,true,cimento queimado,,CIMENTO_QUEIMADO
+CINEMA,Cinema,IMOVEL|EMPREENDIMENTO,COMERCIAL,Cinema (imovel|empreendimento),Serviços,Conveniência,390,true,cinema,,CINEMA
+CLOSET,Closet,IMOVEL,RESIDENCIAL,Closet (imovel),Imóvel,Residencial,400,true,closet,,CLOSET
+COBERTURA_COLETIVA,Cobertura coletiva,EMPREENDIMENTO,RESIDENCIAL,Cobertura coletiva (empreendimento),Empreendimento,Residencial,410,true,cobertura coletiva,,COBERTURA_COLETIVA
+COFFE_SHOP,Coffee shop,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Coffee shop (empreendimento),Empreendimento,Comercial,420,true,coffee shop,,COFFE_SHOP
+CONDOMINIO_FECHADO,Condomínio fechado,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Condomínio fechado (empreendimento),Segurança,Controle de acesso,430,true,condomínio fechado,,CONDOMINIO_FECHADO
+INTERNET,Conexão à internet,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Conexão à internet (imovel|empreendimento),Tecnologia,Conectividade,440,true,conexão à internet,,INTERNET
+COPA,Copa,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Copa (imovel|empreendimento),Imóvel,Ambientes,450,true,copa,,COPA
+COWORKING,Coworking,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Coworking (empreendimento),Serviços,Conveniência,460,true,coworking,,COWORKING
+COZINHA_AMERICANA,Cozinha americana,IMOVEL,RESIDENCIAL,Cozinha americana (imovel),Imóvel,Acabamentos e conforto,470,true,cozinha americana,,COZINHA_AMERICANA
+COZINHA_GOURMET,Cozinha gourmet,IMOVEL,RESIDENCIAL,Cozinha gourmet (imovel),Imóvel,Acabamentos e conforto,480,true,cozinha gourmet,,COZINHA_GOURMET
+COZINHA_GRANDE,Cozinha grande,IMOVEL,RESIDENCIAL,Cozinha grande (imovel),Imóvel,Acabamentos e conforto,490,true,cozinha grande,,COZINHA_GRANDE
+CURRAL,Curral,IMOVEL,RESIDENCIAL,Curral (imovel),Rural,Estrutura,500,true,curral,,CURRAL
+DECK,Deck,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Deck (imovel|empreendimento),Lazer,Água e bem-estar,510,true,deck,,DECK
+DEPENDENCIA_EMPREGADOS,Dependência de empregados,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Dependência de empregados (imovel|empreendimento),Imóvel,Ambientes,520,true,dependência de empregados,,DEPENDENCIA_EMPREGADOS
+DEPOSITO,Depósito,IMOVEL,RESIDENCIAL|COMERCIAL,Depósito (imovel),Imóvel,Acabamentos e conforto,530,true,depósito,,DEPOSITO
+DESPENSA,Despensa,IMOVEL,RESIDENCIAL|COMERCIAL,Despensa (imovel),Imóvel,Acabamentos e conforto,540,true,despensa,,DESPENSA
+DRYWALL,Drywall,IMOVEL,RESIDENCIAL|COMERCIAL,Drywall (imovel),Imóvel,Acabamentos e conforto,550,true,drywall,,DRYWALL
+EDICULA,Edícula,IMOVEL,RESIDENCIAL,Edícula (imovel),Imóvel,Ambientes,560,true,edícula,,EDICULA
+ELEVADOR,Elevador,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Elevador (imovel|empreendimento),Infraestrutura,Operação,570,true,elevador,,ELEVADOR
+ENTRADA_SERVICO,Entrada de serviço,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Entrada de serviço (imovel|empreendimento),Infraestrutura,Operação,580,true,entrada de serviço,,ENTRADA_SERVICO
+ENTRADA_LATERAL,Entrada lateral,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Entrada lateral (imovel|empreendimento),Infraestrutura,Operação,590,true,entrada lateral,,ENTRADA_LATERAL
+ESCADA,Escada,IMOVEL,RESIDENCIAL|COMERCIAL,Escada (imovel),Imóvel,Comercial,600,true,escada,,ESCADA
+ESCRITORIO,Escritório,IMOVEL,RESIDENCIAL,Escritório (imovel),Imóvel,Acabamentos e conforto,610,true,escritório,,ESCRITORIO
+ESPACO_GOURMET,Espaço gourmet,EMPREENDIMENTO,RESIDENCIAL,Espaço gourmet (empreendimento),Lazer,Água e bem-estar,620,true,espaço gourmet,,ESPACO_GOURMET
+ESPACO_PET,Espaço Pet,EMPREENDIMENTO,RESIDENCIAL,Espaço Pet (empreendimento),Lazer,Água e bem-estar,630,true,espaço pet,,ESPACO_PET
+ESPACO_TEEN,Espaço teen,EMPREENDIMENTO,RESIDENCIAL,Espaço teen (empreendimento),Lazer,Água e bem-estar,640,true,espaço teen,,ESPACO_TEEN
+ESPACO_VERDE,Espaço verde / Parque,EMPREENDIMENTO,RESIDENCIAL,Espaço verde / Parque (empreendimento),Lazer,Água e bem-estar,650,true,espaço verde / parque,,ESPACO_VERDE
+ESPACO_ZEN,Espaço zen,EMPREENDIMENTO,RESIDENCIAL,Espaço zen (empreendimento),Lazer,Água e bem-estar,660,true,espaço zen,,ESPACO_ZEN
+ESTACIONAMENTO_VISITANTES,Estacionamento para visitantes,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Estacionamento para visitantes (empreendimento),Infraestrutura,Operação,670,true,estacionamento para visitantes,,ESTACIONAMENTO_VISITANTES
+FOGAO,Fogão,IMOVEL,RESIDENCIAL,Fogão (imovel),Imóvel,Residencial,680,true,fogão,,FOGAO
+FORNO_PIZZA,Forno de pizza,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Forno de pizza (imovel|empreendimento),Geral,Outros,690,true,forno de pizza,,FORNO_PIZZA
+FREEZER,Freezer,IMOVEL,RESIDENCIAL,Freezer (imovel),Imóvel,Residencial,700,true,freezer,,FREEZER
+GEMINADA,Geminada,IMOVEL,RESIDENCIAL,Geminada (imovel),Imóvel,Residencial,710,true,geminada,,GEMINADA
+GERADOR,Gerador elétrico,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Gerador elétrico (imovel|empreendimento),Infraestrutura,Operação,720,true,gerador elétrico,,GERADOR
+GESSO,Gesso - Sanca - Teto Rebaixado,IMOVEL,RESIDENCIAL|COMERCIAL,Gesso - Sanca - Teto Rebaixado (imovel),Imóvel,Acabamentos e conforto,730,true,gesso - sanca - teto rebaixado,,GESSO
+GRAMADO,Gramado,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Gramado (imovel|empreendimento),Ambiente,Natureza e vista,740,true,gramado,,GRAMADO
+GUARITA,Guarita,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Guarita (empreendimento),Segurança,Controle de acesso,750,true,guarita,,GUARITA
+HALL,Hall de entrada,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Hall de entrada (empreendimento),Empreendimento,Comercial,760,true,hall de entrada,,HALL
+HELIPONTO,Heliponto,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Heliponto (imovel|empreendimento),Geral,Outros,770,true,heliponto,,HELIPONTO
+HIDROMASSAGEM,Hidromassagem,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Hidromassagem (imovel|empreendimento),Lazer,Água e bem-estar,780,true,hidromassagem,,HIDROMASSAGEM
+HORTA,Horta,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Horta (imovel|empreendimento),Ambiente,Natureza e vista,790,true,horta,,HORTA
+IMOVEL_ESQUINA,Imóvel de esquina,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Imóvel de esquina (imovel|empreendimento),Geral,Outros,800,true,imóvel de esquina,,IMOVEL_ESQUINA
+INTERFONE,Interfone,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Interfone (imovel|empreendimento),Imóvel,Acabamentos e conforto,810,true,interfone,,INTERFONE
+ISOLAMENTO_ACUSTICO,Isolamento acústico,IMOVEL,RESIDENCIAL|COMERCIAL,Isolamento acústico (imovel),Imóvel,Comercial,820,true,isolamento acústico,,ISOLAMENTO_ACUSTICO
+ISOLAMENTO_TERMICO,Isolamento térmico,IMOVEL,RESIDENCIAL|COMERCIAL,Isolamento térmico (imovel),Imóvel,Comercial,830,true,isolamento térmico,,ISOLAMENTO_TERMICO
+JANELA_ALUMINIO,Janela de alumínio,IMOVEL,RESIDENCIAL,Janela de alumínio (imovel),Imóvel,Residencial,840,true,janela de alumínio,,JANELA_ALUMINIO
+JANELA_GRANDE,Janela grande,IMOVEL,RESIDENCIAL,Janela grande (imovel),Imóvel,Residencial,850,true,janela grande,,JANELA_GRANDE
+JARDIM,Jardim,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Jardim (imovel|empreendimento),Ambiente,Natureza e vista,860,true,jardim,,JARDIM
+LAGO,Lago,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Lago (imovel|empreendimento),Ambiente,Natureza e vista,870,true,lago,,LAGO
+LAJE,Laje,IMOVEL,RESIDENCIAL,Laje (imovel),Imóvel,Residencial,880,true,laje,,LAJE
+LAREIRA,Lareira,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Lareira (imovel|empreendimento),Geral,Outros,890,true,lareira,,LAREIRA
+LAVANDERIA,Lavanderia,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Lavanderia (imovel|empreendimento),Imóvel,Ambientes,900,true,lavanderia,,LAVANDERIA
+MARINA,Marina,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Marina (imovel|empreendimento),Geral,Outros,910,true,marina,,MARINA
+MEIO_ANDAR,Meio andar,IMOVEL,RESIDENCIAL|COMERCIAL,Meio andar (imovel),Imóvel,Comercial,920,true,meio andar,,MEIO_ANDAR
+MEZANINO,Mezanino,IMOVEL,RESIDENCIAL|COMERCIAL,Mezanino (imovel),Imóvel,Comercial,930,true,mezanino,,MEZANINO
+MOBILIADO,Mobiliado,IMOVEL,RESIDENCIAL|COMERCIAL,Mobiliado (imovel),Imóvel,Comercial,940,true,mobiliado,,MOBILIADO
+MOVEL_PLANEJADO,Móvel planejado,IMOVEL,RESIDENCIAL|COMERCIAL,Móvel planejado (imovel),Imóvel,Comercial,950,true,móvel planejado,,MOVEL_PLANEJADO
+MURO_ESCALADA,Muro de escalada,EMPREENDIMENTO,RESIDENCIAL,Muro de escalada (empreendimento),Empreendimento,Residencial,960,true,muro de escalada,,MURO_ESCALADA
+MURO_VIDRO,Muro de vidro,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Muro de vidro (imovel|empreendimento),Geral,Outros,970,true,muro de vidro,,MURO_VIDRO
+MURO_GRADE,Muro e grade,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Muro e grade (imovel|empreendimento),Geral,Outros,980,true,muro e grade,,MURO_GRADE
+OFURO,Ofurô,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Ofurô (imovel|empreendimento),Lazer,Água e bem-estar,990,true,ofurô,,OFURO
+ORQUIDARIO,Orquidário,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Orquidário (imovel|empreendimento),Ambiente,Natureza e vista,1000,true,orquidário,,ORQUIDARIO
+PASTO,Pasto,IMOVEL,RESIDENCIAL,Pasto (imovel),Ambiente,Natureza e vista,1010,true,pasto,,PASTO
+PE_DIREITO_ALTO,Pé direito alto,IMOVEL,RESIDENCIAL|COMERCIAL,Pé direito alto (imovel),Imóvel,Comercial,1020,true,pé direito alto,,PE_DIREITO_ALTO
+PISCINA,Piscina,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Piscina (imovel|empreendimento),Lazer,Água e bem-estar,1030,true,piscina,,PISCINA
+PISCINA_AQUECIDA,Piscina aquecida,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Piscina aquecida (imovel|empreendimento),Lazer,Água e bem-estar,1040,true,piscina aquecida,,PISCINA_AQUECIDA
+PISCINA_COBERTA,Piscina coberta,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Piscina coberta (imovel|empreendimento),Lazer,Água e bem-estar,1050,true,piscina coberta,,PISCINA_COBERTA
+PISCINA_INFANTIL,Piscina infantil,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Piscina infantil (imovel|empreendimento),Lazer,Água e bem-estar,1060,true,piscina infantil,,PISCINA_INFANTIL
+PISCINA_ADULTO,Piscina para adulto,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Piscina para adulto (imovel|empreendimento),Lazer,Água e bem-estar,1070,true,piscina para adulto,,PISCINA_ADULTO
+PISCINA_PRIVATIVA,Piscina privativa,IMOVEL,RESIDENCIAL,Piscina privativa (imovel),Lazer,Água e bem-estar,1080,true,piscina privativa,,PISCINA_PRIVATIVA
+PISO_MADEIRA,Piso de madeira,IMOVEL,RESIDENCIAL|COMERCIAL,Piso de madeira (imovel),Imóvel,Comercial,1090,true,piso de madeira,,PISO_MADEIRA
+PISO_ELEVADO,Piso elevado,IMOVEL,RESIDENCIAL|COMERCIAL,Piso elevado (imovel),Imóvel,Comercial,1100,true,piso elevado,,PISO_ELEVADO
+PISO_FRIO,Piso frio,IMOVEL,RESIDENCIAL|COMERCIAL,Piso frio (imovel),Ambiente,Natureza e vista,1110,true,piso frio,,PISO_FRIO
+PISO_LAMINADO,Piso laminado,IMOVEL,RESIDENCIAL|COMERCIAL,Piso laminado (imovel),Imóvel,Comercial,1120,true,piso laminado,,PISO_LAMINADO
+PISO_VINILICO,Piso vinílico,IMOVEL,RESIDENCIAL|COMERCIAL,Piso vinílico (imovel),Imóvel,Comercial,1130,true,piso vinílico,,PISO_VINILICO
+PISTA_COOPER,Pista de cooper,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Pista de cooper (imovel|empreendimento),Lazer,Esporte,1140,true,pista de cooper,,PISTA_COOPER
+PISTA_SKATE,Pista de skate,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Pista de skate (imovel|empreendimento),Lazer,Esporte,1150,true,pista de skate,,PISTA_SKATE
+PLATIBANDA,Platibanda,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Platibanda (imovel|empreendimento),Geral,Outros,1160,true,platibanda,,PLATIBANDA
+PLAYGROUND,Playground,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Playground (imovel|empreendimento),Geral,Outros,1170,true,playground,,PLAYGROUND
+POCO,Poço,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Poço (imovel|empreendimento),Rural,Estrutura,1180,true,poço,,POCO
+POCO_ARTESIANO,Poço artesiano,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Poço artesiano (imovel|empreendimento),Rural,Estrutura,1190,true,poço artesiano,Chave original contém caracteres fora do padrão técnico: POCO ARTESIANO,POCO_ARTESIANO
+POMAR,Pomar,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Pomar (imovel|empreendimento),Ambiente,Natureza e vista,1200,true,pomar,,POMAR
+PISO_PORCELANATO,Porcelanato,IMOVEL,RESIDENCIAL|COMERCIAL,Porcelanato (imovel),Imóvel,Comercial,1210,true,porcelanato,,PISO_PORCELANATO
+PORTAO_ELETRONICO,Portão eletrônico,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Portão eletrônico (imovel|empreendimento),Segurança,Controle de acesso,1220,true,portão eletrônico,,PORTAO_ELETRONICO
+PORTARIA_24H,Portaria 24h,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Portaria 24h (empreendimento),Segurança,Controle de acesso,1230,true,portaria 24h,,PORTARIA_24H
+POSSUI_DIVISORIA,Possui divisória,IMOVEL,RESIDENCIAL|COMERCIAL,Possui divisória (imovel),Imóvel,Comercial,1240,true,possui divisória,,POSSUI_DIVISORIA
+PRACA,Praça,EMPREENDIMENTO,RESIDENCIAL,Praça (empreendimento),Ambiente,Natureza e vista,1250,true,praça,,PRACA
+QUADRA_SQUASH,Quadra de squash,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Quadra de squash (imovel|empreendimento),Lazer,Esporte,1260,true,quadra de squash,,QUADRA_SQUASH
+QUADRA_TENIS,Quadra de tênis,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Quadra de tênis (imovel|empreendimento),Lazer,Esporte,1270,true,quadra de tênis,,QUADRA_TENIS
+QUADRA_POLIESPORTIVA,Quadra poliesportiva,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Quadra poliesportiva (imovel|empreendimento),Lazer,Esporte,1280,true,quadra poliesportiva,,QUADRA_POLIESPORTIVA
+QUARTO_SERVICO,Quarto de serviço,IMOVEL,RESIDENCIAL,Quarto de serviço (imovel),Imóvel,Ambientes,1290,true,quarto de serviço,,QUARTO_SERVICO
+QUARTO_EXTRA_REVERSIVEL,Quarto extra reversível,IMOVEL,RESIDENCIAL,Quarto extra reversível (imovel),Imóvel,Ambientes,1300,true,quarto extra reversível,,QUARTO_EXTRA_REVERSIVEL
+QUINTAL,Quintal,IMOVEL,RESIDENCIAL,Quintal (imovel),Imóvel,Residencial,1310,true,quintal,,QUINTAL
+RECEPCAO,Recepção,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Recepção (empreendimento),Infraestrutura,Operação,1320,true,recepção,,RECEPCAO
+REDARIO,Redario,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Redario (imovel|empreendimento),Ambiente,Natureza e vista,1330,true,redario,,REDARIO
+RESERVATORIO_AGUA,Reservatório de água,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Reservatório de água (imovel|empreendimento),Ambiente,Natureza e vista,1340,true,reservatório de água,,RESERVATORIO_AGUA
+RESTAURANTE,Restaurante,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Restaurante (empreendimento),Serviços,Conveniência,1350,true,restaurante,,RESTAURANTE
+RIO,Rio,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Rio (imovel|empreendimento),Ambiente,Natureza e vista,1360,true,rio,,RIO
+RONDA_VIGILANCIA,Ronda/Vigilância,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Ronda/Vigilância (empreendimento),Segurança,Controle de acesso,1370,true,ronda/vigilância,,RONDA_VIGILANCIA
+SALA_ALMOCO,Sala de almoço,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Sala de almoço (imovel|empreendimento),Imóvel,Ambientes,1380,true,sala de almoço,,SALA_ALMOCO
+SALA_JANTAR,Sala de jantar,IMOVEL,RESIDENCIAL,Sala de jantar (imovel),Imóvel,Ambientes,1390,true,sala de jantar,,SALA_JANTAR
+SALA_MASSAGEM,Sala de massagem,EMPREENDIMENTO,RESIDENCIAL,Sala de massagem (empreendimento),Imóvel,Ambientes,1400,true,sala de massagem,,SALA_MASSAGEM
+SALA_REUNIAO,Sala de reunião,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Sala de reunião (imovel|empreendimento),Imóvel,Ambientes,1410,true,sala de reunião,,SALA_REUNIAO
+SALA_GRANDE,Sala grande,IMOVEL,RESIDENCIAL,Sala grande (imovel),Imóvel,Ambientes,1420,true,sala grande,,SALA_GRANDE
+SALA_PEQUENA,Sala pequena,IMOVEL,RESIDENCIAL,Sala pequena (imovel),Imóvel,Ambientes,1430,true,sala pequena,,SALA_PEQUENA
+SALA_CONVENCAO,Salão de convenção,EMPREENDIMENTO,COMERCIAL,Salão de convenção (empreendimento),Imóvel,Ambientes,1440,true,salão de convenção,,SALA_CONVENCAO
+SALAO_FESTAS,Salão de festas,EMPREENDIMENTO,RESIDENCIAL,Salão de festas (empreendimento),Serviços,Conveniência,1450,true,salão de festas,,SALAO_FESTAS
+SALAO_JOGOS,Salão de jogos,EMPREENDIMENTO,RESIDENCIAL,Salão de jogos (empreendimento),Serviços,Conveniência,1460,true,salão de jogos,,SALAO_JOGOS
+SAUNA,Sauna,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Sauna (imovel|empreendimento),Lazer,Água e bem-estar,1470,true,sauna,,SAUNA
+SERVICOS_PPU,Serviços pay per use,EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Serviços pay per use (empreendimento),Serviços,Conveniência,1480,true,serviços pay per use,,SERVICOS_PPU
+SISTEMA_ALARME,Sistema de alarme,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Sistema de alarme (imovel|empreendimento),Segurança,Controle de acesso,1490,true,sistema de alarme,,SISTEMA_ALARME
+SOLARIUM,Solarium,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Solarium (imovel|empreendimento),Lazer,Água e bem-estar,1500,true,solarium,,SOLARIUM
+SPA,Spa,IMOVEL|EMPREENDIMENTO,RESIDENCIAL,Spa (imovel|empreendimento),Lazer,Água e bem-estar,1510,true,spa,,SPA
+TV_CABO,TV a cabo,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,TV a cabo (imovel|empreendimento),Tecnologia,Conectividade,1520,true,tv a cabo,Chave original contém caracteres fora do padrão técnico: TV A CABO,TV_A_CABO
+VARANDA,Varanda,IMOVEL,RESIDENCIAL,Varanda (imovel),Imóvel,Acabamentos e conforto,1530,true,varanda,,VARANDA
+VARANDA_FECHADO_VIDRO,Varanda fechada com vidro,IMOVEL,RESIDENCIAL,Varanda fechada com vidro (imovel),Imóvel,Acabamentos e conforto,1540,true,varanda fechada com vidro,,VARANDA_FECHADO_VIDRO
+VARANDA_GOURMET,Varanda gourmet,IMOVEL,RESIDENCIAL,Varanda gourmet (imovel),Imóvel,Acabamentos e conforto,1550,true,varanda gourmet,,VARANDA_GOURMET
+VENTILACAO_NATURAL,Ventilação natural,IMOVEL,RESIDENCIAL|COMERCIAL,Ventilação natural (imovel),Imóvel,Acabamentos e conforto,1560,true,ventilação natural,,VENTILACAO_NATURAL
+VESTIARIO_DIARISTAS,Vestiário para diaristas,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Vestiário para diaristas (imovel|empreendimento),Ambiente,Natureza e vista,1570,true,vestiário para diaristas,,VESTIARIO_DIARISTAS
+VIGIA,Vigia,IMOVEL|EMPREENDIMENTO,RESIDENCIAL|COMERCIAL,Vigia (imovel|empreendimento),Segurança,Controle de acesso,1580,true,vigia,,VIGIA
+VISTA_PANORAMICA,Vista panorâmica,IMOVEL,RESIDENCIAL|COMERCIAL,Vista panorâmica (imovel),Ambiente,Natureza e vista,1590,true,vista panorâmica,,VISTA_PANORAMICA
+VISTA_MONTANHA,Vista para a montanha,IMOVEL,RESIDENCIAL|COMERCIAL,Vista para a montanha (imovel),Ambiente,Natureza e vista,1600,true,vista para a montanha,,VISTA_MONTANHA
+VISTA_LAGO,Vista para lago,IMOVEL,RESIDENCIAL|COMERCIAL,Vista para lago (imovel),Ambiente,Natureza e vista,1610,true,vista para lago,,VISTA_LAGO
+VISTA_MAR,Vista para o mar,IMOVEL,RESIDENCIAL|COMERCIAL,Vista para o mar (imovel),Ambiente,Natureza e vista,1620,true,vista para o mar,,VISTA_MAR

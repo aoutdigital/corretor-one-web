@@ -3,6 +3,7 @@ export type UploadMediaInput = {
   path: string;
   file: File;
   contentType?: string;
+  upsert?: boolean;
 };
 
 export type UploadMediaResult = {
@@ -16,4 +17,3 @@ export interface MediaStorageProvider {
   upload(input: UploadMediaInput): Promise<UploadMediaResult>;
   remove(bucket: string, path: string): Promise<void>;
 }
-

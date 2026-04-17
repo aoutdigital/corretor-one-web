@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { ensureProfileNicknameLogos } from "@/lib/branding/profile-logo";
 import { getStripeWebhookSecret, verifyStripeSignature } from "@/lib/server/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -171,6 +172,17 @@ export async function POST(request: Request) {
 
             const planoFinal = status === "CANCELADA" ? null : plano.id;
             await admin.from("profiles").update({ plano_id: planoFinal }).eq("id", ownerId);
+
+            if (planoFinal) {
+              const logoResult = await ensureProfileNicknameLogos(ownerId);
+              if (!logoResult.ok) {
+                console.error("[stripe.webhook] failed to ensure nickname logos", {
+                  ownerId,
+                  code: logoResult.error.code,
+                  message: logoResult.error.message,
+                });
+              }
+            }
           }
         }
       }

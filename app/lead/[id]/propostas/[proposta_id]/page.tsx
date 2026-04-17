@@ -93,7 +93,7 @@ export default function PropostaDetalhePage() {
           <option value="ENVIADA">ENVIADA</option>
           <option value="ACEITA">ACEITA</option>
           <option value="RECUSADA">RECUSADA</option>
-          <option value="CANCELADA">CANCELADA</option>
+          <option value="EXPIRADA">EXPIRADA</option>
         </select>
         <input
           type="number"

@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "logo:glyph-map": "node scripts/logo/build-glyph-map-from-letras-svg.mjs",
+    "logo:nickname:path": "node scripts/logo/build-nickname-logo.mjs",
+    "logo:png": "node scripts/logo/export-html-png.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -15,7 +18,8 @@
     "flowbite-react": "^0.12.17",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -24,6 +28,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "puppeteer": "^24.37.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
