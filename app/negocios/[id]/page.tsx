@@ -519,6 +519,9 @@ export default function NegocioDetalhePage() {
   const [proposalFormOpen, setProposalFormOpen] = useState(false);
   const [proposalForm, setProposalForm] = useState<OpportunityProposalFormState>(INITIAL_PROPOSAL_FORM);
   const [creatingProposal, setCreatingProposal] = useState(false);
+  const [proposalDocumentOpenId, setProposalDocumentOpenId] = useState<string | null>(null);
+  const [generatingProposalPdfId, setGeneratingProposalPdfId] = useState<string | null>(null);
+  const [proposalPdfUrls, setProposalPdfUrls] = useState<Record<string, string>>({});
   const [savingJuridico, setSavingJuridico] = useState(false);
   const [activeTab, setActiveTab] = useState<OpportunityWorkspaceTab>("negociacao");
   const [parteFormOpen, setParteFormOpen] = useState(false);
@@ -760,7 +763,49 @@ export default function NegocioDetalhePage() {
     () => workspace?.propostas.some((proposta) => proposta.status === "ACEITA") ?? false,
     [workspace?.propostas],
   );
+  const selectedProposalDocument = useMemo(
+    () =>
+      proposalDocumentOpenId && workspace
+        ? workspace.propostas.find((proposta) => proposta.id === proposalDocumentOpenId) ?? null
+        : null,
+    [proposalDocumentOpenId, workspace],
+  );
+  const selectedProposalDocumentId = selectedProposalDocument?.id ?? null;
+  const selectedProposalDocumentMidiaId = selectedProposalDocument?.arquivo_midia_id ?? null;
+  const selectedProposalPdfUrl =
+    selectedProposalDocument ? proposalPdfUrls[selectedProposalDocument.id] ?? "" : "";
   const shouldCreatePessoaInWizard = parteWizardMode === "VINCULAR" || createParteWithPessoa || parteForm.tipo_pessoa === "FISICA";
+
+  useEffect(() => {
+    const proposalId = selectedProposalDocumentId;
+    const arquivoMidiaId = selectedProposalDocumentMidiaId;
+
+    if (!proposalId) return;
+    if (!arquivoMidiaId) return;
+    if (proposalPdfUrls[proposalId]) return;
+
+    let active = true;
+
+    async function loadExistingProposalPdfUrl() {
+      const result = await apiFetchWithAuth<{
+        proposta_id: string;
+        arquivo_midia_id: string | null;
+        arquivo_url: string | null;
+      }>(`/api/propostas/${proposalId}/documento`);
+
+      if (!active || !result.ok || !result.data.arquivo_url) return;
+      setProposalPdfUrls((current) => ({
+        ...current,
+        [proposalId]: result.data.arquivo_url,
+      }));
+    }
+
+    void loadExistingProposalPdfUrl();
+
+    return () => {
+      active = false;
+    };
+  }, [proposalPdfUrls, selectedProposalDocumentId, selectedProposalDocumentMidiaId]);
 
   const wizardSuggestedInfo = useMemo(() => {
     if (!workspace) return null;
@@ -1012,6 +1057,52 @@ export default function NegocioDetalhePage() {
     setProposalForm(INITIAL_PROPOSAL_FORM);
     setProposalFormOpen(false);
     pushToast("success", "Proposta criada e vinculada à oportunidade.");
+  }
+
+  async function handleGenerateProposalPdf(propostaId: string) {
+    if (!workspace) return;
+
+    setGeneratingProposalPdfId(propostaId);
+    const result = await apiFetchWithAuth<{
+      proposta_id: string;
+      arquivo_midia_id: string;
+      arquivo_url: string;
+      conteudo: NegocioWorkspace["propostas"][number]["conteudo"];
+      generated_at: string;
+    }>(`/api/propostas/${propostaId}/documento`, {
+      method: "POST",
+    });
+    setGeneratingProposalPdfId(null);
+
+    if (!result.ok) {
+      pushToast("error", result.error, 4200);
+      return;
+    }
+
+    setProposalPdfUrls((current) => ({
+      ...current,
+      [propostaId]: result.data.arquivo_url,
+    }));
+    setWorkspace((current) =>
+      current
+        ? {
+            ...current,
+            propostas: current.propostas.map((item) =>
+              item.id === propostaId
+                ? {
+                    ...item,
+                    arquivo_midia_id: result.data.arquivo_midia_id,
+                    conteudo: result.data.conteudo,
+                    updated_at: result.data.generated_at,
+                  }
+                : item,
+            ),
+          }
+        : current,
+    );
+
+    window.open(result.data.arquivo_url, "_blank", "noopener,noreferrer");
+    pushToast("success", "PDF da proposta gerado com sucesso.");
   }
 
   async function handleAdvanceToJuridico(withSimpleApproval: boolean) {
@@ -3924,23 +4015,47 @@ function firstNonEmptyText(...values: Array<unknown>) {
               <div className="mt-4 space-y-3">
                 {workspace.propostas.length > 0 ? (
                   workspace.propostas.map((item) => (
-                    <Link
-                      key={item.id}
-                      href={`/lead/${workspace.lead.id}/propostas/${item.id}`}
-                      className="block rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3 hover:border-slate-300"
-                    >
-                      <p className="text-sm font-semibold text-slate-900">{item.titulo || "Proposta sem título"}</p>
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
-                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${PROPOSTA_STATUS_META[item.status].className}`}>
-                          {PROPOSTA_STATUS_META[item.status].label}
-                        </span>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                          {PROPOSTA_TIPO_LABEL[item.tipo]}
-                        </span>
-                        {typeof item.valor === "number" ? <span>{formatCurrency(item.valor)}</span> : null}
-                        {item.vencimento_em ? <span>Vence em {formatDate(item.vencimento_em)}</span> : null}
+                    <div key={item.id} className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{item.titulo || "Proposta sem título"}</p>
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
+                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${PROPOSTA_STATUS_META[item.status].className}`}>
+                              {PROPOSTA_STATUS_META[item.status].label}
+                            </span>
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                              {PROPOSTA_TIPO_LABEL[item.tipo]}
+                            </span>
+                            {typeof item.valor === "number" ? <span>{formatCurrency(item.valor)}</span> : null}
+                            {item.vencimento_em ? <span>Vence em {formatDate(item.vencimento_em)}</span> : null}
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                                item.arquivo_midia_id
+                                  ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
+                                  : "bg-amber-100 text-amber-700 ring-1 ring-amber-200"
+                              }`}
+                            >
+                              {item.arquivo_midia_id ? "PDF gerado" : "PDF pendente"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setProposalDocumentOpenId(item.id)}
+                            className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                          >
+                            Documento
+                          </button>
+                          <Link
+                            href={`/lead/${workspace.lead.id}/propostas/${item.id}`}
+                            className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                          >
+                            Abrir proposta
+                          </Link>
+                        </div>
                       </div>
-                    </Link>
+                    </div>
                   ))
                 ) : (
                   <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
@@ -3948,6 +4063,186 @@ function firstNonEmptyText(...values: Array<unknown>) {
                   </div>
                 )}
               </div>
+              {selectedProposalDocument ? (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-slate-900/35" onClick={() => setProposalDocumentOpenId(null)} />
+                  <div className="relative w-[min(1080px,100%)] max-h-[92vh] overflow-y-auto rounded-[30px] border border-slate-200 bg-white p-5 shadow-[0_24px_64px_rgba(15,23,42,0.28)]">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-xl font-semibold tracking-[-0.03em] text-slate-900">
+                          Documento da proposta
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-600">
+                          Revise o conteúdo abaixo e gere o PDF para assinatura.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setProposalDocumentOpenId(null)}
+                        className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                      >
+                        Fechar
+                      </button>
+                    </div>
+
+                    <div className="mt-4 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Proposta</p>
+                          <p className="mt-2 text-sm font-semibold text-slate-900">
+                            {selectedProposalDocument.titulo || "Proposta sem título"}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {PROPOSTA_TIPO_LABEL[selectedProposalDocument.tipo]} • {PROPOSTA_STATUS_META[selectedProposalDocument.status].label}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Valor:{" "}
+                            {typeof selectedProposalDocument.valor === "number"
+                              ? formatCurrency(selectedProposalDocument.valor)
+                              : typeof workspace.negocio.valor === "number"
+                                ? formatCurrency(workspace.negocio.valor)
+                                : "Não informado"}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Vencimento:{" "}
+                            {selectedProposalDocument.vencimento_em
+                              ? formatDate(selectedProposalDocument.vencimento_em)
+                              : "Não informado"}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Oportunidade</p>
+                          <p className="mt-2 text-sm font-semibold text-slate-900">
+                            {workspace.negocio.titulo?.trim() || "Oportunidade sem título"}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Valor: {typeof workspace.negocio.valor === "number" ? formatCurrency(workspace.negocio.valor) : "Não informado"}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Comissão:{" "}
+                            {typeof workspace.negocio.comissaovalor === "number"
+                              ? formatCurrency(workspace.negocio.comissaovalor)
+                              : "Não informado"}
+                            {typeof workspace.negocio.comissaopercentual === "number"
+                              ? ` (${formatPercentInput(workspace.negocio.comissaopercentual)}%)`
+                              : ""}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid gap-3 md:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Lead associado</p>
+                          <p className="mt-2 text-sm font-semibold text-slate-900">{workspace.lead.nome || "Lead sem nome"}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {[workspace.lead.email, workspace.lead.telefone].filter(Boolean).join(" • ") || "Sem contato"}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {[
+                              workspace.lead.cep,
+                              workspace.lead.endereco,
+                              workspace.lead.numero,
+                              workspace.lead.complemento,
+                              workspace.lead.bairro,
+                              workspace.lead.cidade,
+                              workspace.lead.uf,
+                              workspace.lead.pais,
+                            ]
+                              .filter(Boolean)
+                              .join(" • ") || "Sem endereço"}
+                          </p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Imóvel associado</p>
+                          {workspace.imovel ? (
+                            <>
+                              <p className="mt-2 text-sm font-semibold text-slate-900">{workspace.imovel.headline}</p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {[workspace.imovel.cidade, workspace.imovel.estado].filter(Boolean).join("/") || "Local não informado"}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {[workspace.imovel.logradouro, workspace.imovel.numero, workspace.imovel.bairro].filter(Boolean).join(" • ") ||
+                                  "Endereço não informado"}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="mt-2 text-xs text-slate-500">Sem imóvel associado.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Condições de pagamento</p>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                          {[
+                            { label: "Recursos próprios", value: workspace.negocio.recursopropriovalor },
+                            { label: "Financiamento", value: workspace.negocio.financiamentovalor },
+                            { label: "FGTS", value: workspace.negocio.fgtsvalor },
+                            { label: "Outros recursos", value: workspace.negocio.outrosrecursosvalor },
+                          ].map((item) => (
+                            <div key={item.label} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{item.label}</p>
+                              <p className="mt-1 text-sm font-semibold text-slate-900">
+                                {typeof item.value === "number" ? formatCurrency(item.value) : "Não informado"}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Partes envolvidas</p>
+                        <div className="mt-2 grid gap-2">
+                          {workspace.partes.map((parte) => (
+                            <div key={parte.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                              <p className="text-sm font-semibold text-slate-900">
+                                {parte.papel === "COMPRADOR" ? "Comprador" : "Vendedor"} •{" "}
+                                {parte.tipo_pessoa === "JURIDICA" ? "Pessoa jurídica" : "Pessoa física"}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {parte.razao_social?.trim() || parte.pessoas[0]?.nome_completo || "Parte sem identificação"}
+                              </p>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {parte.pessoas.length > 0
+                                  ? parte.pessoas.map((pessoa) => pessoa.nome_completo).join(" • ")
+                                  : "Sem pessoas vinculadas"}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {workspace.negocio.observacoes ? (
+                        <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Observações</p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{workspace.negocio.observacoes}</p>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-4">
+                      {selectedProposalPdfUrl ? (
+                        <a
+                          href={selectedProposalPdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+                        >
+                          Baixar último PDF
+                        </a>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void handleGenerateProposalPdf(selectedProposalDocument.id)}
+                        disabled={generatingProposalPdfId === selectedProposalDocument.id}
+                        className="inline-flex h-10 items-center justify-center rounded-xl bg-[var(--primary-scarlet)] px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {generatingProposalPdfId === selectedProposalDocument.id ? "Gerando PDF..." : "Gerar PDF"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </section>
           ) : null}
 

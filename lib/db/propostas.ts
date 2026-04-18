@@ -38,6 +38,26 @@ export async function listPropostas(
   return ok((result.data ?? []) as Proposta[]);
 }
 
+export async function getPropostaById(
+  accessToken: string,
+  propostaId: string,
+): Promise<ApiResult<Proposta>> {
+  const auth = await authenticateByAccessToken(accessToken);
+  if (!auth.ok) return auth;
+
+  const { user, client } = auth.data;
+  const result = await client
+    .from("propostas")
+    .select("*")
+    .eq("id", propostaId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (result.error) return mapDbError(result.error);
+  if (!result.data) return fail("NOT_FOUND", "Proposta not found");
+  return ok(result.data as Proposta);
+}
+
 export async function createProposta(
   accessToken: string,
   input: CreatePropostaInput,
