@@ -15,7 +15,7 @@ import {
 } from "@phosphor-icons/react";
 import { Card } from "flowbite-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/app/_components/app-shell";
 import { apiFetchWithAuth } from "@/lib/client/auth-api";
@@ -101,7 +101,7 @@ function buildAddress(item: Empreendimento) {
   return [rua, local].filter(Boolean).join(" • ");
 }
 
-export default function EmpreendimentosPage() {
+function EmpreendimentosContent() {
   const searchParams = useSearchParams();
 
   const [items, setItems] = useState<Empreendimento[]>([]);
@@ -1217,5 +1217,13 @@ export default function EmpreendimentosPage() {
         </div>
       ) : null}
     </AppShell>
+  );
+}
+
+export default function EmpreendimentosPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen px-6 py-12">Carregando empreendimentos...</main>}>
+      <EmpreendimentosContent />
+    </Suspense>
   );
 }

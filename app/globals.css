@@ -1,7 +1,7 @@
-@import "tailwindcss";
-@plugin "flowbite/plugin";
-@source "../node_modules/flowbite-react/dist/esm/**/*.mjs";
-@source "../node_modules/flowbite/**/*.js";
+@import "/Users/mafort/Documents/Dev/corretor-one-web/node_modules/tailwindcss/index.css";
+@plugin "/Users/mafort/Documents/Dev/corretor-one-web/node_modules/flowbite/plugin.js";
+@source "/Users/mafort/Documents/Dev/corretor-one-web/node_modules/flowbite-react/dist/esm/**/*.mjs";
+@source "/Users/mafort/Documents/Dev/corretor-one-web/node_modules/flowbite/**/*.js";
 
 @font-face {
   font-family: "dunbar-tall";

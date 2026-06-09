@@ -1234,47 +1234,6 @@ function getStatusEmpreendimentoDisplayLabel(value: unknown) {
   return "Não informado";
 }
 
-declare global {
-  interface Window {
-    google?: {
-      maps?: {
-        Map: new (
-          element: HTMLElement,
-          options: Record<string, unknown>,
-        ) => {
-          setCenter: (latLng: { lat: number; lng: number }) => void;
-          setZoom: (zoom: number) => void;
-        };
-        Marker: new (options: Record<string, unknown>) => {
-          setPosition: (position: { lat: number; lng: number }) => void;
-          addListener: (eventName: string, handler: () => void) => void;
-          getPosition: () => { lat: () => number; lng: () => number } | null;
-        };
-        event: {
-          addListener: (
-            instance: unknown,
-            eventName: string,
-            handler: () => void,
-          ) => { remove: () => void };
-        };
-        marker?: {
-          AdvancedMarkerElement: new (options: {
-            map: unknown;
-            position: { lat: number; lng: number };
-            gmpDraggable?: boolean;
-          }) => {
-            position?:
-              | { lat: number; lng: number }
-              | { lat: () => number; lng: () => number }
-              | null;
-            setMap?: (map: unknown | null) => void;
-          };
-        };
-      };
-    };
-  }
-}
-
 export default function EmpreendimentoDetalhePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();

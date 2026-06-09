@@ -1389,7 +1389,11 @@ export async function updateEmpreendimento(
       const slugSource =
         requestedSlug ||
         currentSlug ||
-        (typeof finalPatch.nome === "string" ? (finalPatch.nome as string) : ownership.data.nome);
+        (typeof finalPatch.nome === "string"
+          ? finalPatch.nome
+          : typeof ownership.data.nome === "string"
+            ? ownership.data.nome
+            : "");
       finalPatch.slug_publico = await resolveUniqueEmpreendimentoSlug(
         db,
         user.id,

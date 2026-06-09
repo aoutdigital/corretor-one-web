@@ -66,46 +66,10 @@ import {
   inferBriefingSubcategoriaToken,
   resolveBriefingTipologiaSelection,
 } from "@/lib/imoveis/briefing-tipologia";
-import { buildImovelHeaderTitle } from "@/lib/imoveis/display-title";
-import { UF_OPTIONS } from "@/lib/location/constants";
+import { buildImovelHeaderTitle, type ImovelDisplayTitleInput } from "@/lib/imoveis/display-title";
+import { isUfCode, UF_OPTIONS } from "@/lib/location/constants";
 import { loadGoogleMapsScript } from "@/lib/location/google-maps-loader";
 import type { PlaceDetails, PlacePrediction } from "@/lib/location/types";
-
-declare global {
-  interface Window {
-    google?: {
-      maps: {
-        Map: new (container: Element, options: Record<string, unknown>) => {
-          fitBounds: (
-            bounds: { extend: (position: { lat: number; lng: number }) => void },
-            padding?: number | Record<string, number>,
-          ) => void;
-          setCenter: (position: { lat: number; lng: number }) => void;
-          setZoom: (zoom: number) => void;
-        };
-        Marker: new (options: Record<string, unknown>) => {
-          setMap?: (map: unknown | null) => void;
-          addListener?: (eventName: string, handler: () => void) => void;
-        };
-        LatLngBounds: new () => {
-          extend: (position: { lat: number; lng: number }) => void;
-        };
-        InfoWindow: new (options?: { content?: string | Element; maxWidth?: number }) => {
-          close: () => void;
-          setContent: (content: string | Element) => void;
-          open: (options: { anchor?: unknown; map?: unknown }) => void;
-        };
-        marker?: {
-          AdvancedMarkerElement?: new (options: Record<string, unknown>) => {
-            map?: unknown;
-            addListener?: (eventName: string, handler: () => void) => void;
-          };
-        };
-      };
-    };
-    __coMapsPromise?: Promise<void>;
-  }
-}
 
 const GOOGLE_MAPS_PUBLIC_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 const GOOGLE_MAPS_MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "";
@@ -128,12 +92,14 @@ type OwnedImovelOption = {
   preco_locacao: number | null;
 };
 
+type LeadOrigem = LeadWorkspace["lead"]["origem"];
+
 type ContactFormState = {
   nome: string;
   profissao: string;
   email: string;
   telefone: string;
-  origem: string;
+  origem: LeadOrigem;
   cep: string;
   endereco: string;
   numero: string;
@@ -144,13 +110,24 @@ type ContactFormState = {
   pais: string;
 };
 
+type LeadObjective = (typeof OBJETIVO_LEAD_OPTIONS)[number];
+type LeadTipoUso = (typeof TIPO_USO_OPTIONS)[number];
+type LeadIntencaoCompra = (typeof INTENCAO_COMPRA_OPTIONS)[number];
+type LeadCanalContato = (typeof CANAL_CONTATO_OPTIONS)[number];
+type LeadTipoConteudo = (typeof TIPO_CONTEUDO_OPTIONS)[number];
+type LeadBriefingState = NonNullable<LeadWorkspace["briefing"]>;
+type LeadTipoImovel = NonNullable<LeadBriefingState["tipoimovel"]>[number];
+type LeadCategoriaImovel = NonNullable<LeadBriefingState["categoriaimovel"]>[number];
+type LeadSubcategoriaImovel = NonNullable<LeadBriefingState["subcategoriaimovel"]>[number];
+type LeadTipoNegociacao = NonNullable<LeadBriefingState["tiponegociacao"]>[number];
+
 type ProfileFormState = {
-  objetivolead: string[];
-  tipouso: string;
-  tipoimovel: string[];
-  categoriaimovel: string[];
-  subcategoriaimovel: string[];
-  intencao_compra: string;
+  objetivolead: LeadObjective[];
+  tipouso: LeadTipoUso | "";
+  tipoimovel: LeadTipoImovel[];
+  categoriaimovel: LeadCategoriaImovel[];
+  subcategoriaimovel: LeadSubcategoriaImovel[];
+  intencao_compra: LeadIntencaoCompra | "";
   valor_min: string;
   valor_max: string;
   area_util_min: string;
@@ -162,8 +139,8 @@ type ProfileFormState = {
   vagas_min: string;
   vagas_min_comercial: string;
   localizacao_texto: string;
-  canais: string[];
-  conteudos: string[];
+  canais: LeadCanalContato[];
+  conteudos: LeadTipoConteudo[];
   texto_livre: string;
   mensagem: string;
 };
@@ -642,7 +619,6 @@ function buildLeadTipologiaItems(profileForm: ProfileFormState) {
       index,
       categoriaToken: categoria,
       subcategoriaToken: subcategoria,
-      tipoImovel,
       ...describeBriefingTipologiaSelection({
         uso: profileForm.tipouso,
         categoria,
@@ -691,9 +667,13 @@ function getTimelineDetailsObject(details: LeadTimelineItem["detalhes"]) {
     : null;
 }
 
+function hasTimelineDetails(item: unknown): item is { detalhes: LeadTimelineItem["detalhes"] } {
+  return !!item && typeof item === "object" && "detalhes" in item;
+}
+
 function getTimelineChangedFields(item: Pick<LeadTimelineItem, "detalhes"> | Record<string, unknown> | null | undefined) {
   const details =
-    item && "detalhes" in item
+    hasTimelineDetails(item)
       ? getTimelineDetailsObject(item.detalhes)
       : ((item ?? null) as Record<string, unknown> | null);
   const rawFields = details?.campos;
@@ -749,7 +729,7 @@ function upsertLeadDataUpdateTimelineItem(
     changedFields: string[];
     id?: string | null;
   },
-) {
+): LeadTimelineItem[] {
   const dayKey = getLeadDataUpdateTimelineDayKey(input.createdAt);
   const changedFields = mergeUniqueFieldNames(input.changedFields);
   if (!dayKey) return items;
@@ -914,7 +894,7 @@ function normalizeArrayForCompare(values: string[] | null | undefined) {
     .join("|");
 }
 
-function toggleStringArrayValue(values: string[], value: string) {
+function toggleStringArrayValue<T extends string>(values: T[], value: T) {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }
 
@@ -1009,9 +989,9 @@ function parseOptionalNumberInput(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function deriveLeadObjectivesFromLegacyNegotiation(values: string[] | null | undefined) {
+function deriveLeadObjectivesFromLegacyNegotiation(values: string[] | null | undefined): LeadObjective[] {
   const set = new Set(values ?? []);
-  const derived: string[] = [];
+  const derived: LeadObjective[] = [];
   if (set.has("VENDA")) derived.push("COMPRAR");
   if (set.has("ALUGUEL")) derived.push("ALUGAR");
   return derived;
@@ -1107,8 +1087,8 @@ function buildProfileBriefingPayload(form: ProfileFormState) {
   };
 }
 
-function deriveLeadNegotiationTypes(objectives: string[]) {
-  const negotiationTypes: string[] = [];
+function deriveLeadNegotiationTypes(objectives: LeadObjective[]): LeadTipoNegociacao[] {
+  const negotiationTypes: LeadTipoNegociacao[] = [];
   if (objectives.includes("COMPRAR")) negotiationTypes.push("VENDA");
   if (objectives.includes("ALUGAR")) negotiationTypes.push("ALUGUEL");
   return negotiationTypes;
@@ -1390,7 +1370,7 @@ function getImovelLocationLabel(item: LeadWorkspace["imoveis_interesse"][number]
   return [item.bairro, item.cidade, item.estado].filter(Boolean).join(" - ") || "Localização do imóvel";
 }
 
-function getImovelDisplayTitle(item: LeadWorkspace["imoveis_interesse"][number]) {
+function getImovelDisplayTitle(item: ImovelDisplayTitleInput) {
   return buildImovelHeaderTitle(item);
 }
 
@@ -2005,13 +1985,13 @@ function FieldSaveStatusLabel({ status }: { status: FieldSaveState | null }) {
 
 function FieldLegend({
   label,
-  status,
+  status = null,
   helpText,
   helpPlacement = "bottom",
   trailing,
 }: {
   label: string;
-  status: FieldSaveState | null;
+  status?: FieldSaveState | null;
   helpText?: string;
   helpPlacement?: "bottom" | "right-desktop";
   trailing?: ReactNode;
@@ -3315,13 +3295,7 @@ export default function LeadDetalhePage() {
 
     if (invalidFields.length > 0) {
       const persistedContactForm = buildContactFormFromLead(workspace.lead);
-      setContactForm((current) => {
-        const next = { ...current };
-        for (const field of invalidFields) {
-          next[field] = persistedContactForm[field];
-        }
-        return next;
-      });
+      setContactForm((current) => ({ ...current, nome: persistedContactForm.nome }));
       setContactFieldStatus((current) => {
         const next = { ...current };
         for (const field of invalidFields) delete next[field];
@@ -3349,7 +3323,7 @@ export default function LeadDetalhePage() {
       complemento: contactForm.complemento.trim() || null,
       bairro: contactForm.bairro.trim() || null,
       cidade: contactForm.cidade.trim() || null,
-      uf: contactForm.uf || null,
+      uf: isUfCode(contactForm.uf) ? contactForm.uf : null,
       pais: contactForm.pais.trim() || null,
     };
 
@@ -3390,7 +3364,8 @@ export default function LeadDetalhePage() {
     };
     const timelineCreatedAt = new Date().toISOString();
     const timelineDayKey = getLeadDataUpdateTimelineDayKey(timelineCreatedAt);
-    const shouldPostDailyLeadUpdate = Boolean(timelineDayKey) && !leadDataUpdateTimelineKeysRef.current.has(timelineDayKey);
+    const shouldPostDailyLeadUpdate =
+      timelineDayKey !== null && !leadDataUpdateTimelineKeysRef.current.has(timelineDayKey);
     let createdTimelineId: string | null | undefined = null;
     let shouldHydrateLeadUpdateTimeline = !shouldPostDailyLeadUpdate;
 
@@ -3437,7 +3412,7 @@ export default function LeadDetalhePage() {
     await saveContactForm();
   }
 
-  function handleSelectLeadTipoUso(nextTipoUso: string) {
+  function handleSelectLeadTipoUso(nextTipoUso: LeadTipoUso) {
     setProfileForm((current) => {
       if (current.tipouso === nextTipoUso) return current;
       return {
@@ -3474,18 +3449,22 @@ export default function LeadDetalhePage() {
     });
     if (!resolved) return;
 
+    const categoriaToken = resolved.categoriaToken as LeadCategoriaImovel;
+    const subcategoriaToken = resolved.subcategoriaToken as LeadSubcategoriaImovel;
+    const tipoImovel = resolved.tipoImovel as LeadTipoImovel;
+
     setProfileForm((current) => {
       const duplicateIndex = current.categoriaimovel.findIndex(
         (item, index) =>
-          item === resolved.categoriaToken && (current.subcategoriaimovel[index] ?? null) === resolved.subcategoriaToken,
+          item === categoriaToken && (current.subcategoriaimovel[index] ?? null) === subcategoriaToken,
       );
       if (duplicateIndex >= 0) return current;
 
       return {
         ...current,
-        categoriaimovel: [...current.categoriaimovel, resolved.categoriaToken],
-        subcategoriaimovel: [...current.subcategoriaimovel, resolved.subcategoriaToken],
-        tipoimovel: [...current.tipoimovel, resolved.tipoImovel],
+        categoriaimovel: [...current.categoriaimovel, categoriaToken],
+        subcategoriaimovel: [...current.subcategoriaimovel, subcategoriaToken],
+        tipoimovel: [...current.tipoimovel, tipoImovel],
       };
     });
     setProfileTipologiaSubcategoria("");
@@ -5045,12 +5024,13 @@ export default function LeadDetalhePage() {
                       />
                       <select
                         value={contactForm.origem}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          const nextOrigem = event.target.value as LeadOrigem;
                           setContactForm((current) => ({
                             ...current,
-                            origem: event.target.value,
-                          }))
-                        }
+                            origem: nextOrigem,
+                          }));
+                        }}
                         className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none focus:border-[var(--blue-slate)] focus:bg-white"
                       >
                         {ORIGEM_LEAD_OPTIONS.map((item) => (

@@ -7789,7 +7789,7 @@ Retorne SOMENTE JSON válido:
                             >
                               <img
                                 src={buildThumbUrl(mediaItem.url) ?? mediaItem.url}
-                                alt={mediaItem.alt ?? "Imagem do empreendimento"}
+                                alt="Imagem do empreendimento"
                                 draggable={false}
                                 loading="lazy"
                                 decoding="async"

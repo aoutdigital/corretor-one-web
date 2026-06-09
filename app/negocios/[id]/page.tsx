@@ -784,6 +784,7 @@ export default function NegocioDetalhePage() {
     if (!arquivoMidiaId) return;
     if (proposalPdfUrls[proposalId]) return;
 
+    const resolvedProposalId = proposalId;
     let active = true;
 
     async function loadExistingProposalPdfUrl() {
@@ -794,9 +795,10 @@ export default function NegocioDetalhePage() {
       }>(`/api/propostas/${proposalId}/documento`);
 
       if (!active || !result.ok || !result.data.arquivo_url) return;
+      const arquivoUrl = result.data.arquivo_url;
       setProposalPdfUrls((current) => ({
         ...current,
-        [proposalId]: result.data.arquivo_url,
+        [resolvedProposalId]: arquivoUrl,
       }));
     }
 

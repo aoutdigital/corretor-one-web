@@ -27,6 +27,12 @@ function normalizeNicknameValue(nickname: string): string {
   return nickname.trim().toLowerCase();
 }
 
+function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
+  const arrayBuffer = new ArrayBuffer(buffer.byteLength);
+  new Uint8Array(arrayBuffer).set(buffer);
+  return arrayBuffer;
+}
+
 export async function ensureProfileNicknameLogos(
   ownerId: string,
   options?: { force?: boolean },
@@ -117,14 +123,14 @@ export async function ensureProfileNicknameLogos(
       storage.upload({
         bucket,
         path: logoDefaultPath,
-        file: new File([logoDefaultBuffer], `${nicknameSlug}.png`, { type: "image/png" }),
+        file: new File([bufferToArrayBuffer(logoDefaultBuffer)], `${nicknameSlug}.png`, { type: "image/png" }),
         contentType: "image/png",
         upsert: true,
       }),
       storage.upload({
         bucket,
         path: logoWhitePath,
-        file: new File([logoWhiteBuffer], `${nicknameSlug}-white.png`, { type: "image/png" }),
+        file: new File([bufferToArrayBuffer(logoWhiteBuffer)], `${nicknameSlug}-white.png`, { type: "image/png" }),
         contentType: "image/png",
         upsert: true,
       }),

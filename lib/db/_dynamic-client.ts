@@ -2,15 +2,18 @@ import type { DbErrorLike } from "@/lib/db/_errors";
 
 type ResultOne = Promise<{ data: Record<string, unknown> | null; error: DbErrorLike | null }>;
 type ResultMany = Promise<{ data: Record<string, unknown>[] | null; error: DbErrorLike | null }>;
+type ResultMutate = Promise<{ data?: unknown; error: DbErrorLike | null }>;
 
-export type DynamicSelect = {
+export type DynamicSelect = ResultMany & {
   eq: (column: string, value: unknown) => DynamicSelect;
-  order: (column: string, options: { ascending: boolean }) => ResultMany;
+  or: (filters: string) => DynamicSelect;
+  order: (column: string, options: { ascending: boolean }) => DynamicSelect;
+  limit: (count: number) => DynamicSelect;
   maybeSingle: () => ResultOne;
   single: () => ResultOne;
 };
 
-export type DynamicMutate = {
+export type DynamicMutate = ResultMutate & {
   eq: (column: string, value: unknown) => DynamicMutate;
   select: (columns: string) => {
     single: () => ResultOne;
@@ -28,4 +31,3 @@ export type DynamicTable = {
 export type DynamicClient = {
   from: (table: string) => DynamicTable;
 };
-

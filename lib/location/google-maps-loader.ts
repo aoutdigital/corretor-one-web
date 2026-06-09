@@ -1,3 +1,62 @@
+type GoogleLatLngLiteral = { lat: number; lng: number };
+type GoogleLatLngLike = GoogleLatLngLiteral | { lat: () => number; lng: () => number };
+
+declare global {
+  interface Window {
+    google?: {
+      maps: {
+        Map: new (
+          element: Element,
+          options: Record<string, unknown>,
+        ) => {
+          fitBounds: (
+            bounds: { extend: (position: GoogleLatLngLiteral) => void },
+            padding?: number | Record<string, number>,
+          ) => void;
+          setCenter: (latLng: GoogleLatLngLiteral) => void;
+          setZoom: (zoom: number) => void;
+        };
+        Marker: new (options: Record<string, unknown>) => {
+          setMap?: (map: unknown | null) => void;
+          setPosition: (position: GoogleLatLngLiteral) => void;
+          addListener: (eventName: string, handler: () => void) => void;
+          getPosition: () => { lat: () => number; lng: () => number } | null;
+        };
+        LatLngBounds: new () => {
+          extend: (position: GoogleLatLngLiteral) => void;
+        };
+        InfoWindow: new (options?: { content?: string | Element; maxWidth?: number }) => {
+          close: () => void;
+          setContent: (content: string | Element) => void;
+          open: (options: { anchor?: unknown; map?: unknown }) => void;
+        };
+        event: {
+          addListener: (
+            instance: unknown,
+            eventName: string,
+            handler: () => void,
+          ) => { remove: () => void };
+        };
+        importLibrary?: (libraryName: string) => Promise<unknown>;
+        marker?: {
+          AdvancedMarkerElement?: new (options: {
+            map: unknown;
+            position: GoogleLatLngLiteral;
+            gmpDraggable?: boolean;
+            title?: string;
+          }) => {
+            map?: unknown;
+            position?: GoogleLatLngLike | null;
+            setMap?: (map: unknown | null) => void;
+            addListener?: (eventName: string, handler: () => void) => void;
+          };
+        };
+      };
+    };
+    __coMapsPromise?: Promise<void>;
+  }
+}
+
 export function loadGoogleMapsScript(key: string): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (window.google?.maps && typeof window.google.maps.Map === "function") {

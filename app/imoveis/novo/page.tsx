@@ -24,7 +24,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AppShell } from "@/app/_components/app-shell";
 import { LongTextAykaEditor, type AykaConfig } from "@/app/_components/long-text-ayka-editor";
@@ -1688,49 +1688,7 @@ function tipoUsoFromTipoImovel(tipo: TipoImovelValue): "Residencial" | "Comercia
   return COMMERCIAL_TIPO_IMOVEL.has(tipo) ? "Comercial" : "Residencial";
 }
 
-declare global {
-  interface Window {
-    google?: {
-      maps?: {
-        Map: new (
-          element: HTMLElement,
-          options: Record<string, unknown>,
-        ) => {
-          setCenter: (latLng: { lat: number; lng: number }) => void;
-          setZoom: (zoom: number) => void;
-        };
-        Marker: new (options: Record<string, unknown>) => {
-          setPosition: (position: { lat: number; lng: number }) => void;
-          addListener: (eventName: string, handler: () => void) => void;
-          getPosition: () => { lat: () => number; lng: () => number } | null;
-        };
-        event: {
-          addListener: (
-            instance: unknown,
-            eventName: string,
-            handler: () => void,
-          ) => { remove: () => void };
-        };
-        marker?: {
-          AdvancedMarkerElement: new (options: {
-            map: unknown;
-            position: { lat: number; lng: number };
-            gmpDraggable?: boolean;
-          }) => {
-            position?:
-              | { lat: number; lng: number }
-              | { lat: () => number; lng: () => number }
-              | null;
-            setMap?: (map: unknown | null) => void;
-          };
-        };
-      };
-    };
-    __coMapsPromise?: Promise<void>;
-  }
-}
-
-export default function NovoImovelPage() {
+function NovoImovelContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -9666,5 +9624,13 @@ Retorne SOMENTE JSON válido:
         ) : null}
       </div>
     </AppShell>
+  );
+}
+
+export default function NovoImovelPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen px-6 py-12">Carregando imóvel...</main>}>
+      <NovoImovelContent />
+    </Suspense>
   );
 }

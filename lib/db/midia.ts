@@ -13,6 +13,12 @@ type MidiaStorageProvider = "SUPABASE" | "S3";
 const IMOVEL_PUBLIC_WATERMARK_VERSION = "v3";
 const EMPREENDIMENTO_PUBLIC_WATERMARK_VERSION = "v3";
 
+function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
+  const arrayBuffer = new ArrayBuffer(buffer.byteLength);
+  new Uint8Array(arrayBuffer).set(buffer);
+  return arrayBuffer;
+}
+
 export type UploadMidiaInput = {
   file: File;
   ref_tipo?: RefTipo;
@@ -884,9 +890,13 @@ export async function syncImovelPublicMidia(
       }
 
       try {
-        const file = new File([watermarkedBuffer], `${slugPublico}-${String(indicePublico).padStart(4, "0")}.jpg`, {
-          type: "image/jpeg",
-        });
+        const file = new File(
+          [bufferToArrayBuffer(watermarkedBuffer)],
+          `${slugPublico}-${String(indicePublico).padStart(4, "0")}.jpg`,
+          {
+            type: "image/jpeg",
+          },
+        );
         const uploaded = await storage.upload({
           bucket: storageBucket,
           path: storagePath,
@@ -1207,7 +1217,7 @@ export async function syncEmpreendimentoPublicMidia(
 
       try {
         const file = new File(
-          [watermarkedBuffer],
+          [bufferToArrayBuffer(watermarkedBuffer)],
           `${slugPublico}-${String(indicePublico).padStart(4, "0")}.jpg`,
           {
             type: "image/jpeg",
@@ -1369,10 +1379,12 @@ export async function uploadMidia(
 
   if (midiaInsert.error) return mapDbError(midiaInsert.error);
   if (!midiaInsert.data) return fail("DATABASE_ERROR", "Media insert returned no data");
+  const midiaId = typeof midiaInsert.data.id === "string" ? midiaInsert.data.id : "";
+  if (!midiaId) return fail("DATABASE_ERROR", "Media insert returned invalid id");
 
   // Regra de storage: imagens ficam somente na versão otimizada (1920px).
   if (tipo === "IMAGEM") {
-    const optimized = await optimizeMidiaOwnedTo1920(accessToken, midiaInsert.data.id);
+    const optimized = await optimizeMidiaOwnedTo1920(accessToken, midiaId);
     if (!optimized.ok) return optimized;
   }
 
@@ -1383,7 +1395,7 @@ export async function uploadMidia(
         owner_id: user.id,
         ref_tipo: input.ref_tipo,
         ref_id: input.ref_id,
-        midia_id: midiaInsert.data.id,
+        midia_id: midiaId,
         grupo: input.grupo ?? null,
         ordem: input.ordem ?? 0,
       })
@@ -1403,7 +1415,7 @@ export async function uploadMidia(
   const currentMidia = await db
     .from("midia")
     .select("id,owner_id,url,storage_bucket,storage_path,tipo")
-    .eq("id", midiaInsert.data.id)
+    .eq("id", midiaId)
     .eq("owner_id", user.id)
     .maybeSingle();
 

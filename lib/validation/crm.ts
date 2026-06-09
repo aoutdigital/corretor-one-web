@@ -6,6 +6,7 @@ import {
   mapLegacyFinalidadeToModalidade,
   mapModalidadeToLegacyFinalidade,
 } from "@/lib/crm/oportunidades";
+import type { CreateAtividadeInput } from "@/lib/db/atividades";
 import type { Json, Database } from "@/lib/supabase/database.types";
 
 type LeadInsert = Database["public"]["Tables"]["leads"]["Insert"];
@@ -479,7 +480,7 @@ export function validateUpdateLeadBriefing(
 
 export function validateCreateAtividade(
   payload: unknown,
-): ApiResult<Omit<AtividadeInsert, "owner_id">> {
+): ApiResult<CreateAtividadeInput> {
   if (!asObject(payload)) return fail("VALIDATION_ERROR", "Body must be a JSON object");
   if (typeof payload.lead_id !== "string" || payload.lead_id.trim() === "") {
     return fail("VALIDATION_ERROR", "lead_id is required");

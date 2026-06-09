@@ -28,14 +28,14 @@ async function renderSingleTheme(
         width: number;
         height: number;
         deviceScaleFactor: number;
-      }) => Promise<void>;
-      goto: (url: string, input: { waitUntil: "networkidle0" }) => Promise<void>;
-      addStyleTag: (input: { content: string }) => Promise<void>;
-      evaluate: (fn: () => Promise<void>) => Promise<void>;
+      }) => Promise<unknown>;
+      goto: (url: string, input: { waitUntil: "networkidle0" }) => Promise<unknown>;
+      addStyleTag: (input: { content: string }) => Promise<unknown>;
+      evaluate: (fn: () => Promise<void>) => Promise<unknown>;
       $: (selector: string) => Promise<{
         screenshot: (input: { type: "png"; omitBackground: boolean }) => Promise<Uint8Array>;
       } | null>;
-      close: () => Promise<void>;
+      close: () => Promise<unknown>;
     }>;
   },
   input: { nickname: string; theme: LogoTheme },
@@ -85,16 +85,16 @@ async function launchPuppeteerBrowser(puppeteerModule: {
         width: number;
         height: number;
         deviceScaleFactor: number;
-      }) => Promise<void>;
-      goto: (url: string, input: { waitUntil: "networkidle0" }) => Promise<void>;
-      addStyleTag: (input: { content: string }) => Promise<void>;
-      evaluate: (fn: () => Promise<void>) => Promise<void>;
+      }) => Promise<unknown>;
+      goto: (url: string, input: { waitUntil: "networkidle0" }) => Promise<unknown>;
+      addStyleTag: (input: { content: string }) => Promise<unknown>;
+      evaluate: (fn: () => Promise<void>) => Promise<unknown>;
       $: (selector: string) => Promise<{
         screenshot: (input: { type: "png"; omitBackground: boolean }) => Promise<Uint8Array>;
       } | null>;
-      close: () => Promise<void>;
+      close: () => Promise<unknown>;
     }>;
-    close: () => Promise<void>;
+    close: () => Promise<unknown>;
   }>;
 }): Promise<{
   newPage: () => Promise<{
@@ -102,16 +102,16 @@ async function launchPuppeteerBrowser(puppeteerModule: {
       width: number;
       height: number;
       deviceScaleFactor: number;
-    }) => Promise<void>;
-    goto: (url: string, input: { waitUntil: "networkidle0" }) => Promise<void>;
-    addStyleTag: (input: { content: string }) => Promise<void>;
-    evaluate: (fn: () => Promise<void>) => Promise<void>;
+    }) => Promise<unknown>;
+    goto: (url: string, input: { waitUntil: "networkidle0" }) => Promise<unknown>;
+    addStyleTag: (input: { content: string }) => Promise<unknown>;
+    evaluate: (fn: () => Promise<void>) => Promise<unknown>;
     $: (selector: string) => Promise<{
       screenshot: (input: { type: "png"; omitBackground: boolean }) => Promise<Uint8Array>;
     } | null>;
-    close: () => Promise<void>;
+    close: () => Promise<unknown>;
   }>;
-  close: () => Promise<void>;
+  close: () => Promise<unknown>;
 } | null> {
   const defaultArgs = ["--no-sandbox", "--disable-setuid-sandbox"];
   const attempts: Array<{

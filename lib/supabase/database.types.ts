@@ -1936,6 +1936,7 @@ export type Database = {
           dominio_status: Database["public"]["Enums"]["status_dominio"]
           email: string
           email_verificado_em: string | null
+          frase_impacto: string | null
           genero: Database["public"]["Enums"]["genero"] | null
           id: string
           imagem_capa_url: string | null
@@ -1985,6 +1986,7 @@ export type Database = {
           dominio_status?: Database["public"]["Enums"]["status_dominio"]
           email: string
           email_verificado_em?: string | null
+          frase_impacto?: string | null
           genero?: Database["public"]["Enums"]["genero"] | null
           id: string
           imagem_capa_url?: string | null
@@ -2034,6 +2036,7 @@ export type Database = {
           dominio_status?: Database["public"]["Enums"]["status_dominio"]
           email?: string
           email_verificado_em?: string | null
+          frase_impacto?: string | null
           genero?: Database["public"]["Enums"]["genero"] | null
           id?: string
           imagem_capa_url?: string | null

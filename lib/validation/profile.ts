@@ -34,6 +34,7 @@ const UF_VALUES = new Set([
 const NICKNAME_REGEX = /^[a-z0-9]{1,35}$/;
 const NICKNAME_BLOCKED_TERMS_REGEX = /(corret|imob|imov|aparta|casa)/i;
 const CRECI_NUMERO_REGEX = /^[0-9]{1,6}$/;
+const FRASE_IMPACTO_MAX_LENGTH = 90;
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -46,6 +47,7 @@ const ALLOWED_PROFILE_PATCH_KEYS = new Set([
   "nickname",
   "avatar_url",
   "imagem_capa_url",
+  "frase_impacto",
   "bio",
   "uf",
   "cidades_foco",
@@ -78,6 +80,7 @@ export type UpdateProfileInput = {
   nickname?: string | null;
   avatar_url?: string | null;
   imagem_capa_url?: string | null;
+  frase_impacto?: string | null;
   bio?: string | null;
   uf?: string | null;
   cidades_foco?: string[] | null;
@@ -158,6 +161,15 @@ export function validateProfilePatch(payload: unknown): ApiResult<UpdateProfileI
       return fail("VALIDATION_ERROR", "nickname contains blocked terms");
     }
     parsed.nickname = result.data;
+  }
+
+  if ("frase_impacto" in payload) {
+    const result = parseNullableString(payload.frase_impacto, "frase_impacto");
+    if (!result.ok) return result;
+    if (result.data && result.data.length > FRASE_IMPACTO_MAX_LENGTH) {
+      return fail("VALIDATION_ERROR", "frase_impacto must contain at most 90 characters");
+    }
+    parsed.frase_impacto = result.data;
   }
 
   if ("genero" in payload) {

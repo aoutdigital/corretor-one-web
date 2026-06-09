@@ -11,7 +11,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { Card } from "flowbite-react";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { AppShell } from "@/app/_components/app-shell";
 import { apiFetchWithAuth } from "@/lib/client/auth-api";
@@ -58,7 +58,7 @@ function formatEnumLabel(value: string | null | undefined) {
     .join(" ");
 }
 
-export default function ImoveisPage() {
+function ImoveisContent() {
   const searchParams = useSearchParams();
   const [items, setItems] = useState<Imovel[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -432,5 +432,13 @@ export default function ImoveisPage() {
         </div>
       ) : null}
     </AppShell>
+  );
+}
+
+export default function ImoveisPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen px-6 py-12">Carregando imóveis...</main>}>
+      <ImoveisContent />
+    </Suspense>
   );
 }

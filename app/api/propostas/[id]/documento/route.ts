@@ -778,8 +778,10 @@ export async function POST(request: Request, { params }: Params) {
 
   const slug = slugify(proposta.titulo) || proposta.id.slice(0, 8);
   const fileName = `${slug}-${nowIso.slice(0, 10)}.pdf`;
+  const pdfArrayBuffer = new ArrayBuffer(pdfResult.data.byteLength);
+  new Uint8Array(pdfArrayBuffer).set(pdfResult.data);
   const uploadResult = await uploadMidia(accessToken, {
-    file: new File([pdfResult.data], fileName, { type: "application/pdf" }),
+    file: new File([pdfArrayBuffer], fileName, { type: "application/pdf" }),
     ref_tipo: "OUTRO",
     ref_id: proposta.id,
     grupo: "PROPOSTA_NEGOCIO",

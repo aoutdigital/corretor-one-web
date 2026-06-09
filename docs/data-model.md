@@ -227,6 +227,7 @@ Perfil público
 - imagem_capa_url (text, nullable)
 - logo_nickname_url (text, nullable) *(logo público do corretor com nickname, versão padrão)*
 - logo_nickname_white_url (text, nullable) *(logo público do corretor com nickname, versão branca para marca d'água)*
+- frase_impacto (text, nullable) *(máx. 90 caracteres; frase curta exibida no hero do perfil público)*
 - bio (text, nullable)
 
 Atuação

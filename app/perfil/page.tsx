@@ -53,6 +53,7 @@ type Profile = {
   telefone: string | null;
   whatsapp: string | null;
   whatsapp_verificado_em: string | null;
+  frase_impacto: string | null;
   bio: string | null;
   nickname: string | null;
   avatar_url: string | null;
@@ -743,6 +744,7 @@ export default function PerfilPage() {
   const [sobrenome, setSobrenome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [fraseImpacto, setFraseImpacto] = useState("");
   const [bio, setBio] = useState("");
   const bioEditorRef = useRef<HTMLDivElement | null>(null);
   const [instagram, setInstagram] = useState("");
@@ -807,6 +809,7 @@ export default function PerfilPage() {
       setSobrenome(data.sobrenome ?? "");
       setTelefone(data.telefone ?? "");
       setWhatsapp(data.whatsapp ?? "");
+      setFraseImpacto(data.frase_impacto ?? "");
       setBio(data.bio ?? "");
       setUf(data.uf ?? "");
       setCidadesFoco(
@@ -1121,6 +1124,7 @@ export default function PerfilPage() {
       const patch = {
         primeiro_nome: primeiroNome.trim(),
         sobrenome: sobrenome.trim() || null,
+        frase_impacto: fraseImpacto.trim() || null,
         bio: bio.trim() || null,
         instagram: instagram.trim() || null,
         linkedin: linkedin.trim() || null,
@@ -1371,6 +1375,20 @@ export default function PerfilPage() {
                 />
               </label>
             </div>
+
+            <label className="block text-sm">
+              <span className="mb-1 flex items-center justify-between gap-3 text-slate-500">
+                <span>Frase de impacto</span>
+                <span className="text-xs tabular-nums text-slate-400">{fraseImpacto.length}/90</span>
+              </span>
+              <input
+                value={fraseImpacto}
+                onChange={(event) => setFraseImpacto(event.target.value.slice(0, 90))}
+                maxLength={90}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--blue-slate)]"
+                placeholder="Ex.: Especialista em imóveis de alto padrão em São Paulo"
+              />
+            </label>
 
             <div className="block text-sm">
               <span className="mb-1 block text-slate-500">Bio (rich text)</span>
