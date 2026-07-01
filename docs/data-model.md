@@ -277,6 +277,45 @@ Domínio personalizado (futuro)
 
 ---
 
+### provas_sociais
+- id (uuid, PK)
+- owner_id (uuid, FK profiles.id)
+- midia_id (uuid, FK midia.id, nullable)
+
+Conteúdo:
+- tipo (text, enum PROVA_SOCIAL_TIPO)
+- titulo (text)
+- descricao (text, nullable)
+- depoimento (text, nullable)
+- cliente_nome_publico (text, nullable) *(nome curto, iniciais ou família; não exigir nome completo)*
+- localidade (text, nullable)
+- data_momento (date, nullable)
+- tags (text[], nullable) *(ex: Venda, Locação, Escritura)*
+
+Imagem pública:
+- imagem_url (text, nullable)
+- imagem_alt (text, nullable)
+- consentimento_imagem_confirmado (bool, default false)
+
+Publicação:
+- status (text, enum STATUS_PROVA_SOCIAL, default RASCUNHO)
+- ordem (int, default 0)
+- destaque (bool, default false)
+- publicado_em (timestamptz, nullable)
+
+- created_at (timestamptz)
+- updated_at (timestamptz)
+
+Índices: (owner_id, status, ordem), (owner_id, destaque), (publicado_em desc)
+
+Regras:
+- RLS por owner para CRUD no app.
+- Leitura pública apenas quando `status = PUBLICADO` e o `profiles.status = ATIVO`.
+- Se houver `imagem_url`, exigir `consentimento_imagem_confirmado = true` para publicar.
+- Imagens de prova social são registros humanos/depoimentos e **não** passam pela geração de marca d'água usada em imóveis/empreendimentos.
+
+---
+
 ## 4) Imóveis & Empreendimentos
 
 ### imoveis

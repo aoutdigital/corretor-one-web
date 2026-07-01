@@ -2072,6 +2072,90 @@ export type Database = {
         }
         Relationships: []
       }
+      provas_sociais: {
+        Row: {
+          cliente_nome_publico: string | null
+          consentimento_imagem_confirmado: boolean
+          created_at: string
+          data_momento: string | null
+          depoimento: string | null
+          descricao: string | null
+          destaque: boolean
+          id: string
+          imagem_alt: string | null
+          imagem_url: string | null
+          localidade: string | null
+          midia_id: string | null
+          ordem: number
+          owner_id: string
+          publicado_em: string | null
+          status: Database["public"]["Enums"]["status_prova_social"]
+          tags: string[]
+          tipo: Database["public"]["Enums"]["prova_social_tipo"]
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_nome_publico?: string | null
+          consentimento_imagem_confirmado?: boolean
+          created_at?: string
+          data_momento?: string | null
+          depoimento?: string | null
+          descricao?: string | null
+          destaque?: boolean
+          id?: string
+          imagem_alt?: string | null
+          imagem_url?: string | null
+          localidade?: string | null
+          midia_id?: string | null
+          ordem?: number
+          owner_id: string
+          publicado_em?: string | null
+          status?: Database["public"]["Enums"]["status_prova_social"]
+          tags?: string[]
+          tipo: Database["public"]["Enums"]["prova_social_tipo"]
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_nome_publico?: string | null
+          consentimento_imagem_confirmado?: boolean
+          created_at?: string
+          data_momento?: string | null
+          depoimento?: string | null
+          descricao?: string | null
+          destaque?: boolean
+          id?: string
+          imagem_alt?: string | null
+          imagem_url?: string | null
+          localidade?: string | null
+          midia_id?: string | null
+          ordem?: number
+          owner_id?: string
+          publicado_em?: string | null
+          status?: Database["public"]["Enums"]["status_prova_social"]
+          tags?: string[]
+          tipo?: Database["public"]["Enums"]["prova_social_tipo"]
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provas_sociais_midia_id_fkey"
+            columns: ["midia_id"]
+            isOneToOne: false
+            referencedRelation: "midia"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provas_sociais_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       propostas: {
         Row: {
           arquivo_midia_id: string | null
@@ -2679,10 +2763,20 @@ export type Database = {
       papel_imobiliaria: "DONO" | "ADMIN" | "CORRETOR"
       papel_parte_negocio: "COMPRADOR" | "VENDEDOR"
       periodicidade: "MENSAL" | "ANUAL"
+      prova_social_tipo:
+        | "ENTREGA_CHAVES"
+        | "ASSINATURA_CONTRATO"
+        | "ASSINATURA_ESCRITURA"
+        | "DEPOIMENTO"
+        | "COMPRA_REALIZADA"
+        | "VENDA_REALIZADA"
+        | "LOCACAO_REALIZADA"
+        | "POS_VENDA"
       ref_localidade_tipo: "UF" | "CIDADE"
       ref_tipo:
         | "IMOVEL"
         | "EMPREENDIMENTO"
+        | "PROVA_SOCIAL"
         | "ARTIGO"
         | "CAMPANHA"
         | "TEMPLATE"
@@ -2750,6 +2844,7 @@ export type Database = {
         | "CLIENTE"
         | "DESQUALIFICADO"
       status_portal_user: "ATIVO" | "SUSPENSO"
+      status_prova_social: "RASCUNHO" | "PUBLICADO" | "ARQUIVADO"
       status_proposta:
         | "RASCUNHO"
         | "ENVIADA"
@@ -3167,10 +3262,21 @@ export const Constants = {
       papel_imobiliaria: ["DONO", "ADMIN", "CORRETOR"],
       papel_parte_negocio: ["COMPRADOR", "VENDEDOR"],
       periodicidade: ["MENSAL", "ANUAL"],
+      prova_social_tipo: [
+        "ENTREGA_CHAVES",
+        "ASSINATURA_CONTRATO",
+        "ASSINATURA_ESCRITURA",
+        "DEPOIMENTO",
+        "COMPRA_REALIZADA",
+        "VENDA_REALIZADA",
+        "LOCACAO_REALIZADA",
+        "POS_VENDA",
+      ],
       ref_localidade_tipo: ["UF", "CIDADE"],
       ref_tipo: [
         "IMOVEL",
         "EMPREENDIMENTO",
+        "PROVA_SOCIAL",
         "ARTIGO",
         "CAMPANHA",
         "TEMPLATE",
@@ -3243,6 +3349,7 @@ export const Constants = {
         "DESQUALIFICADO",
       ],
       status_portal_user: ["ATIVO", "SUSPENSO"],
+      status_prova_social: ["RASCUNHO", "PUBLICADO", "ARQUIVADO"],
       status_proposta: [
         "RASCUNHO",
         "ENVIADA",

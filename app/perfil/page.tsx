@@ -12,8 +12,10 @@ import {
   LinkedinLogo,
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
+  NotePencil,
   PinterestLogo,
   Phone,
+  Plus,
   ShieldCheck,
   Spinner,
   TextB,
@@ -21,6 +23,7 @@ import {
   TextUnderline,
   ListBullets,
   TiktokLogo,
+  Trash,
   XLogo,
   UploadSimple,
   UserCircle,
@@ -107,6 +110,56 @@ type EmailProfissionalStatusPayload = {
   email_profissional: EmailProfissional | null;
 };
 
+type SocialProofStatus = "RASCUNHO" | "PUBLICADO" | "ARQUIVADO";
+type SocialProofType =
+  | "ENTREGA_CHAVES"
+  | "ASSINATURA_CONTRATO"
+  | "ASSINATURA_ESCRITURA"
+  | "DEPOIMENTO"
+  | "COMPRA_REALIZADA"
+  | "VENDA_REALIZADA"
+  | "LOCACAO_REALIZADA"
+  | "POS_VENDA";
+
+type SocialProof = {
+  id: string;
+  owner_id: string;
+  midia_id: string | null;
+  tipo: SocialProofType;
+  titulo: string;
+  descricao: string | null;
+  depoimento: string | null;
+  cliente_nome_publico: string | null;
+  localidade: string | null;
+  data_momento: string | null;
+  tags: string[];
+  imagem_url: string | null;
+  imagem_alt: string | null;
+  consentimento_imagem_confirmado: boolean;
+  status: SocialProofStatus;
+  ordem: number;
+  destaque: boolean;
+  publicado_em: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type SocialProofDraft = {
+  tipo: SocialProofType;
+  titulo: string;
+  descricao: string;
+  depoimento: string;
+  cliente_nome_publico: string;
+  localidade: string;
+  data_momento: string;
+  tags: string;
+  imagem_alt: string;
+  consentimento_imagem_confirmado: boolean;
+  status: SocialProofStatus;
+  ordem: string;
+  destaque: boolean;
+};
+
 type CropPoint = { x: number; y: number };
 type NaturalSize = { width: number; height: number };
 type CidadeOption = { codigo_ibge: number; nome: string; uf: string };
@@ -119,6 +172,21 @@ type CoverCropperProps = {
 
 const COVER_FRAME = { width: 960, height: 300 };
 const COVER_OUTPUT = { width: 1600, height: 500 };
+const SOCIAL_PROOF_TYPE_OPTIONS: Array<{ value: SocialProofType; label: string }> = [
+  { value: "ENTREGA_CHAVES", label: "Entrega de chaves" },
+  { value: "ASSINATURA_CONTRATO", label: "Assinatura de contrato" },
+  { value: "ASSINATURA_ESCRITURA", label: "Assinatura de escritura" },
+  { value: "DEPOIMENTO", label: "Depoimento" },
+  { value: "COMPRA_REALIZADA", label: "Compra realizada" },
+  { value: "VENDA_REALIZADA", label: "Venda realizada" },
+  { value: "LOCACAO_REALIZADA", label: "Locação realizada" },
+  { value: "POS_VENDA", label: "Pós-venda" },
+];
+const SOCIAL_PROOF_STATUS_LABELS: Record<SocialProofStatus, string> = {
+  RASCUNHO: "Rascunho",
+  PUBLICADO: "Publicado",
+  ARQUIVADO: "Arquivado",
+};
 const UF_OPTIONS = [
   "AC",
   "AL",
@@ -731,6 +799,262 @@ function EmailEditModal({ currentEmail, onClose, onSuccess }: EmailEditModalProp
   );
 }
 
+function buildSocialProofDraft(item?: SocialProof | null): SocialProofDraft {
+  return {
+    tipo: item?.tipo ?? "ENTREGA_CHAVES",
+    titulo: item?.titulo ?? "",
+    descricao: item?.descricao ?? "",
+    depoimento: item?.depoimento ?? "",
+    cliente_nome_publico: item?.cliente_nome_publico ?? "",
+    localidade: item?.localidade ?? "",
+    data_momento: item?.data_momento ?? "",
+    tags: item?.tags?.join(", ") ?? "",
+    imagem_alt: item?.imagem_alt ?? "",
+    consentimento_imagem_confirmado: item?.consentimento_imagem_confirmado ?? false,
+    status: item?.status ?? "RASCUNHO",
+    ordem: String(item?.ordem ?? 0),
+    destaque: item?.destaque ?? false,
+  };
+}
+
+function SocialProofModal({
+  item,
+  onClose,
+  onSave,
+  saving,
+}: {
+  item: SocialProof | null;
+  onClose: () => void;
+  onSave: (draft: SocialProofDraft, imageFile: File | null) => void;
+  saving: boolean;
+}) {
+  const [draft, setDraft] = useState<SocialProofDraft>(() => buildSocialProofDraft(item));
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(item?.imagem_url ?? null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  function updateDraft<K extends keyof SocialProofDraft>(key: K, value: SocialProofDraft[K]) {
+    setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleImageChange(file: File | null) {
+    setImageFile(file);
+    if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(file ? URL.createObjectURL(file) : item?.imagem_url ?? null);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/55 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-2xl">{item ? "Editar prova social" : "Nova prova social"}</h2>
+            <p className="text-sm text-slate-600">Momentos e depoimentos exibidos no perfil público.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex cursor-pointer rounded-lg border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="space-y-3">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+              {previewUrl ? (
+                <Image src={previewUrl} alt="Imagem da prova social" fill className="object-cover" unoptimized />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-slate-400">
+                  <ImageSquare size={42} />
+                </div>
+              )}
+            </div>
+            <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+              <UploadSimple size={16} />
+              Selecionar imagem
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(event) => {
+                  handleImageChange(event.target.files?.[0] ?? null);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+            <label className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={draft.consentimento_imagem_confirmado}
+                onChange={(event) => updateDraft("consentimento_imagem_confirmado", event.target.checked)}
+                className="mt-1"
+              />
+              <span>Confirmo que tenho autorização para publicar esta imagem no perfil público.</span>
+            </label>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="block text-sm">
+              <span className="mb-1 block text-slate-500">Tipo</span>
+              <select
+                value={draft.tipo}
+                onChange={(event) => updateDraft("tipo", event.target.value as SocialProofType)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+              >
+                {SOCIAL_PROOF_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-slate-500">Status</span>
+              <select
+                value={draft.status}
+                onChange={(event) => updateDraft("status", event.target.value as SocialProofStatus)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+              >
+                {Object.entries(SOCIAL_PROOF_STATUS_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block text-sm md:col-span-2">
+              <span className="mb-1 block text-slate-500">Título</span>
+              <input
+                value={draft.titulo}
+                onChange={(event) => updateDraft("titulo", event.target.value.slice(0, 120))}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                placeholder="Ex.: Chaves entregues no Vila Mariana"
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-slate-500">Cliente público</span>
+              <input
+                value={draft.cliente_nome_publico}
+                onChange={(event) => updateDraft("cliente_nome_publico", event.target.value.slice(0, 80))}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                placeholder="Ex.: Família M."
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-slate-500">Localidade</span>
+              <input
+                value={draft.localidade}
+                onChange={(event) => updateDraft("localidade", event.target.value.slice(0, 120))}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                placeholder="Ex.: São Paulo/SP"
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-slate-500">Data</span>
+              <input
+                type="date"
+                value={draft.data_momento}
+                onChange={(event) => updateDraft("data_momento", event.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-slate-500">Ordem</span>
+              <input
+                type="number"
+                value={draft.ordem}
+                onChange={(event) => updateDraft("ordem", event.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+              />
+            </label>
+
+            <label className="block text-sm md:col-span-2">
+              <span className="mb-1 block text-slate-500">Descrição curta</span>
+              <textarea
+                value={draft.descricao}
+                onChange={(event) => updateDraft("descricao", event.target.value.slice(0, 260))}
+                className="min-h-20 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                placeholder="Contexto breve do momento."
+              />
+            </label>
+
+            <label className="block text-sm md:col-span-2">
+              <span className="mb-1 block text-slate-500">Depoimento</span>
+              <textarea
+                value={draft.depoimento}
+                onChange={(event) => updateDraft("depoimento", event.target.value.slice(0, 520))}
+                className="min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                placeholder="Texto do cliente ou relato do atendimento."
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-slate-500">Tags</span>
+              <input
+                value={draft.tags}
+                onChange={(event) => updateDraft("tags", event.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                placeholder="Venda, Escritura, Alto padrão"
+              />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-slate-500">Texto alternativo da imagem</span>
+              <input
+                value={draft.imagem_alt}
+                onChange={(event) => updateDraft("imagem_alt", event.target.value.slice(0, 180))}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                placeholder="Descrição objetiva da foto"
+              />
+            </label>
+
+            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+              <input
+                type="checkbox"
+                checked={draft.destaque}
+                onChange={(event) => updateDraft("destaque", event.target.checked)}
+              />
+              <span>Destacar no perfil</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => onSave(draft, imageFile)}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? <Spinner size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+            Salvar prova social
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PerfilPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -791,8 +1115,25 @@ export default function PerfilPage() {
   const [loadingUpgradePlanos, setLoadingUpgradePlanos] = useState(false);
   const [startingCheckoutPlanId, setStartingCheckoutPlanId] = useState<string | null>(null);
   const [openingBillingPortal, setOpeningBillingPortal] = useState(false);
+  const [socialProofs, setSocialProofs] = useState<SocialProof[]>([]);
+  const [loadingSocialProofs, setLoadingSocialProofs] = useState(false);
+  const [savingSocialProof, setSavingSocialProof] = useState(false);
+  const [editingSocialProof, setEditingSocialProof] = useState<SocialProof | null>(null);
+  const [showSocialProofModal, setShowSocialProofModal] = useState(false);
+  const [deletingSocialProofId, setDeletingSocialProofId] = useState<string | null>(null);
 
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function loadSocialProofs() {
+    setLoadingSocialProofs(true);
+    const result = await apiFetchWithAuth<SocialProof[]>("/api/profile/provas-sociais");
+    if (result.ok) {
+      setSocialProofs(result.data);
+    } else {
+      setError(result.error);
+    }
+    setLoadingSocialProofs(false);
+  }
 
   useEffect(() => {
     async function loadProfile() {
@@ -841,6 +1182,10 @@ export default function PerfilPage() {
 
     void loadProfile();
   }, []);
+
+  useEffect(() => {
+    if (!loading) void loadSocialProofs();
+  }, [loading]);
 
   useEffect(() => {
     if (!bioEditorRef.current) return;
@@ -1046,7 +1391,13 @@ export default function PerfilPage() {
     setCidadesFoco((prev) => prev.filter((item) => item.codigo_ibge !== codigoIbge));
   }
 
-  async function uploadMediaFile(file: File, grupo: string, titulo: string) {
+  async function uploadMediaFile(
+    file: File,
+    grupo: string,
+    titulo: string,
+    refTipo = "OUTRO",
+    refId?: string,
+  ) {
     const accessToken = await getAccessToken();
     if (!accessToken) {
       throw new Error("Sessão expirada. Faça login novamente.");
@@ -1054,7 +1405,8 @@ export default function PerfilPage() {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("ref_tipo", "OUTRO");
+    form.append("ref_tipo", refTipo);
+    if (refId) form.append("ref_id", refId);
     form.append("grupo", grupo);
     form.append("titulo", titulo);
 
@@ -1075,6 +1427,128 @@ export default function PerfilPage() {
     }
 
     return payload.data;
+  }
+
+  function buildSocialProofPayload(draft: SocialProofDraft, statusOverride?: SocialProofStatus) {
+    return {
+      tipo: draft.tipo,
+      titulo: draft.titulo.trim(),
+      descricao: draft.descricao.trim() || null,
+      depoimento: draft.depoimento.trim() || null,
+      cliente_nome_publico: draft.cliente_nome_publico.trim() || null,
+      localidade: draft.localidade.trim() || null,
+      data_momento: draft.data_momento || null,
+      tags: draft.tags
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .slice(0, 8),
+      imagem_alt: draft.imagem_alt.trim() || null,
+      consentimento_imagem_confirmado: draft.consentimento_imagem_confirmado,
+      status: statusOverride ?? draft.status,
+      ordem: Number.isFinite(Number(draft.ordem)) ? Number(draft.ordem) : 0,
+      destaque: draft.destaque,
+    };
+  }
+
+  async function saveSocialProof(draft: SocialProofDraft, imageFile: File | null) {
+    setError(null);
+
+    if (!draft.titulo.trim()) {
+      setError("Informe um título para a prova social.");
+      return;
+    }
+
+    if ((imageFile || editingSocialProof?.imagem_url) && !draft.consentimento_imagem_confirmado) {
+      setError("Confirme a autorização de uso da imagem antes de salvar.");
+      return;
+    }
+
+    setSavingSocialProof(true);
+
+    const requestedStatus = draft.status;
+    const firstPayload = buildSocialProofPayload(draft, imageFile ? "RASCUNHO" : requestedStatus);
+    const endpoint = editingSocialProof
+      ? `/api/profile/provas-sociais/${editingSocialProof.id}`
+      : "/api/profile/provas-sociais";
+
+    const firstResult = await apiFetchWithAuth<SocialProof>(endpoint, {
+      method: editingSocialProof ? "PATCH" : "POST",
+      body: JSON.stringify(firstPayload),
+    });
+
+    if (!firstResult.ok) {
+      setSavingSocialProof(false);
+      setError(firstResult.error);
+      return;
+    }
+
+    let savedItem = firstResult.data;
+
+    if (imageFile) {
+      try {
+        const uploaded = await uploadMediaFile(
+          imageFile,
+          "prova_social",
+          draft.titulo.trim() || "Prova social",
+          "PROVA_SOCIAL",
+          savedItem.id,
+        );
+        const imagePatchResult = await apiFetchWithAuth<SocialProof>(
+          `/api/profile/provas-sociais/${savedItem.id}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({
+              imagem_url: uploaded.url,
+              midia_id: uploaded.id,
+              imagem_alt: draft.imagem_alt.trim() || draft.titulo.trim(),
+              consentimento_imagem_confirmado: draft.consentimento_imagem_confirmado,
+              status: requestedStatus,
+            }),
+          },
+        );
+
+        if (!imagePatchResult.ok) {
+          setSavingSocialProof(false);
+          setError(imagePatchResult.error);
+          return;
+        }
+        savedItem = imagePatchResult.data;
+      } catch (uploadError) {
+        setSavingSocialProof(false);
+        setError(uploadError instanceof Error ? uploadError.message : "Falha no upload da imagem.");
+        return;
+      }
+    }
+
+    setSocialProofs((current) => {
+      const exists = current.some((item) => item.id === savedItem.id);
+      const next = exists
+        ? current.map((item) => (item.id === savedItem.id ? savedItem : item))
+        : [savedItem, ...current];
+      return next.sort((a, b) => a.ordem - b.ordem || b.created_at.localeCompare(a.created_at));
+    });
+    setSavingSocialProof(false);
+    setShowSocialProofModal(false);
+    setEditingSocialProof(null);
+    showToast("Prova social salva com sucesso.");
+  }
+
+  async function deleteSocialProof(id: string) {
+    setDeletingSocialProofId(id);
+    setError(null);
+    const result = await apiFetchWithAuth<{ id: string }>(`/api/profile/provas-sociais/${id}`, {
+      method: "DELETE",
+    });
+    setDeletingSocialProofId(null);
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    setSocialProofs((current) => current.filter((item) => item.id !== id));
+    showToast("Prova social removida.");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -1911,6 +2385,140 @@ export default function PerfilPage() {
           </section>
         </form>
 
+        <section className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-xl">Provas sociais</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Depoimentos, assinaturas e entregas exibidos no seu perfil público.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingSocialProof(null);
+                setShowSocialProofModal(true);
+              }}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-2 text-sm font-semibold text-white"
+            >
+              <Plus size={16} />
+              Nova prova social
+            </button>
+          </div>
+
+          {loadingSocialProofs ? (
+            <div className="mt-4 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              <Spinner size={14} className="animate-spin" />
+              Carregando provas sociais...
+            </div>
+          ) : null}
+
+          {!loadingSocialProofs && socialProofs.length === 0 ? (
+            <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-white text-slate-500">
+                <CheckCircle size={24} />
+              </div>
+              <p className="mt-3 text-sm font-semibold text-slate-800">Nenhuma prova social cadastrada</p>
+              <p className="mx-auto mt-1 max-w-xl text-sm text-slate-500">
+                Cadastre momentos reais para fortalecer confiança antes do visitante chegar aos imóveis.
+              </p>
+            </div>
+          ) : null}
+
+          {socialProofs.length > 0 ? (
+            <div className="mt-4 grid gap-3">
+              {socialProofs.map((item) => {
+                const typeLabel =
+                  SOCIAL_PROOF_TYPE_OPTIONS.find((option) => option.value === item.tipo)?.label ?? item.tipo;
+                return (
+                  <article
+                    key={item.id}
+                    className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3 md:grid-cols-[132px_1fr_auto]"
+                  >
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-slate-100">
+                      {item.imagem_url ? (
+                        <Image
+                          src={item.imagem_url}
+                          alt={item.imagem_alt || item.titulo}
+                          fill
+                          className="object-cover"
+                          sizes="132px"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-slate-400">
+                          <ImageSquare size={26} />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">{typeLabel}</span>
+                        <span
+                          className={`rounded-full px-2 py-1 text-xs ${
+                            item.status === "PUBLICADO"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : item.status === "ARQUIVADO"
+                                ? "bg-slate-200 text-slate-600"
+                                : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {SOCIAL_PROOF_STATUS_LABELS[item.status]}
+                        </span>
+                        {item.destaque ? (
+                          <span className="rounded-full bg-rose-50 px-2 py-1 text-xs text-[var(--primary-scarlet)]">
+                            Destaque
+                          </span>
+                        ) : null}
+                      </div>
+                      <h3 className="mt-2 text-lg font-semibold text-slate-900">{item.titulo}</h3>
+                      <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+                        {item.depoimento || item.descricao || "Sem texto complementar."}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
+                        {item.cliente_nome_publico ? <span>{item.cliente_nome_publico}</span> : null}
+                        {item.localidade ? <span>{item.localidade}</span> : null}
+                        {item.data_momento ? <span>{item.data_momento}</span> : null}
+                        <span>Ordem {item.ordem}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 self-start md:justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingSocialProof(item);
+                          setShowSocialProofModal(true);
+                        }}
+                        className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                      >
+                        <NotePencil size={16} />
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={deletingSocialProofId === item.id}
+                        onClick={() => {
+                          if (window.confirm("Remover esta prova social?")) void deleteSocialProof(item.id);
+                        }}
+                        className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-rose-200 bg-white px-3 py-2 text-sm text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {deletingSocialProofId === item.id ? (
+                          <Spinner size={16} className="animate-spin" />
+                        ) : (
+                          <Trash size={16} />
+                        )}
+                        Remover
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
+        </section>
+
         <section className="rounded-2xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
           <div className="flex items-start gap-2">
             <Crown size={16} className="mt-0.5 text-[var(--grey-olive)]" />
@@ -1959,6 +2567,18 @@ export default function PerfilPage() {
             setCoverPreviewUrl(URL.createObjectURL(coverBlob));
             setCoverCropSourceUrl(null);
           }}
+        />
+      ) : null}
+
+      {showSocialProofModal ? (
+        <SocialProofModal
+          item={editingSocialProof}
+          saving={savingSocialProof}
+          onClose={() => {
+            setShowSocialProofModal(false);
+            setEditingSocialProof(null);
+          }}
+          onSave={(draft, imageFile) => void saveSocialProof(draft, imageFile)}
         />
       ) : null}
 

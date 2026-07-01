@@ -8,7 +8,7 @@ import { renderWatermarkedPublicImage } from "@/lib/media/watermark";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type MidiaTipo = "IMAGEM" | "VIDEO" | "PDF";
-type RefTipo = "IMOVEL" | "EMPREENDIMENTO" | "ARTIGO" | "CAMPANHA" | "TEMPLATE" | "OUTRO";
+type RefTipo = "IMOVEL" | "EMPREENDIMENTO" | "PROVA_SOCIAL" | "ARTIGO" | "CAMPANHA" | "TEMPLATE" | "OUTRO";
 type MidiaStorageProvider = "SUPABASE" | "S3";
 const IMOVEL_PUBLIC_WATERMARK_VERSION = "v3";
 const EMPREENDIMENTO_PUBLIC_WATERMARK_VERSION = "v3";

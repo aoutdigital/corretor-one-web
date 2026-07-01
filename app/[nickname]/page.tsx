@@ -16,6 +16,7 @@ import {
   YoutubeLogo,
 } from "@phosphor-icons/react/dist/ssr";
 
+import { SocialProofCarousel, type SocialProofItem } from "@/app/[nickname]/_components/social-proof-carousel";
 import { buildImovelHeaderTitle } from "@/lib/imoveis/display-title";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
@@ -64,6 +65,23 @@ type EmpreendimentoRow = Pick<
   | "estagio_obra"
   | "n_torres"
   | "n_unidades"
+  | "publicado_em"
+>;
+type SocialProofRow = Pick<
+  Database["public"]["Tables"]["provas_sociais"]["Row"],
+  | "id"
+  | "tipo"
+  | "titulo"
+  | "descricao"
+  | "depoimento"
+  | "cliente_nome_publico"
+  | "localidade"
+  | "data_momento"
+  | "tags"
+  | "imagem_url"
+  | "imagem_alt"
+  | "destaque"
+  | "ordem"
   | "publicado_em"
 >;
 
@@ -183,6 +201,23 @@ const EMPREENDIMENTO_SELECT = `
   publicado_em
 `;
 
+const SOCIAL_PROOF_SELECT = `
+  id,
+  tipo,
+  titulo,
+  descricao,
+  depoimento,
+  cliente_nome_publico,
+  localidade,
+  data_momento,
+  tags,
+  imagem_url,
+  imagem_alt,
+  destaque,
+  ordem,
+  publicado_em
+`;
+
 const OBJECT_PUBLIC_SEGMENT = "/storage/v1/object/public/";
 const RENDER_PUBLIC_SEGMENT = "/storage/v1/render/image/public/";
 
@@ -220,9 +255,10 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
 
   if (!profile) notFound();
 
-  const [imoveis, empreendimentos, listingCounts] = await Promise.all([
+  const [imoveis, empreendimentos, socialProofs, listingCounts] = await Promise.all([
     getPublishedImoveis(profile.id),
     getPublishedEmpreendimentos(profile.id),
+    getPublishedSocialProofs(profile.id),
     getPublishedListingCounts(profile.id),
   ]);
 
@@ -418,6 +454,8 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
           </section>
         ) : null}
 
+        <SocialProofCarousel items={socialProofs} />
+
         <section id="imoveis" className="mx-auto max-w-7xl px-5 py-14">
           <SectionHeader
             eyebrow="Imóveis"
@@ -577,6 +615,37 @@ async function getPublishedEmpreendimentos(ownerId: string) {
   return empreendimentos.map((item) => ({
     ...item,
     capa_url_publica_thumb_webp: getCardImage(mediaById.get(item.id)?.[0]?.url),
+  }));
+}
+
+async function getPublishedSocialProofs(ownerId: string): Promise<SocialProofItem[]> {
+  const supabase = createSupabaseServerClient();
+  const result = await supabase
+    .from("provas_sociais")
+    .select(SOCIAL_PROOF_SELECT)
+    .eq("owner_id", ownerId)
+    .eq("status", "PUBLICADO")
+    .order("destaque", { ascending: false })
+    .order("ordem", { ascending: true })
+    .order("publicado_em", { ascending: false })
+    .limit(12);
+
+  if (result.error) {
+    throw new Error(`Erro ao carregar provas sociais publicas: ${result.error.message}`);
+  }
+
+  return ((result.data ?? []) as SocialProofRow[]).map((item) => ({
+    id: item.id,
+    tipo: item.tipo,
+    titulo: item.titulo,
+    descricao: item.descricao,
+    depoimento: item.depoimento,
+    cliente_nome_publico: item.cliente_nome_publico,
+    localidade: item.localidade,
+    data_momento: item.data_momento,
+    tags: item.tags ?? [],
+    imagem_url: getPublicImageUrl(item.imagem_url),
+    imagem_alt: item.imagem_alt,
   }));
 }
 
