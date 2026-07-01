@@ -817,6 +817,28 @@ function buildSocialProofDraft(item?: SocialProof | null): SocialProofDraft {
   };
 }
 
+function getSocialProofTitlePlaceholder(type: SocialProofType) {
+  if (type === "DEPOIMENTO") return "Ex.: Depoimento após a compra do primeiro imóvel";
+  if (type === "ASSINATURA_CONTRATO") return "Ex.: Contrato assinado com segurança";
+  if (type === "ASSINATURA_ESCRITURA") return "Ex.: Escritura concluída no cartório";
+  if (type === "VENDA_REALIZADA") return "Ex.: Venda concluída no melhor timing";
+  if (type === "LOCACAO_REALIZADA") return "Ex.: Locação fechada para mudança imediata";
+  if (type === "COMPRA_REALIZADA") return "Ex.: Primeiro imóvel comprado";
+  if (type === "POS_VENDA") return "Ex.: Atendimento que continuou depois da entrega";
+  return "Ex.: Chaves entregues no Vila Mariana";
+}
+
+function getSocialProofDescriptionLabel(type: SocialProofType) {
+  if (type === "DEPOIMENTO" || type === "POS_VENDA") return "Contexto do depoimento";
+  if (type === "ASSINATURA_CONTRATO") return "Contexto da negociação";
+  if (type === "ASSINATURA_ESCRITURA") return "Contexto da escritura";
+  return "Contexto do momento";
+}
+
+function isSocialProofTestimonial(type: SocialProofType) {
+  return type === "DEPOIMENTO" || type === "POS_VENDA";
+}
+
 function SocialProofModal({
   item,
   onClose,
@@ -831,6 +853,10 @@ function SocialProofModal({
   const [draft, setDraft] = useState<SocialProofDraft>(() => buildSocialProofDraft(item));
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(item?.imagem_url ?? null);
+  const [step, setStep] = useState(0);
+  const isTestimonial = isSocialProofTestimonial(draft.tipo);
+  const hasImage = Boolean(previewUrl);
+  const steps = ["Tipo", "História", "Imagem", "Publicação"];
 
   useEffect(() => {
     return () => {
@@ -848,207 +874,350 @@ function SocialProofModal({
     setPreviewUrl(file ? URL.createObjectURL(file) : item?.imagem_url ?? null);
   }
 
+  function goNext() {
+    if (step === 0 && !draft.titulo.trim()) return;
+    setStep((current) => Math.min(steps.length - 1, current + 1));
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/55 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-4xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
-        <div className="mb-5 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-2xl">{item ? "Editar prova social" : "Nova prova social"}</h2>
-            <p className="text-sm text-slate-600">Momentos e depoimentos exibidos no perfil público.</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex cursor-pointer rounded-lg border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
-          <div className="space-y-3">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-              {previewUrl ? (
-                <Image src={previewUrl} alt="Imagem da prova social" fill className="object-cover" unoptimized />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-slate-400">
-                  <ImageSquare size={42} />
-                </div>
-              )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-2xl">{item ? "Editar prova social" : "Nova prova social"}</h2>
+              <p className="text-sm text-slate-600">Construa o card público em poucos passos.</p>
             </div>
-            <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
-              <UploadSimple size={16} />
-              Selecionar imagem
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="hidden"
-                onChange={(event) => {
-                  handleImageChange(event.target.files?.[0] ?? null);
-                  event.currentTarget.value = "";
-                }}
-              />
-            </label>
-            <label className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={draft.consentimento_imagem_confirmado}
-                onChange={(event) => updateDraft("consentimento_imagem_confirmado", event.target.checked)}
-                className="mt-1"
-              />
-              <span>Confirmo que tenho autorização para publicar esta imagem no perfil público.</span>
-            </label>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex cursor-pointer rounded-lg border border-slate-300 p-2 text-slate-700 hover:bg-slate-50"
+            >
+              <X size={16} />
+            </button>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="block text-sm">
-              <span className="mb-1 block text-slate-500">Tipo</span>
-              <select
-                value={draft.tipo}
-                onChange={(event) => updateDraft("tipo", event.target.value as SocialProofType)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+          <div className="mt-5 grid grid-cols-4 gap-2">
+            {steps.map((label, index) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setStep(index)}
+                className={[
+                  "rounded-lg border px-2 py-2 text-center text-xs transition",
+                  index === step
+                    ? "border-[var(--primary-scarlet)] bg-rose-50 text-[var(--primary-scarlet)]"
+                    : index < step
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 bg-white text-slate-500",
+                ].join(" ")}
               >
-                {SOCIAL_PROOF_TYPE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block text-sm">
-              <span className="mb-1 block text-slate-500">Status</span>
-              <select
-                value={draft.status}
-                onChange={(event) => updateDraft("status", event.target.value as SocialProofStatus)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
-              >
-                {Object.entries(SOCIAL_PROOF_STATUS_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block text-sm md:col-span-2">
-              <span className="mb-1 block text-slate-500">Título</span>
-              <input
-                value={draft.titulo}
-                onChange={(event) => updateDraft("titulo", event.target.value.slice(0, 120))}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
-                placeholder="Ex.: Chaves entregues no Vila Mariana"
-              />
-            </label>
-
-            <label className="block text-sm">
-              <span className="mb-1 block text-slate-500">Cliente público</span>
-              <input
-                value={draft.cliente_nome_publico}
-                onChange={(event) => updateDraft("cliente_nome_publico", event.target.value.slice(0, 80))}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
-                placeholder="Ex.: Família M."
-              />
-            </label>
-
-            <label className="block text-sm">
-              <span className="mb-1 block text-slate-500">Localidade</span>
-              <input
-                value={draft.localidade}
-                onChange={(event) => updateDraft("localidade", event.target.value.slice(0, 120))}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
-                placeholder="Ex.: São Paulo/SP"
-              />
-            </label>
-
-            <label className="block text-sm">
-              <span className="mb-1 block text-slate-500">Data</span>
-              <input
-                type="date"
-                value={draft.data_momento}
-                onChange={(event) => updateDraft("data_momento", event.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
-              />
-            </label>
-
-            <label className="block text-sm">
-              <span className="mb-1 block text-slate-500">Ordem</span>
-              <input
-                type="number"
-                value={draft.ordem}
-                onChange={(event) => updateDraft("ordem", event.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
-              />
-            </label>
-
-            <label className="block text-sm md:col-span-2">
-              <span className="mb-1 block text-slate-500">Descrição curta</span>
-              <textarea
-                value={draft.descricao}
-                onChange={(event) => updateDraft("descricao", event.target.value.slice(0, 260))}
-                className="min-h-20 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
-                placeholder="Contexto breve do momento."
-              />
-            </label>
-
-            <label className="block text-sm md:col-span-2">
-              <span className="mb-1 block text-slate-500">Depoimento</span>
-              <textarea
-                value={draft.depoimento}
-                onChange={(event) => updateDraft("depoimento", event.target.value.slice(0, 520))}
-                className="min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
-                placeholder="Texto do cliente ou relato do atendimento."
-              />
-            </label>
-
-            <label className="block text-sm">
-              <span className="mb-1 block text-slate-500">Tags</span>
-              <input
-                value={draft.tags}
-                onChange={(event) => updateDraft("tags", event.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
-                placeholder="Venda, Escritura, Alto padrão"
-              />
-            </label>
-
-            <label className="block text-sm">
-              <span className="mb-1 block text-slate-500">Texto alternativo da imagem</span>
-              <input
-                value={draft.imagem_alt}
-                onChange={(event) => updateDraft("imagem_alt", event.target.value.slice(0, 180))}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
-                placeholder="Descrição objetiva da foto"
-              />
-            </label>
-
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-              <input
-                type="checkbox"
-                checked={draft.destaque}
-                onChange={(event) => updateDraft("destaque", event.target.checked)}
-              />
-              <span>Destacar no perfil</span>
-            </label>
+                <span className="mx-auto mb-1 flex h-6 w-6 items-center justify-center rounded-full bg-current/10 text-[11px] font-semibold">
+                  {index + 1}
+                </span>
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => onSave(draft, imageFile)}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving ? <Spinner size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-            Salvar prova social
-          </button>
+        <div className="overflow-y-auto px-5 py-5">
+          {step === 0 ? (
+            <div className="space-y-5">
+              <div>
+                <h3 className="text-xl">Que tipo de prova social é esta?</h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  O tipo define quais campos aparecem nos próximos passos.
+                </p>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                {SOCIAL_PROOF_TYPE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => updateDraft("tipo", option.value)}
+                    className={[
+                      "cursor-pointer rounded-xl border p-3 text-left transition",
+                      draft.tipo === option.value
+                        ? "border-[var(--primary-scarlet)] bg-rose-50 text-slate-950"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                    ].join(" ")}
+                  >
+                    <span className="block text-sm font-semibold">{option.label}</span>
+                    <span className="mt-1 block text-xs text-slate-500">
+                      {isSocialProofTestimonial(option.value)
+                        ? "Foco no texto do cliente e relacionamento."
+                        : "Foco em um marco visual da jornada."}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <label className="block text-sm">
+                <span className="mb-1 flex items-center justify-between gap-3 text-slate-500">
+                  <span>Título público</span>
+                  <span className="text-xs tabular-nums text-slate-400">{draft.titulo.length}/120</span>
+                </span>
+                <input
+                  value={draft.titulo}
+                  onChange={(event) => updateDraft("titulo", event.target.value.slice(0, 120))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                  placeholder={getSocialProofTitlePlaceholder(draft.tipo)}
+                />
+              </label>
+            </div>
+          ) : null}
+
+          {step === 1 ? (
+            <div className="space-y-5">
+              <div>
+                <h3 className="text-xl">Conte a história essencial</h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  Use nomes públicos curtos, iniciais ou uma descrição sem expor dados sensíveis.
+                </p>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block text-sm">
+                  <span className="mb-1 block text-slate-500">Cliente público</span>
+                  <input
+                    value={draft.cliente_nome_publico}
+                    onChange={(event) => updateDraft("cliente_nome_publico", event.target.value.slice(0, 80))}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                    placeholder={isTestimonial ? "Ex.: Mariana S." : "Ex.: Família M."}
+                  />
+                </label>
+
+                <label className="block text-sm">
+                  <span className="mb-1 block text-slate-500">Localidade</span>
+                  <input
+                    value={draft.localidade}
+                    onChange={(event) => updateDraft("localidade", event.target.value.slice(0, 120))}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                    placeholder="Ex.: São Paulo/SP"
+                  />
+                </label>
+
+                <label className="block text-sm">
+                  <span className="mb-1 block text-slate-500">Data do momento</span>
+                  <input
+                    type="date"
+                    value={draft.data_momento}
+                    onChange={(event) => updateDraft("data_momento", event.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                  />
+                </label>
+              </div>
+
+              <label className="block text-sm">
+                <span className="mb-1 flex items-center justify-between gap-3 text-slate-500">
+                  <span>{getSocialProofDescriptionLabel(draft.tipo)}</span>
+                  <span className="text-xs tabular-nums text-slate-400">{draft.descricao.length}/260</span>
+                </span>
+                <textarea
+                  value={draft.descricao}
+                  onChange={(event) => updateDraft("descricao", event.target.value.slice(0, 260))}
+                  className="min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                  placeholder="Uma frase curta com o contexto e o resultado desse atendimento."
+                />
+              </label>
+
+              {isTestimonial ? (
+                <label className="block text-sm">
+                  <span className="mb-1 flex items-center justify-between gap-3 text-slate-500">
+                    <span>Depoimento do cliente</span>
+                    <span className="text-xs tabular-nums text-slate-400">{draft.depoimento.length}/520</span>
+                  </span>
+                  <textarea
+                    value={draft.depoimento}
+                    onChange={(event) => updateDraft("depoimento", event.target.value.slice(0, 520))}
+                    className="min-h-32 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                    placeholder="Texto do cliente sobre o atendimento, compra, venda ou pós-venda."
+                  />
+                </label>
+              ) : null}
+            </div>
+          ) : null}
+
+          {step === 2 ? (
+            <div className="grid gap-5 md:grid-cols-[0.9fr_1.1fr]">
+              <div className="space-y-3">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                  {previewUrl ? (
+                    <Image src={previewUrl} alt="Imagem da prova social" fill className="object-cover" unoptimized />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-slate-400">
+                      <ImageSquare size={42} />
+                    </div>
+                  )}
+                </div>
+                <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                  <UploadSimple size={16} />
+                  {previewUrl ? "Trocar imagem" : "Selecionar imagem"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(event) => {
+                      handleImageChange(event.target.files?.[0] ?? null);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-xl">Imagem do momento</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    A imagem é opcional. Quando usada, ela aparece sem marca d&apos;água no perfil público.
+                  </p>
+                </div>
+
+                {hasImage ? (
+                  <>
+                    <label className="block text-sm">
+                      <span className="mb-1 block text-slate-500">Texto alternativo da imagem</span>
+                      <input
+                        value={draft.imagem_alt}
+                        onChange={(event) => updateDraft("imagem_alt", event.target.value.slice(0, 180))}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                        placeholder="Ex.: Cliente recebendo as chaves do imóvel"
+                      />
+                    </label>
+
+                    <label className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={draft.consentimento_imagem_confirmado}
+                        onChange={(event) => updateDraft("consentimento_imagem_confirmado", event.target.checked)}
+                        className="mt-1"
+                      />
+                      <span>Confirmo que tenho autorização para publicar esta imagem no perfil público.</span>
+                    </label>
+                  </>
+                ) : (
+                  <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    Sem imagem, o card usará um ícone do tipo escolhido.
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {step === 3 ? (
+            <div className="space-y-5">
+              <div>
+                <h3 className="text-xl">Publicação e organização</h3>
+                <p className="mt-1 text-sm text-slate-600">
+                  Você pode salvar como rascunho, publicar agora ou arquivar depois.
+                </p>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="block text-sm">
+                  <span className="mb-1 block text-slate-500">Status</span>
+                  <select
+                    value={draft.status}
+                    onChange={(event) => updateDraft("status", event.target.value as SocialProofStatus)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                  >
+                    {Object.entries(SOCIAL_PROOF_STATUS_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block text-sm">
+                  <span className="mb-1 block text-slate-500">Ordem</span>
+                  <input
+                    type="number"
+                    value={draft.ordem}
+                    onChange={(event) => updateDraft("ordem", event.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                  />
+                </label>
+
+                <label className="block text-sm md:col-span-2">
+                  <span className="mb-1 block text-slate-500">Tags</span>
+                  <input
+                    value={draft.tags}
+                    onChange={(event) => updateDraft("tags", event.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none"
+                    placeholder="Venda, Escritura, Alto padrão"
+                  />
+                </label>
+
+                <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={draft.destaque}
+                    onChange={(event) => updateDraft("destaque", event.target.checked)}
+                  />
+                  <span>Destacar no perfil</span>
+                </label>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Prévia resumida</p>
+                <p className="mt-2 text-lg font-semibold text-slate-900">{draft.titulo || "Título da prova social"}</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {isTestimonial && draft.depoimento
+                    ? draft.depoimento
+                    : draft.descricao || "Contexto do momento aparecerá aqui."}
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-5 py-4">
+          <div>
+            <p className="text-sm text-slate-500">
+              Etapa {step + 1} de {steps.length}
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Cancelar
+            </button>
+            {step > 0 ? (
+              <button
+                type="button"
+                onClick={() => setStep((current) => Math.max(0, current - 1))}
+                className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                Voltar
+              </button>
+            ) : null}
+            {step < steps.length - 1 ? (
+              <button
+                type="button"
+                disabled={step === 0 && !draft.titulo.trim()}
+                onClick={goNext}
+                className="cursor-pointer rounded-lg bg-[var(--primary-scarlet)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Continuar
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={saving || (hasImage && !draft.consentimento_imagem_confirmado)}
+                onClick={() => onSave(draft, imageFile)}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? <Spinner size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                Salvar prova social
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
