@@ -6,16 +6,14 @@ import {
   Buildings,
   EnvelopeSimple,
   HouseLine,
-  InstagramLogo,
-  LinkedinLogo,
   MapPin,
   PhoneCall,
   SealCheck,
   ShieldCheck,
   WhatsappLogo,
-  YoutubeLogo,
 } from "@phosphor-icons/react/dist/ssr";
 
+import { ProfileContactSection, type PublicContactChannel } from "@/app/[nickname]/_components/profile-contact-section";
 import { SocialProofCarousel, type SocialProofItem } from "@/app/[nickname]/_components/social-proof-carousel";
 import { buildImovelHeaderTitle } from "@/lib/imoveis/display-title";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -77,7 +75,6 @@ type SocialProofRow = Pick<
   | "cliente_nome_publico"
   | "localidade"
   | "data_momento"
-  | "tags"
   | "imagem_url"
   | "imagem_alt"
   | "destaque"
@@ -210,7 +207,6 @@ const SOCIAL_PROOF_SELECT = `
   cliente_nome_publico,
   localidade,
   data_momento,
-  tags,
   imagem_url,
   imagem_alt,
   destaque,
@@ -508,34 +504,42 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
           </div>
         </section>
 
-        <section id="contato" className="mx-auto grid max-w-7xl gap-8 px-5 py-14 lg:grid-cols-[0.9fr_1.1fr]">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--primary-scarlet)]">Contato</p>
-            <h2 className="mt-2 text-3xl font-bold">Converse com {brokerName.split(" ")[0]}</h2>
-            <p className="mt-4 max-w-xl font-light leading-7 text-slate-600">
-              Tire dúvidas, peça uma seleção personalizada ou agende uma visita com atendimento direto pelo canal de
-              preferência.
-            </p>
-          </div>
-
-          <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            {whatsappHref ? (
-              <ContactLink href={whatsappHref} icon={<PhoneCall size={20} />} label="WhatsApp" value="Iniciar conversa" />
-            ) : null}
-            {phoneHref ? (
-              <ContactLink href={phoneHref} icon={<PhoneCall size={20} />} label="Telefone" value={profile.telefone ?? ""} />
-            ) : null}
-            <ContactLink
-              href={`mailto:${profile.email}`}
-              icon={<EnvelopeSimple size={20} />}
-              label="Email"
-              value={profile.email}
-            />
-            {socialLinks.map((social) => (
-              <ContactLink key={social.href} href={social.href} icon={social.icon} label={social.label} value={social.value} />
-            ))}
-          </div>
-        </section>
+        <ProfileContactSection
+          brokerName={brokerName}
+          brokerFirstName={brokerName.split(" ")[0] || brokerName}
+          nickname={profile.nickname ?? nickname}
+          coverUrl={coverUrl}
+          avatarUrl={avatarUrl}
+          channels={[
+            ...(whatsappHref
+              ? [
+                  {
+                    type: "whatsapp" as const,
+                    href: whatsappHref,
+                    label: "WhatsApp",
+                    value: "Iniciar conversa",
+                  },
+                ]
+              : []),
+            ...(phoneHref
+              ? [
+                  {
+                    type: "phone" as const,
+                    href: phoneHref,
+                    label: "Telefone",
+                    value: profile.telefone ?? "",
+                  },
+                ]
+              : []),
+            {
+              type: "email",
+              href: `mailto:${profile.email}`,
+              label: "Email",
+              value: profile.email,
+            },
+            ...socialLinks,
+          ]}
+        />
       </main>
 
       <footer className="border-t border-slate-200 bg-white">
@@ -643,7 +647,6 @@ async function getPublishedSocialProofs(ownerId: string): Promise<SocialProofIte
     cliente_nome_publico: item.cliente_nome_publico,
     localidade: item.localidade,
     data_momento: item.data_momento,
-    tags: item.tags ?? [],
     imagem_url: getPublicImageUrl(item.imagem_url),
     imagem_alt: item.imagem_alt,
   }));
@@ -886,21 +889,26 @@ function buildWhatsAppHref(value: string | null) {
 
 function buildPhoneHref(value: string | null) {
   const digits = value?.replace(/\D/g, "") ?? "";
-  if (digits.length < 10) return null;
-  return `tel:+${digits}`;
+  const localDigits = digits.length > 11 && digits.startsWith("55") ? digits.slice(2) : digits;
+  if (localDigits.length < 10) return null;
+  return `tel:0${localDigits}`;
 }
 
-function getSocialLinks(profile: Pick<ProfileRow, "instagram" | "linkedin" | "youtube">) {
+function getSocialLinks(profile: Pick<ProfileRow, "instagram" | "linkedin" | "youtube">): PublicContactChannel[] {
   const links = [
-    buildSocialLink("Instagram", profile.instagram, "instagram", <InstagramLogo size={20} />),
-    buildSocialLink("LinkedIn", profile.linkedin, "linkedin", <LinkedinLogo size={20} />),
-    buildSocialLink("YouTube", profile.youtube, "youtube", <YoutubeLogo size={20} />),
+    buildSocialLink("Instagram", profile.instagram, "instagram"),
+    buildSocialLink("LinkedIn", profile.linkedin, "linkedin"),
+    buildSocialLink("YouTube", profile.youtube, "youtube"),
   ];
 
   return links.filter((link): link is NonNullable<typeof link> => Boolean(link));
 }
 
-function buildSocialLink(label: string, value: string | null, provider: "instagram" | "linkedin" | "youtube", icon: React.ReactNode) {
+function buildSocialLink(
+  label: string,
+  value: string | null,
+  provider: "instagram" | "linkedin" | "youtube",
+): PublicContactChannel | null {
   const trimmed = value?.trim();
   if (!trimmed) return null;
 
@@ -913,7 +921,7 @@ function buildSocialLink(label: string, value: string | null, provider: "instagr
           ? `https://www.linkedin.com/in/${trimmed.replace(/^@/, "")}`
           : `https://www.youtube.com/${trimmed.replace(/^@/, "")}`;
 
-  return { href, label, value: trimmed, icon };
+  return { type: provider, href, label, value: trimmed };
 }
 
 function formatPrice(imovel: ImovelRow) {
@@ -1124,22 +1132,5 @@ function EmptyState({ icon, title, description }: { icon: React.ReactNode; title
       <h3 className="mt-4 text-xl font-bold">{title}</h3>
       <p className="mx-auto mt-2 max-w-md font-light text-slate-600">{description}</p>
     </div>
-  );
-}
-
-function ContactLink({ href, icon, label, value }: { href: string; icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <a href={href} className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 p-4 transition hover:bg-slate-50">
-      <span className="flex min-w-0 items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-          {icon}
-        </span>
-        <span className="min-w-0">
-          <span className="block text-sm font-light text-slate-500">{label}</span>
-          <span className="block truncate font-bold text-slate-950">{value}</span>
-        </span>
-      </span>
-      <span className="text-sm font-bold text-[var(--primary-scarlet)]">Abrir</span>
-    </a>
   );
 }

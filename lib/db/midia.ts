@@ -29,6 +29,7 @@ export type UploadMidiaInput = {
   alt?: string | null;
   legenda?: string | null;
   caracteristica?: string | null;
+  skip_optimization?: boolean;
 };
 
 export type UploadMidiaResult = {
@@ -1382,8 +1383,9 @@ export async function uploadMidia(
   const midiaId = typeof midiaInsert.data.id === "string" ? midiaInsert.data.id : "";
   if (!midiaId) return fail("DATABASE_ERROR", "Media insert returned invalid id");
 
-  // Regra de storage: imagens ficam somente na versão otimizada (1920px).
-  if (tipo === "IMAGEM") {
+  // Provas sociais preservam a imagem original: não precisam de render/watermark do fluxo público de imóveis.
+  const shouldOptimizeImage = tipo === "IMAGEM" && !input.skip_optimization && input.ref_tipo !== "PROVA_SOCIAL";
+  if (shouldOptimizeImage) {
     const optimized = await optimizeMidiaOwnedTo1920(accessToken, midiaId);
     if (!optimized.ok) return optimized;
   }
@@ -1401,7 +1403,7 @@ export async function uploadMidia(
       })
       .select("id")
       .single();
-    if (relInsert.error) return mapDbError(relInsert.error);
+    if (relInsert.error && input.ref_tipo !== "PROVA_SOCIAL") return mapDbError(relInsert.error);
 
     if (input.ref_tipo === "IMOVEL") {
       const syncResult = await syncImovelPublicMidia(accessToken, input.ref_id);

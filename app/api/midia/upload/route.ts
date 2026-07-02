@@ -59,6 +59,7 @@ export async function POST(request: Request) {
   const tituloValue = form.get("titulo");
   const altValue = form.get("alt");
   const legendaValue = form.get("legenda");
+  const skipOptimizationValue = form.get("skip_optimization");
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const inspection = inspectImage(bytes, { fileName: file.name, mimeType: file.type });
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
     titulo: typeof tituloValue === "string" && tituloValue.length > 0 ? tituloValue : null,
     alt: typeof altValue === "string" && altValue.length > 0 ? altValue : null,
     legenda: typeof legendaValue === "string" && legendaValue.length > 0 ? legendaValue : null,
+    skip_optimization: skipOptimizationValue === "true",
   });
 
   if (!result.ok) {
