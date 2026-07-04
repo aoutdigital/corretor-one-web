@@ -263,7 +263,7 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
     medias,
     related,
     empreendimento,
-    empreendimentoImageUrl,
+    empreendimentoImages,
     ambientes,
     brokerName,
     title,
@@ -285,13 +285,14 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
     imovel,
     ambientes,
     empreendimento,
-    empreendimentoImageUrl,
+    empreendimentoImages,
     nickname: profile.nickname ?? nickname,
     addressLine,
     locationLine,
     stats,
     highlights,
     mapQuery,
+    caracteristicasLabels: data.caracteristicasLabels,
   });
 
   return (
@@ -601,8 +602,8 @@ async function getPropertyPageData(rawNickname: string, rawOperation: string, ra
     getFirstMediaByImovelId(relatedRows.map((item) => item.id)),
     getFirstVideoByImovelId(profile.id, imovel.id),
     getAmbientesByImovelId(profile.id, imovel.id),
-    publicEmpreendimento ? getFirstEmpreendimentoMediaById(publicEmpreendimento.id) : Promise.resolve(null),
-    getCaracteristicasCatalogoLabels(imovel.caracteristicas ?? []),
+    publicEmpreendimento ? getEmpreendimentoMediaById(publicEmpreendimento.id) : Promise.resolve([]),
+    getCaracteristicasCatalogoLabels([...(imovel.caracteristicas ?? []), ...(publicEmpreendimento?.caracteristicas ?? [])]),
   ]);
   const title = buildImovelHeaderTitle(imovel);
   const brokerName = [profile.primeiro_nome, profile.sobrenome].filter(Boolean).join(" ") || "Corretor.one";
@@ -611,7 +612,9 @@ async function getPropertyPageData(rawNickname: string, rawOperation: string, ra
     profile,
     imovel,
     empreendimento: publicEmpreendimento,
-    empreendimentoImageUrl: getPublicImageUrl(empreendimentoMedia?.url),
+    empreendimentoImages: sortMediaRows(empreendimentoMedia).map((item) => ({
+      url: getPublicImageUrl(item.url) ?? item.url,
+    })),
     ambientes,
     caracteristicasLabels,
     medias: sortMediaRows((mediaResult.data ?? []) as MediaRow[]).map((item) => ({
@@ -655,7 +658,7 @@ async function getFirstMediaByImovelId(imovelIds: string[]) {
   return mediaById;
 }
 
-async function getFirstEmpreendimentoMediaById(empreendimentoId: string): Promise<EmpreendimentoMediaRow | null> {
+async function getEmpreendimentoMediaById(empreendimentoId: string): Promise<EmpreendimentoMediaRow[]> {
   const supabase = createSupabaseServerClient();
   const result = await supabase
     .from("empreendimento_midia_publica")
@@ -663,14 +666,13 @@ async function getFirstEmpreendimentoMediaById(empreendimentoId: string): Promis
     .eq("empreendimento_id", empreendimentoId)
     .order("indice_publico", { ascending: true })
     .order("ordem", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .limit(12);
 
   if (result.error) {
-    throw new Error(`Erro ao carregar midia do empreendimento: ${result.error.message}`);
+    throw new Error(`Erro ao carregar midias do empreendimento: ${result.error.message}`);
   }
 
-  return result.data as EmpreendimentoMediaRow | null;
+  return (result.data ?? []) as EmpreendimentoMediaRow[];
 }
 
 async function getAmbientesByImovelId(ownerId: string, imovelId: string): Promise<PublicAmbiente[]> {
@@ -750,7 +752,7 @@ function matchesOperation(imovel: Pick<PublicImovel, "tipo_negociacao" | "finali
   return negotiation === "VENDA" || negotiation === "VENDA_E_ALUGUEL" || imovel.finalidade === "COMPRAR";
 }
 
-function sortMediaRows<T extends MediaRow>(rows: T[]) {
+function sortMediaRows<T extends { indice_publico: number; ordem: number }>(rows: T[]) {
   return rows.sort((a, b) => {
     if (a.indice_publico !== b.indice_publico) return a.indice_publico - b.indice_publico;
     return a.ordem - b.ordem;
@@ -1068,24 +1070,26 @@ function buildPropertyInsightsData({
   imovel,
   ambientes,
   empreendimento,
-  empreendimentoImageUrl,
+  empreendimentoImages,
   nickname,
   addressLine,
   locationLine,
   stats,
   highlights,
   mapQuery,
+  caracteristicasLabels,
 }: {
   imovel: PublicImovel;
   ambientes: PublicAmbiente[];
   empreendimento: PublicEmpreendimento | null;
-  empreendimentoImageUrl: string | null;
+  empreendimentoImages: Array<{ url: string }>;
   nickname: string;
   addressLine: string;
   locationLine: string;
   stats: ReturnType<typeof buildStats>;
   highlights: string[];
   mapQuery: string;
+  caracteristicasLabels: Map<string, string>;
 }): PropertyInsightsData {
   const locationContext = buildLocationContext(imovel.localizacao_contexto);
   const empreendimentoContext = empreendimento ? buildLocationContext(empreendimento.localizacao_contexto) : null;
@@ -1137,14 +1141,18 @@ function buildPropertyInsightsData({
       ? {
           name: empreendimento.nome,
           href: `/${nickname}/${empreendimento.slug_publico}`,
-          imageUrl: empreendimentoImageUrl,
+          images: empreendimentoImages,
           summary: empreendimento.resumo_curto,
           descriptionHtml: sanitizeRichTextHtml(empreendimento.descricao),
           facts: buildEmpreendimentoFacts(empreendimento),
           features:
             imovel.usar_caracteristicas_empreendimento === false
               ? []
-              : uniqueStrings((empreendimento.caracteristicas ?? []).map(formatEnumLabel).filter(Boolean) as string[]).slice(0, 14),
+              : uniqueStrings(
+                  (empreendimento.caracteristicas ?? [])
+                    .map((chave) => caracteristicasLabels.get(chave) ?? formatEnumLabel(chave))
+                    .filter(Boolean) as string[],
+                ).slice(0, 14),
         }
       : null,
   };

@@ -3,14 +3,13 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
-  CaretLeft,
-  CaretRight,
   HouseLine,
   Images,
   MagnifyingGlassPlus,
   Play,
   X,
 } from "@phosphor-icons/react";
+import { ImageLightbox } from "./image-lightbox";
 
 type PropertyGalleryImage = {
   url: string;
@@ -31,7 +30,6 @@ export function PropertyGallery({ title, images, video }: PropertyGalleryProps) 
   const [activeIndex, setActiveIndex] = useState(0);
   const visibleImages = useMemo(() => images.slice(0, 5), [images]);
   const extraImagesCount = Math.max(0, images.length - 1);
-  const activeImage = images[activeIndex] ?? null;
   const videoEmbedUrl = video ? buildYouTubeEmbedUrl(video.url) : null;
 
   function openLightbox(index: number) {
@@ -48,40 +46,15 @@ export function PropertyGallery({ title, images, video }: PropertyGalleryProps) 
     setVideoLightboxOpen(false);
   }
 
-  function goToPreviousImage() {
-    if (images.length === 0) return;
-    setActiveIndex((current) => (current - 1 + images.length) % images.length);
-  }
-
-  function goToNextImage() {
-    if (images.length === 0) return;
-    setActiveIndex((current) => (current + 1) % images.length);
-  }
-
   useEffect(() => {
-    if (!lightboxOpen && !videoLightboxOpen) return;
+    if (!videoLightboxOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
-        setLightboxOpen(false);
         setVideoLightboxOpen(false);
-        return;
-      }
-
-      if (videoLightboxOpen) return;
-
-      if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        setActiveIndex((current) => (current - 1 + images.length) % images.length);
-        return;
-      }
-
-      if (event.key === "ArrowRight") {
-        event.preventDefault();
-        setActiveIndex((current) => (current + 1) % images.length);
       }
     }
 
@@ -90,7 +63,7 @@ export function PropertyGallery({ title, images, video }: PropertyGalleryProps) 
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [images.length, lightboxOpen, videoLightboxOpen]);
+  }, [videoLightboxOpen]);
 
   if (images.length === 0) {
     return (
@@ -163,68 +136,13 @@ export function PropertyGallery({ title, images, video }: PropertyGalleryProps) 
         ) : null}
       </div>
 
-      {lightboxOpen && activeImage ? (
-        <div
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/95 p-4"
-          onClick={closeLightbox}
-        >
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              closeLightbox();
-            }}
-            className="absolute right-4 top-4 rounded-lg border border-white/20 bg-white/10 p-2 text-white transition hover:bg-white/20"
-            aria-label="Fechar galeria"
-          >
-            <X size={20} />
-          </button>
-
-          {images.length > 1 ? (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                goToPreviousImage();
-              }}
-              className="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/20 bg-white/10 p-3 text-white transition hover:bg-white/20"
-              aria-label="Imagem anterior"
-            >
-              <CaretLeft size={24} weight="bold" />
-            </button>
-          ) : null}
-
-          <div className="w-full max-w-[1600px]" onClick={(event) => event.stopPropagation()}>
-            <p className="mb-3 text-center text-sm font-light text-white/75">
-              {activeIndex + 1} de {images.length}
-            </p>
-            <div className="relative mx-auto flex max-h-[86vh] items-center justify-center overflow-hidden rounded-xl">
-              <Image
-                src={activeImage.url}
-                alt={`${title} - foto ${activeIndex + 1}`}
-                width={1600}
-                height={1067}
-                className="max-h-[86vh] w-auto max-w-full object-contain"
-                unoptimized
-              />
-            </div>
-          </div>
-
-          {images.length > 1 ? (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                goToNextImage();
-              }}
-              className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/20 bg-white/10 p-3 text-white transition hover:bg-white/20"
-              aria-label="Próxima imagem"
-            >
-              <CaretRight size={24} weight="bold" />
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      <ImageLightbox
+        title={title}
+        images={images}
+        activeIndex={lightboxOpen ? activeIndex : null}
+        onActiveIndexChange={setActiveIndex}
+        onClose={closeLightbox}
+      />
 
       {videoLightboxOpen && videoEmbedUrl ? (
         <VideoLightbox

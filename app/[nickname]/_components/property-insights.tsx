@@ -9,16 +9,15 @@ import {
   Bathtub,
   Bed,
   Buildings,
-  CaretDown,
-  CheckCircle,
   CookingPot,
   Car,
-  HouseLine,
   Info,
+  MagnifyingGlassPlus,
   MapPin,
   Ruler,
   X,
 } from "@phosphor-icons/react";
+import { ImageLightbox } from "./image-lightbox";
 
 type StatIconKey = "area" | "bed" | "bath" | "car" | "living" | "kitchen";
 
@@ -53,7 +52,7 @@ export type PropertyInsightsData = {
   empreendimento: {
     name: string;
     href: string;
-    imageUrl: string | null;
+    images: Array<{ url: string }>;
     summary: string | null;
     descriptionHtml: string;
     facts: Array<{ label: string; value: string }>;
@@ -63,6 +62,7 @@ export type PropertyInsightsData = {
 
 export function PropertyInsights({ data }: { data: PropertyInsightsData }) {
   const [showEmpreendimento, setShowEmpreendimento] = useState(false);
+  const [empreendimentoLightboxIndex, setEmpreendimentoLightboxIndex] = useState<number | null>(null);
   const empreendimento = data.empreendimento;
   const hasLocationContext = Boolean(data.location.summary || data.location.groups.length);
   const hasEmpreendimentoDetails = Boolean(
@@ -71,11 +71,20 @@ export function PropertyInsights({ data }: { data: PropertyInsightsData }) {
 
   useEffect(() => {
     if (!showEmpreendimento) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setShowEmpreendimento(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setShowEmpreendimento(false);
+      }
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [showEmpreendimento]);
 
   return (
@@ -132,17 +141,14 @@ export function PropertyInsights({ data }: { data: PropertyInsightsData }) {
         {data.features.length ? (
           <div className="mt-6 border-t border-stone-100 pt-5">
             <p className="text-sm font-bold text-slate-950">Características</p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <ul className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
               {data.features.map((feature) => (
-                <span
-                  key={feature}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-slate-700 ring-1 ring-stone-200"
-                >
-                  <CheckCircle size={16} weight="fill" className="text-emerald-500" />
-                  {feature}
-                </span>
+                <li key={feature} className="flex items-start gap-2.5 text-sm font-normal leading-snug text-slate-600">
+                  <span className="mt-0.5 text-[var(--grey-olive)]">✓</span>
+                  <span>{feature}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         ) : null}
       </section>
@@ -152,35 +158,23 @@ export function PropertyInsights({ data }: { data: PropertyInsightsData }) {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--grey-olive)]">Ambientes</p>
           <h2 className="mt-2 text-3xl font-bold text-slate-950">Detalhes por espaço</h2>
 
-          <div className="mt-5 divide-y divide-stone-100 rounded-lg border border-stone-200">
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
             {data.ambientes.map((ambiente) => (
-              <details key={ambiente.id} className="group">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 transition hover:bg-stone-50">
-                  <span className="min-w-0">
-                    <span className="block font-bold leading-snug text-slate-950">{ambiente.title}</span>
-                    <span className="mt-1 block text-sm font-light text-slate-500">
-                      {[ambiente.subtitle, ambiente.area].filter(Boolean).join(" · ") || "Ver detalhes do ambiente"}
-                    </span>
-                  </span>
-                  <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-stone-50 px-3 py-1.5 text-xs font-bold text-slate-600">
-                    Detalhes
-                    <CaretDown size={14} className="transition group-open:rotate-180" />
-                  </span>
-                </summary>
-                <div className="px-4 pb-4">
-                  {ambiente.tags.length ? (
-                    <div className="flex flex-wrap gap-2">
-                      {ambiente.tags.map((tag) => (
-                        <span key={tag} className="rounded-full bg-stone-50 px-3 py-1.5 text-sm font-bold text-slate-700">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm font-light text-slate-500">Detalhamento disponível mediante consulta.</p>
-                  )}
-                </div>
-              </details>
+              <article key={ambiente.id} className="rounded-lg border border-stone-200 bg-white p-4">
+                <h3 className="text-lg font-bold leading-snug text-slate-950">{ambiente.title}</h3>
+                {ambiente.tags.length ? (
+                  <ul className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                    {ambiente.tags.map((tag) => (
+                      <li key={tag} className="flex items-start gap-2.5 text-sm font-normal leading-snug text-slate-600">
+                        <span className="mt-0.5 text-[var(--grey-olive)]">✓</span>
+                        <span>{tag}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-4 text-sm font-light text-slate-500">Detalhamento disponível mediante consulta.</p>
+                )}
+              </article>
             ))}
           </div>
         </section>
@@ -213,68 +207,65 @@ export function PropertyInsights({ data }: { data: PropertyInsightsData }) {
         </div>
 
         {hasLocationContext ? (
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {data.location.groups.map((group) => (
-              <div key={group.title} className="min-w-[190px] flex-1 rounded-lg bg-stone-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--grey-olive)]">{group.title}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
+              <div key={group.title} className="rounded-lg bg-stone-50/70 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--grey-olive)]">{group.title}</p>
+                <ul className="mt-4 space-y-3">
                   {group.items.map((item) => (
-                    <span key={item} className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600">
-                      {item}
-                    </span>
+                    <li key={item} className="flex items-start gap-2.5 text-sm font-normal leading-snug text-slate-600">
+                      <span className="mt-0.5 text-[var(--grey-olive)]">✓</span>
+                      <span>{item}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             ))}
           </div>
         ) : null}
 
         {empreendimento ? (
-          <article className="mt-6 overflow-hidden rounded-lg border border-stone-200">
-            <div className="relative aspect-[16/7] bg-stone-100">
-              {empreendimento.imageUrl ? (
-                <Image src={empreendimento.imageUrl} alt={empreendimento.name} fill sizes="820px" className="object-cover" unoptimized />
-              ) : (
-                <div className="flex h-full items-center justify-center text-stone-400">
-                  <Buildings size={38} />
-                </div>
-              )}
-            </div>
-            <div className="p-4 md:p-5">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--grey-olive)]">
-                Empreendimento nessa localização
-              </p>
-              <h3 className="mt-1 text-2xl font-bold text-slate-950">{empreendimento.name}</h3>
-              {empreendimento.summary ? (
-                <p className="mt-2 text-sm font-light leading-6 text-slate-600">{empreendimento.summary}</p>
-              ) : null}
-              {empreendimento.facts.length ? (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {empreendimento.facts.slice(0, 6).map((fact) => (
-                    <span key={fact.label} className="rounded-full bg-stone-50 px-3 py-1.5 text-sm text-slate-700">
-                      <strong>{fact.label}:</strong> {fact.value}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Link
-                  href={empreendimento.href}
-                  className="inline-flex items-center gap-2 rounded-lg bg-[var(--black)] px-3 py-2 text-sm font-bold text-white transition hover:bg-[var(--blue-slate)]"
-                >
-                  Página do empreendimento
-                  <ArrowRight size={15} />
-                </Link>
-                {hasEmpreendimentoDetails ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowEmpreendimento(true)}
-                    className="rounded-lg border border-stone-200 px-3 py-2 text-sm font-bold text-slate-700 transition hover:border-[var(--grey-olive)]"
-                  >
-                    Ver detalhes
-                  </button>
+          <article className="mt-6 overflow-hidden rounded-lg border border-stone-200 bg-white">
+            <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="flex flex-col p-4 md:p-5">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--grey-olive)]">
+                  Empreendimento
+                </p>
+                <h3 className="mt-1 text-2xl font-bold text-slate-950">
+                  <Link href={empreendimento.href} className="transition hover:text-[var(--grey-olive)]">
+                    {empreendimento.name}
+                  </Link>
+                </h3>
+                {empreendimento.summary ? (
+                  <p className="mt-2 text-sm font-light leading-6 text-slate-600">{empreendimento.summary}</p>
                 ) : null}
+                {empreendimento.facts.length ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {empreendimento.facts.slice(0, 6).map((fact) => (
+                      <span key={fact.label} className="rounded-full bg-stone-50 px-3 py-1.5 text-sm text-slate-700">
+                        <strong>{fact.label}:</strong> {fact.value}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="mt-5 flex flex-wrap gap-2 lg:mt-auto lg:pt-6">
+                  {hasEmpreendimentoDetails ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowEmpreendimento(true)}
+                      className="inline-flex items-center gap-2 px-0 py-2 text-sm font-bold text-[var(--grey-olive)] transition hover:text-slate-950"
+                    >
+                      Veja todas as características
+                      <ArrowRight size={15} />
+                    </button>
+                  ) : null}
+                </div>
               </div>
+              <EmpreendimentoGalleryGrid
+                name={empreendimento.name}
+                images={empreendimento.images}
+                onOpenImage={setEmpreendimentoLightboxIndex}
+              />
             </div>
           </article>
         ) : null}
@@ -299,7 +290,7 @@ export function PropertyInsights({ data }: { data: PropertyInsightsData }) {
           onMouseDown={() => setShowEmpreendimento(false)}
         >
           <div
-            className="max-h-[86vh] w-full max-w-3xl overflow-auto rounded-lg bg-white shadow-2xl"
+            className="max-h-[86vh] w-full max-w-2xl overflow-auto rounded-lg bg-white shadow-2xl"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-stone-200 bg-white/95 px-5 py-4 backdrop-blur">
@@ -316,49 +307,113 @@ export function PropertyInsights({ data }: { data: PropertyInsightsData }) {
                 <X size={20} />
               </button>
             </div>
-            <div className="grid gap-5 p-5 md:grid-cols-[0.9fr_1.1fr]">
-              <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-stone-100">
-                {empreendimento.imageUrl ? (
-                  <Image src={empreendimento.imageUrl} alt={empreendimento.name} fill sizes="360px" className="object-cover" unoptimized />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-stone-400">
-                    <HouseLine size={36} />
-                  </div>
-                )}
-              </div>
-              <div>
-                {empreendimento.descriptionHtml ? (
-                  <div
-                    className="space-y-3 text-sm font-light leading-7 text-slate-700 [&_em]:italic [&_li]:ml-5 [&_li]:list-disc [&_ol_li]:list-decimal [&_strong]:font-bold"
-                    dangerouslySetInnerHTML={{ __html: empreendimento.descriptionHtml }}
-                  />
-                ) : empreendimento.summary ? (
-                  <p className="text-sm font-light leading-7 text-slate-700">{empreendimento.summary}</p>
-                ) : null}
-                {empreendimento.features.length ? (
-                  <div className="mt-5">
-                    <p className="text-sm font-bold text-slate-950">Características</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {empreendimento.features.map((feature) => (
-                        <span key={feature} className="rounded-full bg-stone-50 px-3 py-1.5 text-sm font-bold text-slate-700">
-                          {feature}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                <Link
-                  href={empreendimento.href}
-                  className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-2.5 text-sm font-bold text-white transition hover:brightness-95"
-                >
-                  Abrir página
-                  <ArrowRight size={16} />
-                </Link>
-              </div>
+            <div className="p-5">
+              {empreendimento.descriptionHtml ? (
+                <div
+                  className="space-y-3 text-sm font-light leading-7 text-slate-700 [&_em]:italic [&_li]:ml-5 [&_li]:list-disc [&_ol_li]:list-decimal [&_strong]:font-bold"
+                  dangerouslySetInnerHTML={{ __html: empreendimento.descriptionHtml }}
+                />
+              ) : empreendimento.summary ? (
+                <p className="text-sm font-light leading-7 text-slate-700">{empreendimento.summary}</p>
+              ) : null}
+              {empreendimento.features.length ? (
+                <div className="mt-6 border-t border-stone-100 pt-5">
+                  <p className="text-sm font-bold text-slate-950">Características</p>
+                  <ul className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                    {empreendimento.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2.5 text-sm font-normal leading-snug text-slate-600">
+                        <span className="mt-0.5 text-[var(--grey-olive)]">✓</span>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
       ) : null}
+
+      {empreendimento ? (
+        <ImageLightbox
+          title={empreendimento.name}
+          images={empreendimento.images}
+          activeIndex={empreendimentoLightboxIndex}
+          onActiveIndexChange={setEmpreendimentoLightboxIndex}
+          onClose={() => setEmpreendimentoLightboxIndex(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function EmpreendimentoGalleryGrid({
+  name,
+  images,
+  onOpenImage,
+}: {
+  name: string;
+  images: Array<{ url: string }>;
+  onOpenImage: (index: number) => void;
+}) {
+  const cover = images[0] ?? null;
+  const thumbnails = images.slice(1, 4);
+  const remaining = Math.max(images.length - 4, 0);
+
+  if (!cover) {
+    return (
+      <div className="flex min-h-[320px] items-center justify-center text-stone-400">
+        <Buildings size={38} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid min-h-[320px] grid-cols-3 grid-rows-[1fr_1fr_0.62fr] gap-2 p-2 lg:min-h-[360px]">
+      <button
+        type="button"
+        onClick={() => onOpenImage(0)}
+        className="group relative col-span-3 row-span-2 cursor-zoom-in overflow-hidden rounded-lg bg-stone-200 text-left outline-none transition focus-visible:ring-4 focus-visible:ring-[color:rgba(145,139,118,0.28)]"
+        aria-label={`Ampliar imagem principal de ${name}`}
+      >
+        <Image
+          src={cover.url}
+          alt={name}
+          fill
+          sizes="(min-width: 1024px) 560px, 100vw"
+          className="object-cover transition duration-500 group-hover:scale-[1.035]"
+          unoptimized
+        />
+        <span className="pointer-events-none absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100">
+          <MagnifyingGlassPlus size={18} weight="bold" />
+        </span>
+      </button>
+      {thumbnails.map((image, index) => (
+        <button
+          type="button"
+          key={`${image.url}-${index}`}
+          onClick={() => onOpenImage(index + 1)}
+          className="group relative cursor-zoom-in overflow-hidden rounded-lg bg-stone-200 text-left outline-none transition focus-visible:ring-4 focus-visible:ring-[color:rgba(145,139,118,0.28)]"
+          aria-label={`Ampliar imagem ${index + 2} de ${name}`}
+        >
+          <Image
+            src={image.url}
+            alt={`${name} - imagem ${index + 2}`}
+            fill
+            sizes="(min-width: 1024px) 180px, 33vw"
+            className="object-cover transition duration-500 group-hover:scale-[1.035]"
+            unoptimized
+          />
+          <span className="pointer-events-none absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100">
+            <MagnifyingGlassPlus size={18} weight="bold" />
+          </span>
+          {index === 2 && remaining > 0 ? (
+            <span className="absolute inset-0 flex items-center justify-center bg-slate-950/45 text-sm font-bold text-white backdrop-blur-[1px]">
+              +{remaining} imagens
+            </span>
+          ) : null}
+        </button>
+      ))}
     </div>
   );
 }

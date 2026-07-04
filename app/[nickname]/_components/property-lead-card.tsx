@@ -85,10 +85,9 @@ export function PropertyLeadCard({
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/10">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary-scarlet)]">{operationLabel}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--grey-olive)]">{operationLabel}</p>
             <p className="mt-1 text-2xl font-bold text-slate-950">{price}</p>
           </div>
-          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">Publicado</span>
         </div>
 
         {carryingCosts.length > 0 ? (
