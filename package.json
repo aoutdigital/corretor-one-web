@@ -9,7 +9,8 @@
     "lint": "eslint",
     "logo:glyph-map": "node scripts/logo/build-glyph-map-from-letras-svg.mjs",
     "logo:nickname:path": "node scripts/logo/build-nickname-logo.mjs",
-    "logo:png": "node scripts/logo/export-html-png.mjs"
+    "logo:png": "node scripts/logo/export-html-png.mjs",
+    "seed:related-properties": "node scripts/seed-related-properties.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

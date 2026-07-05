@@ -10,14 +10,18 @@ import {
   Car,
   HouseLine,
   MapPin,
+  MagnifyingGlass,
   Ruler,
   WhatsappLogo,
 } from "@phosphor-icons/react/dist/ssr";
 
 import { PropertyGallery } from "@/app/[nickname]/_components/property-gallery";
+import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
 import { PropertyInsights, type PropertyInsightsData } from "@/app/[nickname]/_components/property-insights";
 import { PropertyLeadCard } from "@/app/[nickname]/_components/property-lead-card";
+import { SocialProofCarousel, type SocialProofItem } from "@/app/[nickname]/_components/social-proof-carousel";
 import { buildImovelHeaderTitle } from "@/lib/imoveis/display-title";
+import { findRelatedProperties, type RelatedProperty, type ScoredRelatedProperty } from "@/lib/related-properties/engine";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
@@ -30,6 +34,7 @@ type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type ImovelTableRow = Database["public"]["Tables"]["imoveis"]["Row"];
 type EmpreendimentoTableRow = Database["public"]["Tables"]["empreendimentos"]["Row"];
 type AmbienteTableRow = Database["public"]["Tables"]["imovel_ambientes"]["Row"];
+type SocialProofTableRow = Database["public"]["Tables"]["provas_sociais"]["Row"];
 type MediaRow = Pick<
   Database["public"]["Tables"]["imovel_midia_publica"]["Row"],
   "imovel_id" | "indice_publico" | "ordem" | "url"
@@ -85,6 +90,7 @@ type PublicImovel = Pick<
   | "bairro"
   | "bairro_comercial"
   | "estado"
+  | "cep"
   | "logradouro"
   | "numero"
   | "endereco_complemento"
@@ -125,6 +131,7 @@ type PublicImovel = Pick<
   | "status"
   | "destaque"
   | "publicado_em"
+  | "updated_at"
 >;
 type PublicEmpreendimento = Pick<
   EmpreendimentoTableRow,
@@ -150,6 +157,22 @@ type PublicEmpreendimento = Pick<
   | "construtora"
   | "incorporadora"
   | "localizacao_contexto"
+>;
+type SocialProofRow = Pick<
+  SocialProofTableRow,
+  | "id"
+  | "tipo"
+  | "titulo"
+  | "descricao"
+  | "depoimento"
+  | "cliente_nome_publico"
+  | "localidade"
+  | "data_momento"
+  | "imagem_url"
+  | "imagem_alt"
+  | "destaque"
+  | "ordem"
+  | "publicado_em"
 >;
 
 const PROFILE_SELECT = [
@@ -186,6 +209,7 @@ const IMOVEL_SELECT = [
   "bairro",
   "bairro_comercial",
   "estado",
+  "cep",
   "logradouro",
   "numero",
   "endereco_complemento",
@@ -226,7 +250,26 @@ const IMOVEL_SELECT = [
   "status",
   "destaque",
   "publicado_em",
+  "updated_at",
 ].join(",");
+
+const SOCIAL_PROOF_SELECT = [
+  "id",
+  "tipo",
+  "titulo",
+  "descricao",
+  "depoimento",
+  "cliente_nome_publico",
+  "localidade",
+  "data_momento",
+  "imagem_url",
+  "imagem_alt",
+  "destaque",
+  "ordem",
+  "publicado_em",
+].join(",");
+
+const BROKER_SEARCH_MIN_LISTINGS = 30;
 
 const RENDER_PUBLIC_SEGMENT = "/storage/v1/render/image/public/";
 const OBJECT_PUBLIC_SEGMENT = "/storage/v1/object/public/";
@@ -262,6 +305,8 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
     imovel,
     medias,
     related,
+    socialProofs,
+    publishedImoveisCount,
     empreendimento,
     empreendimentoImages,
     ambientes,
@@ -419,22 +464,21 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
 
             {related.length > 0 ? (
               <section id="relacionados" className="py-4">
-                <div className="grid gap-5 md:grid-cols-[220px_1fr]">
-                  <div className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
-                    <p className="text-2xl font-bold leading-tight text-amber-800">Imóveis Relacionados</p>
-                    <p className="mt-3 text-sm font-light leading-6 text-slate-600">
-                      Outras opções próximas ao perfil deste imóvel.
-                    </p>
-                  </div>
-                  <div className="grid gap-4">
-                    {related.map((item) => (
-                      <RelatedPropertyCard
-                        key={item.id}
-                        nickname={profile.nickname ?? nickname}
-                        imovel={item}
-                      />
-                    ))}
-                  </div>
+                <div className="mb-6">
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Relacionados</p>
+                  <h2 className="mt-2 text-4xl font-light leading-tight text-slate-950">Imóveis que também fazem sentido</h2>
+                  <p className="mt-3 max-w-2xl text-base font-light leading-7 text-slate-600">
+                    Outras opções próximas ao perfil deste imóvel, organizadas por localização, valor e características.
+                  </p>
+                </div>
+                <div className="grid gap-4">
+                  {related.map((item) => (
+                    <RelatedPropertyCard
+                      key={item.id}
+                      nickname={profile.nickname ?? nickname}
+                      imovel={item}
+                    />
+                  ))}
                 </div>
               </section>
             ) : null}
@@ -454,39 +498,34 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
           />
         </section>
 
-        <section className="border-y border-stone-200 bg-white px-5 py-14">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary-scarlet)]">
+        <section className="border-y border-slate-900 bg-slate-950 px-5 py-20 text-white md:min-h-[72vh]">
+          <div className="mx-auto flex min-h-[calc(72vh-10rem)] max-w-5xl flex-col items-center justify-center text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.28em] text-[var(--grey-olive)]">
               Ainda pesquisando?
             </p>
-            <h2 className="mt-3 text-3xl font-bold text-slate-950">
+            <h2 className="mt-5 max-w-4xl text-4xl font-light leading-[1.05] text-white md:text-6xl">
               Este {formatEnumLabel(imovel.tipo)?.toLowerCase()} não é exatamente o que você procura?
             </h2>
-            <p className="mt-4 font-light leading-7 text-slate-600">
-              Envie seu momento para {brokerName} e receba uma seleção mais alinhada ao que você precisa.
+            <p className="mt-6 max-w-3xl text-lg font-light leading-8 text-white/68 md:text-xl">
+              Me conte o que seria ideal e eu preparo uma curadoria mais alinhada ao seu momento.
             </p>
-            <a
-              href={`/${profile.nickname ?? nickname}#contato-form`}
-              className="mt-6 inline-flex items-center gap-2 rounded-lg bg-amber-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-amber-800"
-            >
-              Pedir curadoria
-              <ArrowRight size={18} />
-            </a>
+            <PropertySearchOrShortcuts
+              nickname={profile.nickname ?? nickname}
+              canSearch={publishedImoveisCount >= BROKER_SEARCH_MIN_LISTINGS}
+            />
           </div>
         </section>
+
+        {socialProofs.length > 0 ? <SocialProofCarousel items={socialProofs} /> : null}
       </main>
 
-      <footer className="bg-slate-950 px-5 py-10 text-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 text-sm md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="font-bold">{brokerName}</p>
-            <p className="mt-1 font-light text-white/62">{formatCreci(profile)}</p>
-          </div>
-          <Link href={`/${profile.nickname ?? nickname}`} className="font-bold text-white/80 transition hover:text-white">
-            Ver perfil do corretor
-          </Link>
-        </div>
-      </footer>
+      <BrokerPublicFooter
+        nickname={profile.nickname ?? nickname}
+        brokerName={brokerName}
+        creci={formatCreci(profile)}
+        whatsappHref={whatsappHref}
+        phoneHref={phoneHref}
+      />
     </div>
   );
 }
@@ -531,21 +570,19 @@ async function getPropertyPageData(rawNickname: string, rawOperation: string, ra
   const imovel = imovelResult.data as unknown as PublicImovel;
   if (!matchesOperation(imovel, operation)) return null;
 
-  const [mediaResult, relatedResult, empreendimentoResult] = await Promise.all([
+  const [mediaResult, relatedRows, empreendimentoResult] = await Promise.all([
     supabase
       .from("imovel_midia_publica")
       .select("imovel_id,indice_publico,ordem,url")
       .eq("imovel_id", imovel.id),
-    supabase
-      .from("imoveis")
-      .select(IMOVEL_SELECT)
-      .eq("owner_id", profile.id)
-      .eq("status", "PUBLICADO")
-      .neq("id", imovel.id)
-      .not("slug_publico", "is", null)
-      .order("destaque", { ascending: false })
-      .order("publicado_em", { ascending: false })
-      .limit(5),
+    findRelatedProperties({
+      supabase,
+      baseProperty: imovel as unknown as RelatedProperty,
+      operation,
+      scope: "broker",
+      brokerId: profile.id,
+      limit: 4,
+    }),
     imovel.empreendimento_id
       ? supabase
           .from("empreendimentos")
@@ -587,23 +624,20 @@ async function getPropertyPageData(rawNickname: string, rawOperation: string, ra
     throw new Error(`Erro ao carregar midias do imovel: ${mediaResult.error.message}`);
   }
 
-  if (relatedResult.error) {
-    throw new Error(`Erro ao carregar imoveis relacionados: ${relatedResult.error.message}`);
-  }
-
   if (empreendimentoResult.error) {
     throw new Error(`Erro ao carregar empreendimento do imovel: ${empreendimentoResult.error.message}`);
   }
 
-  const relatedRows = ((relatedResult.data ?? []) as unknown as PublicImovel[]).filter((item) => matchesOperation(item, operation));
   const empreendimento = empreendimentoResult.data as unknown as PublicEmpreendimento | null;
   const publicEmpreendimento = empreendimento?.slug_publico ? empreendimento : null;
-  const [relatedMedia, video, ambientes, empreendimentoMedia, caracteristicasLabels] = await Promise.all([
+  const [relatedMedia, video, ambientes, empreendimentoMedia, caracteristicasLabels, socialProofs, publishedImoveisCount] = await Promise.all([
     getFirstMediaByImovelId(relatedRows.map((item) => item.id)),
     getFirstVideoByImovelId(profile.id, imovel.id),
     getAmbientesByImovelId(profile.id, imovel.id),
     publicEmpreendimento ? getEmpreendimentoMediaById(publicEmpreendimento.id) : Promise.resolve([]),
     getCaracteristicasCatalogoLabels([...(imovel.caracteristicas ?? []), ...(publicEmpreendimento?.caracteristicas ?? [])]),
+    getPublishedSocialProofs(profile.id),
+    getPublishedImoveisCount(profile.id),
   ]);
   const title = buildImovelHeaderTitle(imovel);
   const brokerName = [profile.primeiro_nome, profile.sobrenome].filter(Boolean).join(" ") || "Corretor.one";
@@ -626,6 +660,8 @@ async function getPropertyPageData(rawNickname: string, rawOperation: string, ra
       ...item,
       capa_url: getPublicImageUrl(relatedMedia.get(item.id)?.url),
     })),
+    socialProofs,
+    publishedImoveisCount,
     brokerName,
     title,
     price: formatPrice(imovel),
@@ -673,6 +709,52 @@ async function getEmpreendimentoMediaById(empreendimentoId: string): Promise<Emp
   }
 
   return (result.data ?? []) as EmpreendimentoMediaRow[];
+}
+
+async function getPublishedImoveisCount(ownerId: string) {
+  const supabase = createSupabaseServerClient();
+  const result = await supabase
+    .from("imoveis")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_id", ownerId)
+    .eq("status", "PUBLICADO")
+    .not("slug_publico", "is", null);
+
+  if (result.error) {
+    throw new Error(`Erro ao contar imoveis publicos: ${result.error.message}`);
+  }
+
+  return result.count ?? 0;
+}
+
+async function getPublishedSocialProofs(ownerId: string): Promise<SocialProofItem[]> {
+  const supabase = createSupabaseServerClient();
+  const result = await supabase
+    .from("provas_sociais")
+    .select(SOCIAL_PROOF_SELECT)
+    .eq("owner_id", ownerId)
+    .eq("status", "PUBLICADO")
+    .order("destaque", { ascending: false })
+    .order("ordem", { ascending: true })
+    .order("publicado_em", { ascending: false })
+    .limit(12);
+
+  if (result.error) {
+    throw new Error(`Erro ao carregar provas sociais publicas: ${result.error.message}`);
+  }
+
+  return ((result.data ?? []) as unknown as SocialProofRow[]).map((item) => ({
+    id: item.id,
+    tipo: item.tipo,
+    titulo: item.titulo,
+    descricao: item.descricao,
+    depoimento: item.depoimento,
+    cliente_nome_publico: item.cliente_nome_publico,
+    localidade: item.localidade,
+    data_momento: item.data_momento,
+    imagem_url: getPublicImageUrl(item.imagem_url),
+    imagem_alt: item.imagem_alt,
+  }));
 }
 
 async function getAmbientesByImovelId(ownerId: string, imovelId: string): Promise<PublicAmbiente[]> {
@@ -904,7 +986,7 @@ function buildHeroLocationLine(addressLine: string, locationLine: string) {
 
 function buildStats(imovel: PublicImovel) {
   const stats = [
-    buildAreaStat(imovel),
+    ...buildAreaStats(imovel),
     imovel.dormitorios
       ? buildMetricStat(<Bed size={20} />, "bed", imovel.dormitorios, "dormitório", "dormitórios")
       : null,
@@ -952,48 +1034,70 @@ function formatCount(value: number) {
   return value > 0 && value < 10 ? `0${value}` : String(value);
 }
 
-function buildAreaStat(imovel: Pick<PublicImovel, "area_util" | "area_total">) {
+function buildAreaStats(imovel: Pick<PublicImovel, "area_util" | "area_total">) {
   const usableArea = formatNumber(imovel.area_util);
   const totalArea = formatNumber(imovel.area_total);
-  if (!usableArea && !totalArea) return null;
+  if (!usableArea && !totalArea) return [];
 
   const areasAreEqual = imovel.area_util != null && imovel.area_total != null && imovel.area_util === imovel.area_total;
   if (areasAreEqual) {
-    return {
-      icon: <Ruler size={20} />,
-      iconKey: "area" as const,
-      label: "área útil e total",
-      value: usableArea ?? totalArea ?? "",
-      unit: "m²",
-      detail: null,
-      detailItems: [],
-      secondary: null,
-    };
+    return [
+      {
+        icon: <Ruler size={20} />,
+        iconKey: "area" as const,
+        label: "área útil e total",
+        value: usableArea ?? totalArea ?? "",
+        unit: "m²",
+        detail: null,
+        detailItems: [],
+        secondary: null,
+      },
+    ];
   }
 
-  if (usableArea && totalArea) {
-    return {
+  const stats = [];
+
+  if (usableArea) {
+    stats.push({
       icon: <Ruler size={20} />,
       iconKey: "area" as const,
-      label: "úteis",
+      label: "área útil",
       value: usableArea,
       unit: "m²",
       detail: null,
       detailItems: [],
-      secondary: { label: "totais", value: totalArea, unit: "m²" },
-    };
+      secondary: null,
+    });
   }
 
-  return {
-    icon: <Ruler size={20} />,
-    iconKey: "area" as const,
-    label: usableArea ? "área útil" : "área total",
-    value: usableArea ?? totalArea ?? "",
-    unit: "m²",
-    detail: null,
-    detailItems: [],
-    secondary: null,
-  };
+  if (usableArea && totalArea) {
+    stats.push({
+      icon: <Ruler size={20} />,
+      iconKey: "area" as const,
+      label: "área total",
+      value: totalArea,
+      unit: "m²",
+      detail: null,
+      detailItems: [],
+      secondary: null,
+    });
+    return stats;
+  }
+
+  if (totalArea) {
+    stats.push({
+      icon: <Ruler size={20} />,
+      iconKey: "area" as const,
+      label: "área total",
+      value: totalArea,
+      unit: "m²",
+      detail: null,
+      detailItems: [],
+      secondary: null,
+    });
+  }
+
+  return stats;
 }
 
 function buildHeroCosts(imovel: PublicImovel) {
@@ -1360,12 +1464,81 @@ function getImovelHref(nickname: string, imovel: Pick<PublicImovel, "tipo_negoci
   return `/${nickname}/${operation}/${imovel.slug_publico}`;
 }
 
+function PropertySearchOrShortcuts({
+  nickname,
+  canSearch,
+}: {
+  nickname: string;
+  canSearch: boolean;
+}) {
+  if (canSearch) {
+    return (
+      <form
+        action={`/${nickname}/imoveis`}
+        className="mt-10 grid w-full max-w-4xl gap-3 rounded-xl border border-white/12 bg-white/8 p-3 shadow-[0_22px_70px_rgba(0,0,0,0.28)] backdrop-blur md:grid-cols-[1fr_170px_auto]"
+      >
+        <label className="sr-only" htmlFor="busca-imovel">
+          Buscar imóveis
+        </label>
+        <div className="flex items-center gap-3 rounded-lg bg-white px-4 py-3 text-slate-950">
+          <MagnifyingGlass size={20} className="shrink-0 text-[var(--grey-olive)]" />
+          <input
+            id="busca-imovel"
+            name="busca"
+            type="search"
+            placeholder="Bairro, cidade, condomínio ou perfil do imóvel"
+            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-light text-slate-950 outline-none placeholder:text-slate-400 focus:shadow-none"
+          />
+        </div>
+        <label className="sr-only" htmlFor="operacao-imovel">
+          Finalidade
+        </label>
+        <select
+          id="operacao-imovel"
+          name="operacao"
+          defaultValue="venda"
+          className="rounded-lg border border-white/12 bg-white px-4 py-3 text-sm font-bold text-slate-950 outline-none"
+        >
+          <option value="venda">Comprar</option>
+          <option value="aluguel">Alugar</option>
+        </select>
+        <button
+          type="submit"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--grey-olive)] px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[color:rgba(145,139,118,0.86)]"
+        >
+          Buscar
+          <ArrowRight size={18} />
+        </button>
+      </form>
+    );
+  }
+
+  return (
+    <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+      <a
+        href={`/${nickname}/imoveis?operacao=venda`}
+        className="inline-flex items-center gap-3 rounded-lg bg-[var(--grey-olive)] px-6 py-4 text-sm font-bold text-white shadow-[0_18px_45px_rgba(0,0,0,0.32)] transition hover:-translate-y-0.5 hover:bg-[color:rgba(145,139,118,0.86)]"
+      >
+        Ver opções para comprar
+        <ArrowRight size={18} />
+      </a>
+      <a
+        href={`/${nickname}/imoveis?operacao=aluguel`}
+        className="inline-flex items-center gap-3 rounded-lg border border-white/18 bg-white/8 px-6 py-4 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-white/14"
+      >
+        Ver opções para alugar
+        <ArrowRight size={18} />
+      </a>
+    </div>
+  );
+}
+
 function RelatedPropertyCard({
   nickname,
   imovel,
 }: {
   nickname: string;
-  imovel: PublicImovel & { capa_url: string | null };
+  imovel: ScoredRelatedProperty & { capa_url: string | null };
 }) {
   const title = buildImovelHeaderTitle(imovel);
   const href = getImovelHref(nickname, imovel);
@@ -1374,32 +1547,43 @@ function RelatedPropertyCard({
   return (
     <Link
       href={href}
-      className="grid gap-4 rounded-lg border border-stone-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:grid-cols-[180px_1fr]"
+      className="group grid gap-4 rounded-lg border border-stone-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-[color:rgba(145,139,118,0.55)] hover:shadow-md sm:grid-cols-[180px_1fr]"
     >
-      <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-stone-200 sm:aspect-auto">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-stone-100 sm:aspect-auto">
         {imovel.capa_url ? (
-          <Image src={imovel.capa_url} alt={title} fill sizes="180px" className="object-cover" unoptimized />
+          <Image
+            src={imovel.capa_url}
+            alt={title}
+            fill
+            sizes="180px"
+            className="object-cover transition duration-500 group-hover:scale-[1.03]"
+            unoptimized
+          />
         ) : (
-          <div className="flex h-full min-h-[130px] items-center justify-center text-stone-400">
-            <HouseLine size={28} />
+          <div className="flex h-full min-h-[130px] items-center justify-center text-[var(--grey-olive)]">
+            <HouseLine size={28} weight="light" />
           </div>
         )}
       </div>
       <div className="min-w-0 py-1">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-700">{formatEnumLabel(imovel.tipo)}</p>
-        <h3 className="mt-1 line-clamp-2 font-bold leading-snug text-slate-950">{title}</h3>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--grey-olive)]">
+          {formatEnumLabel(imovel.tipo)}
+        </p>
+        <h3 className="mt-1 line-clamp-2 text-xl font-light leading-snug text-slate-950 transition group-hover:text-[var(--grey-olive)]">
+          {title}
+        </h3>
         <p className="mt-2 flex items-center gap-1 text-sm font-light text-slate-500">
           <MapPin size={15} />
           {buildLocationLine(imovel)}
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
           {stats.map((stat) => (
-            <span key={stat.label} className="rounded-full bg-stone-100 px-2 py-1">
+            <span key={stat.label} className="rounded-full bg-stone-100 px-2 py-1 text-slate-600">
               {stat.value} {stat.label}
             </span>
           ))}
         </div>
-        <p className="mt-3 text-lg font-bold text-[var(--primary-scarlet)]">{formatPrice(imovel)}</p>
+        <p className="mt-3 text-lg font-bold text-slate-950">{formatPrice(imovel)}</p>
       </div>
     </Link>
   );

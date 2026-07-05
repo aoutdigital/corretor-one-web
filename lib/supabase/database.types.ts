@@ -2072,6 +2072,53 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_authority_numbers: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          ordem: number
+          owner_id: string
+          rotulo: string
+          tipo: Database["public"]["Enums"]["profile_authority_number_type"]
+          updated_at: string
+          valor: string
+          visivel: boolean
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          owner_id: string
+          rotulo: string
+          tipo: Database["public"]["Enums"]["profile_authority_number_type"]
+          updated_at?: string
+          valor: string
+          visivel?: boolean
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          owner_id?: string
+          rotulo?: string
+          tipo?: Database["public"]["Enums"]["profile_authority_number_type"]
+          updated_at?: string
+          valor?: string
+          visivel?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_authority_numbers_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provas_sociais: {
         Row: {
           cliente_nome_publico: string | null
@@ -2599,6 +2646,11 @@ export type Database = {
     Enums: {
       alt_origem: "MANUAL" | "AYKA"
       canal_contato: "EMAIL" | "WHATSAPP"
+      profile_authority_number_type:
+        | "VGV_NEGOCIADO"
+        | "IMOVEIS_VENDIDOS_ALUGADOS"
+        | "CLIENTES_ATENDIDOS"
+        | "ANOS_CARREIRA"
       caracteristica_comercial:
         | "PROX_METRO"
         | "ALTA_CIRCULACAO"
@@ -3091,6 +3143,12 @@ export const Constants = {
     Enums: {
       alt_origem: ["MANUAL", "AYKA"],
       canal_contato: ["EMAIL", "WHATSAPP"],
+      profile_authority_number_type: [
+        "VGV_NEGOCIADO",
+        "IMOVEIS_VENDIDOS_ALUGADOS",
+        "CLIENTES_ATENDIDOS",
+        "ANOS_CARREIRA",
+      ],
       caracteristica_comercial: [
         "PROX_METRO",
         "ALTA_CIRCULACAO",

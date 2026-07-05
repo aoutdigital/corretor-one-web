@@ -316,6 +316,44 @@ Regras:
 
 ---
 
+### profile_authority_numbers
+- id (uuid, PK)
+- owner_id (uuid, FK profiles.id)
+
+Conteúdo:
+- tipo (text, enum PROFILE_AUTHORITY_NUMBER_TYPE)
+  - VGV_NEGOCIADO
+  - IMOVEIS_VENDIDOS_ALUGADOS
+  - CLIENTES_ATENDIDOS
+  - ANOS_CARREIRA
+- valor (text) *(ex.: R$ 150M+, 120+, 18)*
+- rotulo (text) *(label pública abaixo do número)*
+- descricao (text, nullable) *(apoio curto opcional para contexto interno/futuro)*
+
+Publicação:
+- ordem (int, default 0)
+- visivel (bool, default true)
+
+- created_at (timestamptz)
+- updated_at (timestamptz)
+
+Índices: (owner_id, ordem), (owner_id, visivel, ordem)
+
+Constraints:
+- unique(owner_id, tipo)
+- check: `valor` entre 1 e 24 caracteres
+- check: `rotulo` entre 1 e 80 caracteres
+- check: `descricao` até 160 caracteres
+- check: `ordem >= 0`
+
+Regras:
+- RLS por owner para CRUD no app.
+- Leitura pública apenas quando `visivel = true` e o `profiles.status = ATIVO`.
+- O produto permite os quatro tipos acima, mas a seção pública exibe no máximo 3 números para manter leitura editorial.
+- O limite de no máximo 3 registros visíveis por corretor deve ser validado no backend e protegido no banco.
+
+---
+
 ## 4) Imóveis & Empreendimentos
 
 ### imoveis

@@ -52,6 +52,7 @@
 
 ### Imóveis (público)
 - **/[nickname]/imoveis/** — Estoque / listagem de imóveis do corretor
+- **/[nickname]/imoveis/[slugBusca]/** — Landing SEO de busca canônica do corretor *(ex.: venda-apartamento-sao-paulo-santana-3-dormitorios; refinamentos como preço, condomínio e IPTU ficam em query string com canonical para a base)*
 - **/[nickname]/venda/[slugImovel]/** — Imóvel à venda
 - **/[nickname]/aluguel/[slugImovel]/** — Imóvel para locação
 
@@ -70,7 +71,7 @@
 - **/recuperar-senha** — Recuperar senha
 - **/onboarding** — Wizard inicial
 - **/** — Home (resumo)
-- **/perfil** — Meu perfil
+- **/perfil** — Meu perfil *(dados públicos, bio, números de autoridade, contatos, CRECI, redes sociais e provas sociais)*
 - **/configuracoes** — Configurações
 - **/assinatura** — Plano e cobrança
 

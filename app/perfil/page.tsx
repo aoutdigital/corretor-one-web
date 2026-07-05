@@ -5,6 +5,8 @@ import {
   Camera,
   ChatCircleText,
   CheckCircle,
+  ChartLineUp,
+  Clock,
   Crown,
   DotsSixVertical,
   EnvelopeSimple,
@@ -33,6 +35,7 @@ import {
   XLogo,
   UploadSimple,
   UserCircle,
+  UsersThree,
   X,
   YoutubeLogo,
 } from "@phosphor-icons/react";
@@ -165,6 +168,34 @@ type SocialProofDraft = {
   destaque: boolean;
 };
 
+type AuthorityNumberType =
+  | "VGV_NEGOCIADO"
+  | "IMOVEIS_VENDIDOS_ALUGADOS"
+  | "CLIENTES_ATENDIDOS"
+  | "ANOS_CARREIRA";
+
+type AuthorityNumber = {
+  id: string;
+  owner_id: string;
+  tipo: AuthorityNumberType;
+  valor: string;
+  rotulo: string;
+  descricao: string | null;
+  ordem: number;
+  visivel: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type AuthorityNumberDraft = {
+  tipo: AuthorityNumberType;
+  valor: string;
+  rotulo: string;
+  descricao: string;
+  ordem: number;
+  visivel: boolean;
+};
+
 type ProfileTab = "dadosprincipais" | "contato" | "creci" | "redessociais" | "provassociais";
 type CropPoint = { x: number; y: number };
 type NaturalSize = { width: number; height: number };
@@ -193,6 +224,42 @@ const SOCIAL_PROOF_STATUS_LABELS: Record<SocialProofStatus, string> = {
   PUBLICADO: "Publicado",
   ARQUIVADO: "Arquivado",
 };
+const AUTHORITY_NUMBER_OPTIONS: Array<{
+  value: AuthorityNumberType;
+  title: string;
+  defaultLabel: string;
+  placeholder: string;
+  hint: string;
+}> = [
+  {
+    value: "VGV_NEGOCIADO",
+    title: "VGV Negociado",
+    defaultLabel: "em VGV negociado",
+    placeholder: "R$ 150M+",
+    hint: "Volume financeiro aproximado das negociações.",
+  },
+  {
+    value: "IMOVEIS_VENDIDOS_ALUGADOS",
+    title: "Imóveis vendidos/alugados",
+    defaultLabel: "imóveis vendidos/alugados",
+    placeholder: "120+",
+    hint: "Use a soma de vendas e locações concluídas.",
+  },
+  {
+    value: "CLIENTES_ATENDIDOS",
+    title: "Clientes atendidos",
+    defaultLabel: "clientes atendidos",
+    placeholder: "300+",
+    hint: "Bom para demonstrar recorrência e atendimento consultivo.",
+  },
+  {
+    value: "ANOS_CARREIRA",
+    title: "Anos de carreira",
+    defaultLabel: "anos de carreira",
+    placeholder: "12+",
+    hint: "Tempo de atuação no mercado imobiliário.",
+  },
+];
 const DEFAULT_PROFILE_TAB: ProfileTab = "dadosprincipais";
 const PROFILE_TAB_VALUES = new Set<ProfileTab>([
   "dadosprincipais",
@@ -841,6 +908,43 @@ function buildSocialProofDraft(item?: SocialProof | null): SocialProofDraft {
   };
 }
 
+function buildDefaultAuthorityNumberDrafts(): AuthorityNumberDraft[] {
+  return AUTHORITY_NUMBER_OPTIONS.map((option, index) => ({
+    tipo: option.value,
+    valor: "",
+    rotulo: option.defaultLabel,
+    descricao: "",
+    ordem: index,
+    visivel: index < 3,
+  }));
+}
+
+function mapAuthorityNumberRowsToDrafts(rows: AuthorityNumber[]): AuthorityNumberDraft[] {
+  const byType = new Map(rows.map((row) => [row.tipo, row]));
+  return AUTHORITY_NUMBER_OPTIONS.map((option, index) => {
+    const row = byType.get(option.value);
+    return {
+      tipo: option.value,
+      valor: row?.valor ?? "",
+      rotulo: row?.rotulo ?? option.defaultLabel,
+      descricao: row?.descricao ?? "",
+      ordem: row?.ordem ?? index,
+      visivel: row?.visivel ?? index < 3,
+    };
+  });
+}
+
+function getAuthorityNumberOption(type: AuthorityNumberType) {
+  return AUTHORITY_NUMBER_OPTIONS.find((option) => option.value === type) ?? AUTHORITY_NUMBER_OPTIONS[0];
+}
+
+function getAuthorityNumberIcon(type: AuthorityNumberType) {
+  if (type === "VGV_NEGOCIADO") return <ChartLineUp size={18} />;
+  if (type === "CLIENTES_ATENDIDOS") return <UsersThree size={18} />;
+  if (type === "ANOS_CARREIRA") return <Clock size={18} />;
+  return <HouseLine size={18} />;
+}
+
 function getSocialProofTitlePlaceholder(type: SocialProofType) {
   if (type === "DEPOIMENTO") return "Ex.: Depoimento após a compra do primeiro imóvel";
   if (type === "ASSINATURA_CONTRATO") return "Ex.: Contrato assinado com segurança";
@@ -1399,6 +1503,10 @@ export default function PerfilPage() {
   const [deleteSocialProofTarget, setDeleteSocialProofTarget] = useState<SocialProof | null>(null);
   const [dropTargetSocialProofId, setDropTargetSocialProofId] = useState<string | null>(null);
   const [reorderingSocialProofs, setReorderingSocialProofs] = useState(false);
+  const [authorityNumbers, setAuthorityNumbers] = useState<AuthorityNumberDraft[]>(
+    () => buildDefaultAuthorityNumberDrafts(),
+  );
+  const [loadingAuthorityNumbers, setLoadingAuthorityNumbers] = useState(false);
   const [activeProfileTab, setActiveProfileTab] = useState<ProfileTab>(DEFAULT_PROFILE_TAB);
 
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1412,6 +1520,17 @@ export default function PerfilPage() {
       setError(result.error);
     }
     setLoadingSocialProofs(false);
+  }
+
+  async function loadAuthorityNumbers() {
+    setLoadingAuthorityNumbers(true);
+    const result = await apiFetchWithAuth<AuthorityNumber[]>("/api/profile/numeros-autoridade");
+    if (result.ok) {
+      setAuthorityNumbers(mapAuthorityNumberRowsToDrafts(result.data));
+    } else {
+      setError(result.error);
+    }
+    setLoadingAuthorityNumbers(false);
   }
 
   useEffect(() => {
@@ -1463,7 +1582,10 @@ export default function PerfilPage() {
   }, []);
 
   useEffect(() => {
-    if (!loading) void loadSocialProofs();
+    if (!loading) {
+      void loadSocialProofs();
+      void loadAuthorityNumbers();
+    }
   }, [loading]);
 
   useEffect(() => {
@@ -1896,6 +2018,51 @@ export default function PerfilPage() {
     });
   }
 
+  function updateAuthorityNumber(
+    type: AuthorityNumberType,
+    patch: Partial<Omit<AuthorityNumberDraft, "tipo">>,
+  ) {
+    setAuthorityNumbers((current) =>
+      current.map((item) => (item.tipo === type ? { ...item, ...patch } : item)),
+    );
+  }
+
+  function toggleAuthorityNumberVisibility(type: AuthorityNumberType, checked: boolean) {
+    if (checked && authorityNumbers.filter((item) => item.visivel).length >= 3) {
+      showToast("Escolha até 3 números para exibir no perfil público.");
+      return;
+    }
+    updateAuthorityNumber(type, { visivel: checked });
+  }
+
+  function buildAuthorityNumbersPayloadForSave() {
+    const filledItems = authorityNumbers.filter((item) => item.valor.trim().length > 0);
+    const visibleItems = filledItems.filter((item) => item.visivel);
+
+    if (visibleItems.length > 3) {
+      setError("Escolha até 3 números de autoridade para exibir no perfil público.");
+      return null;
+    }
+
+    const missingVisible = authorityNumbers.find((item) => item.visivel && !item.valor.trim());
+    if (missingVisible) {
+      const option = getAuthorityNumberOption(missingVisible.tipo);
+      setError(`Informe o valor de "${option.title}" ou desmarque a exibição.`);
+      return null;
+    }
+
+    return {
+      items: filledItems.map((item, index) => ({
+        tipo: item.tipo,
+        valor: item.valor.trim(),
+        rotulo: (item.rotulo.trim() || getAuthorityNumberOption(item.tipo).defaultLabel).slice(0, 80),
+        descricao: item.descricao.trim() || null,
+        ordem: index,
+        visivel: item.visivel,
+      })),
+    };
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -1965,6 +2132,21 @@ export default function PerfilPage() {
         setError(result.error);
         return;
       }
+
+      const authorityPayload = buildAuthorityNumbersPayloadForSave();
+      if (!authorityPayload) return;
+
+      const authorityResult = await apiFetchWithAuth<AuthorityNumber[]>("/api/profile/numeros-autoridade", {
+        method: "PUT",
+        body: JSON.stringify(authorityPayload),
+      });
+
+      if (!authorityResult.ok) {
+        setError(authorityResult.error);
+        return;
+      }
+
+      setAuthorityNumbers(mapAuthorityNumberRowsToDrafts(authorityResult.data));
 
       setProfile((prev) =>
         prev
@@ -2308,6 +2490,89 @@ export default function PerfilPage() {
                 className="min-h-[140px] rounded-b-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--blue-slate)] [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1"
                 style={{ whiteSpace: "pre-wrap" }}
               />
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900">Números de autoridade</h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Cadastre os quatro indicadores e escolha até 3 para aparecerem na seção Sobre do perfil público.
+                  </p>
+                </div>
+                {loadingAuthorityNumbers ? (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs text-slate-500">
+                    <Spinner size={13} className="animate-spin" />
+                    Carregando
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-2">
+                {authorityNumbers.map((item) => {
+                  const option = getAuthorityNumberOption(item.tipo);
+                  return (
+                    <article key={item.tipo} className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[var(--stone-gold)]">
+                            {getAuthorityNumberIcon(item.tipo)}
+                          </span>
+                          <div>
+                            <h4 className="font-semibold text-slate-900">{option.title}</h4>
+                            <p className="mt-1 text-xs leading-5 text-slate-500">{option.hint}</p>
+                          </div>
+                        </div>
+                        <label className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full border border-slate-200 px-2.5 py-1 text-xs text-slate-600">
+                          <input
+                            type="checkbox"
+                            checked={item.visivel}
+                            onChange={(event) => toggleAuthorityNumberVisibility(item.tipo, event.target.checked)}
+                          />
+                          Exibir
+                        </label>
+                      </div>
+
+                      <div className="mt-3 grid gap-3 md:grid-cols-[0.75fr_1.25fr]">
+                        <label className="block text-sm">
+                          <span className="mb-1 block text-slate-500">Valor</span>
+                          <input
+                            value={item.valor}
+                            onChange={(event) =>
+                              updateAuthorityNumber(item.tipo, { valor: event.target.value.slice(0, 24) })
+                            }
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-lg outline-none focus:border-[var(--blue-slate)]"
+                            placeholder={option.placeholder}
+                          />
+                        </label>
+                        <label className="block text-sm">
+                          <span className="mb-1 block text-slate-500">Rótulo público</span>
+                          <input
+                            value={item.rotulo}
+                            onChange={(event) =>
+                              updateAuthorityNumber(item.tipo, { rotulo: event.target.value.slice(0, 80) })
+                            }
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--blue-slate)]"
+                            placeholder={option.defaultLabel}
+                          />
+                        </label>
+                      </div>
+
+                      <label className="mt-3 block text-sm">
+                        <span className="mb-1 block text-slate-500">Observação opcional</span>
+                        <input
+                          value={item.descricao}
+                          onChange={(event) =>
+                            updateAuthorityNumber(item.tipo, { descricao: event.target.value.slice(0, 160) })
+                          }
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--blue-slate)]"
+                          placeholder="Ex.: número aproximado, atualizado manualmente."
+                        />
+                      </label>
+                    </article>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">

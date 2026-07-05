@@ -4,16 +4,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   Buildings,
+  ChartLineUp,
+  Clock,
   EnvelopeSimple,
   HouseLine,
   MapPin,
   PhoneCall,
   SealCheck,
   ShieldCheck,
+  UsersThree,
   WhatsappLogo,
 } from "@phosphor-icons/react/dist/ssr";
 
 import { ProfileContactSection, type PublicContactChannel } from "@/app/[nickname]/_components/profile-contact-section";
+import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
 import { SocialProofCarousel, type SocialProofItem } from "@/app/[nickname]/_components/social-proof-carousel";
 import { buildImovelHeaderTitle } from "@/lib/imoveis/display-title";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -80,6 +84,16 @@ type SocialProofRow = Pick<
   | "destaque"
   | "ordem"
   | "publicado_em"
+>;
+type AuthorityNumberRow = Pick<
+  Database["public"]["Tables"]["profile_authority_numbers"]["Row"],
+  | "id"
+  | "tipo"
+  | "valor"
+  | "rotulo"
+  | "descricao"
+  | "ordem"
+  | "visivel"
 >;
 
 type PublicProfile = Pick<
@@ -214,6 +228,16 @@ const SOCIAL_PROOF_SELECT = `
   publicado_em
 `;
 
+const AUTHORITY_NUMBER_SELECT = `
+  id,
+  tipo,
+  valor,
+  rotulo,
+  descricao,
+  ordem,
+  visivel
+`;
+
 const OBJECT_PUBLIC_SEGMENT = "/storage/v1/object/public/";
 const RENDER_PUBLIC_SEGMENT = "/storage/v1/render/image/public/";
 
@@ -251,11 +275,12 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
 
   if (!profile) notFound();
 
-  const [imoveis, empreendimentos, socialProofs, listingCounts] = await Promise.all([
+  const [imoveis, empreendimentos, socialProofs, listingCounts, authorityNumbers] = await Promise.all([
     getPublishedImoveis(profile.id),
     getPublishedEmpreendimentos(profile.id),
     getPublishedSocialProofs(profile.id),
     getPublishedListingCounts(profile.id),
+    getPublicAuthorityNumbers(profile.id),
   ]);
 
   const brokerName = getProfileName(profile);
@@ -435,19 +460,15 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
           </div>
         </section>
 
-        {bioHtml ? (
-          <section id="bio" className="border-b border-slate-200 bg-white">
-            <div className="mx-auto grid max-w-7xl gap-8 px-5 py-14 lg:grid-cols-[0.75fr_1.25fr]">
-              <div>
-                <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--primary-scarlet)]">Bio</p>
-                <h2 className="mt-2 text-3xl font-bold">Sobre {brokerName.split(" ")[0]}</h2>
-              </div>
-              <div
-                className="max-w-3xl text-lg font-light leading-8 text-slate-700 [&_b]:font-bold [&_div+div]:mt-4 [&_em]:italic [&_i]:italic [&_li]:my-1 [&_ol]:mt-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_p+p]:mt-4 [&_strong]:font-bold [&_u]:underline [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-6"
-                dangerouslySetInnerHTML={{ __html: bioHtml }}
-              />
-            </div>
-          </section>
+        {bioHtml || authorityNumbers.length > 0 ? (
+          <AboutAuthoritySection
+            brokerName={brokerName}
+            headline={profile.frase_impacto}
+            bioHtml={bioHtml}
+            imageUrl={avatarUrl || coverUrl}
+            initials={initials}
+            authorityNumbers={authorityNumbers}
+          />
         ) : null}
 
         <SocialProofCarousel items={socialProofs} />
@@ -542,16 +563,106 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
         />
       </main>
 
-      <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
-          <p className="font-light">Site profissional de {brokerName}.</p>
-          <Link href="/" className="font-bold text-slate-700 transition hover:text-[var(--primary-scarlet)]">
-            Crie seu perfil no Corretor.one
-          </Link>
-        </div>
-      </footer>
+      <BrokerPublicFooter
+        nickname={profile.nickname ?? nickname}
+        brokerName={brokerName}
+        creci={formatCreci(profile)}
+        whatsappHref={whatsappHref}
+        phoneHref={phoneHref}
+      />
     </div>
   );
+}
+
+function AboutAuthoritySection({
+  brokerName,
+  headline,
+  bioHtml,
+  imageUrl,
+  initials,
+  authorityNumbers,
+}: {
+  brokerName: string;
+  headline: string | null;
+  bioHtml: string;
+  imageUrl: string | null;
+  initials: string;
+  authorityNumbers: AuthorityNumberRow[];
+}) {
+  const firstName = brokerName.split(" ")[0] || brokerName;
+  const sectionHeadline =
+    headline?.trim() || "Atendimento imobiliário com estratégia, presença local e clareza em cada decisão.";
+
+  return (
+    <section id="bio" className="border-b border-slate-200 bg-white">
+      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-16 md:py-20 lg:grid-cols-[0.88fr_1.12fr] lg:items-center">
+        <div className="relative mx-auto w-full max-w-[520px] lg:mx-0">
+          <div className="absolute -bottom-5 -right-5 h-32 w-32 bg-[var(--stone-gold)]/18" />
+          <div className="absolute -left-5 top-12 h-44 w-24 bg-slate-100" />
+          <div className="relative aspect-[4/5] overflow-hidden bg-slate-100 shadow-[0_24px_70px_rgba(15,23,42,0.12)]">
+            {imageUrl ? (
+              <Image
+                src={imageUrl}
+                alt={brokerName}
+                fill
+                sizes="(min-width: 1024px) 480px, 90vw"
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-slate-950 text-6xl font-light text-white">
+                {initials}
+              </div>
+            )}
+            <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-slate-950/40 to-transparent" />
+          </div>
+        </div>
+
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.22em] text-[var(--stone-gold)]">Sobre</p>
+          <h2 className="mt-4 max-w-4xl text-4xl font-light leading-tight text-slate-950 md:text-5xl">
+            {sectionHeadline}
+          </h2>
+
+          {bioHtml ? (
+            <div
+              className="mt-8 max-w-3xl text-lg font-light leading-8 text-slate-600 [&_b]:font-semibold [&_div+div]:mt-4 [&_em]:italic [&_i]:italic [&_li]:my-1 [&_ol]:mt-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_p+p]:mt-4 [&_strong]:font-semibold [&_u]:underline [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-6"
+              dangerouslySetInnerHTML={{ __html: bioHtml }}
+            />
+          ) : (
+            <p className="mt-8 max-w-3xl text-lg font-light leading-8 text-slate-600">
+              Conheça um pouco da minha atuação e dos números que orientam meu atendimento.
+            </p>
+          )}
+
+          {authorityNumbers.length > 0 ? (
+            <div className="mt-12 grid gap-6 border-t border-slate-200 pt-8 sm:grid-cols-3 sm:divide-x sm:divide-slate-200">
+              {authorityNumbers.slice(0, 3).map((item) => (
+                <div key={item.id} className="sm:px-6 first:sm:pl-0">
+                  <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-[var(--stone-gold)]">
+                    {getAuthorityNumberPublicIcon(item.tipo)}
+                  </div>
+                  <p className="text-4xl font-light leading-none text-slate-950 md:text-5xl">{item.valor}</p>
+                  <p className="mt-3 text-sm font-light leading-6 text-slate-600">{item.rotulo}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-10 text-sm font-light text-slate-500">
+              {firstName} ainda está organizando seus números de autoridade.
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function getAuthorityNumberPublicIcon(type: AuthorityNumberRow["tipo"]) {
+  if (type === "VGV_NEGOCIADO") return <ChartLineUp size={18} />;
+  if (type === "CLIENTES_ATENDIDOS") return <UsersThree size={18} />;
+  if (type === "ANOS_CARREIRA") return <Clock size={18} />;
+  return <HouseLine size={18} />;
 }
 
 async function getProfileByNickname(rawNickname: string) {
@@ -571,6 +682,23 @@ async function getProfileByNickname(rawNickname: string) {
   }
 
   return result.data as PublicProfile | null;
+}
+
+async function getPublicAuthorityNumbers(ownerId: string): Promise<AuthorityNumberRow[]> {
+  const supabase = createSupabaseServerClient();
+  const result = await supabase
+    .from("profile_authority_numbers")
+    .select(AUTHORITY_NUMBER_SELECT)
+    .eq("owner_id", ownerId)
+    .eq("visivel", true)
+    .order("ordem", { ascending: true })
+    .limit(3);
+
+  if (result.error) {
+    throw new Error(`Erro ao carregar numeros de autoridade: ${result.error.message}`);
+  }
+
+  return (result.data ?? []) as AuthorityNumberRow[];
 }
 
 async function getPublishedImoveis(ownerId: string) {
