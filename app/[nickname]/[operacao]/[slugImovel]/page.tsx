@@ -17,6 +17,7 @@ import {
 
 import { PropertyGallery } from "@/app/[nickname]/_components/property-gallery";
 import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
+import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
 import { PropertyInsights, type PropertyInsightsData } from "@/app/[nickname]/_components/property-insights";
 import { PropertyLeadCard } from "@/app/[nickname]/_components/property-lead-card";
 import { SocialProofCarousel, type SocialProofItem } from "@/app/[nickname]/_components/social-proof-carousel";
@@ -326,6 +327,10 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
   const highlights = buildHighlights(imovel, data.caracteristicasLabels);
   const heroLocationLine = buildHeroLocationLine(addressLine, locationLine);
   const mapQuery = encodeURIComponent(addressLine || locationLine || `${imovel.bairro}, ${imovel.cidade}, ${imovel.estado}`);
+  const headerNickname = profile.nickname ?? nickname;
+  const logoUrl = getPublicImageUrl(profile.logo_nickname_url || profile.logo_nickname_white_url);
+  const avatarUrl = getPublicImageUrl(profile.avatar_url);
+  const initials = getInitials(brokerName);
   const insights = buildPropertyInsightsData({
     imovel,
     ambientes,
@@ -342,44 +347,13 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white text-slate-950">
-      <header className="border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4">
-          <Link href={`/${profile.nickname}`} className="flex items-center gap-3">
-            {profile.logo_nickname_url ? (
-              <Image
-                src={profile.logo_nickname_url}
-                alt={brokerName}
-                width={150}
-                height={44}
-                className="h-10 w-auto object-contain"
-                unoptimized
-              />
-            ) : (
-              <span className="text-xl font-bold tracking-tight">{brokerName}</span>
-            )}
-          </Link>
-          <nav className="hidden items-center gap-6 text-sm font-light text-slate-600 md:flex">
-            <a href="#descricao" className="transition hover:text-[var(--primary-scarlet)]">
-              Descrição
-            </a>
-            <a href="#localizacao" className="transition hover:text-[var(--primary-scarlet)]">
-              Localização
-            </a>
-            <a href="#relacionados" className="transition hover:text-[var(--primary-scarlet)]">
-              Relacionados
-            </a>
-          </nav>
-          {whatsappHref ? (
-            <a
-              href={whatsappHref}
-              className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-2 text-sm font-bold text-white transition hover:brightness-95"
-            >
-              Falar agora
-              <ArrowRight size={16} />
-            </a>
-          ) : null}
-        </div>
-      </header>
+      <PublicBrokerHeader
+        nickname={headerNickname}
+        brokerName={brokerName}
+        logoUrl={logoUrl}
+        avatarUrl={avatarUrl}
+        initials={initials}
+      />
 
       <main>
         <section className="mx-auto grid max-w-7xl gap-7 px-5 pb-12 pt-8 lg:grid-cols-[0.86fr_1.14fr]">
@@ -906,6 +880,15 @@ function getPublicImageUrl(url: string | null | undefined) {
   } catch {
     return objectUrl.split("?")[0] || objectUrl;
   }
+}
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "CO";
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
 }
 
 function formatPrice(imovel: Pick<PublicImovel, "tipo_negociacao" | "preco_venda" | "preco_locacao">) {

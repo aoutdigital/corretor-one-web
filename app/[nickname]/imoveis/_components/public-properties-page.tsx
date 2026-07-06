@@ -7,6 +7,7 @@ import { ArrowRight, FunnelSimple, MagnifyingGlass } from "@phosphor-icons/react
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 import { BrokerPublicFooter } from "../../_components/broker-public-footer";
+import { PublicBrokerHeader } from "../../_components/public-broker-header";
 import { PublicPropertyCard } from "../../_components/public-property-card";
 import { SocialProofCarousel, type SocialProofItem } from "../../_components/social-proof-carousel";
 import { PropertyFilterPanel } from "./property-filter-panel";
@@ -319,65 +320,13 @@ export async function PublicPropertiesPage({ nickname, searchParams, seoSlug }: 
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4">
-          <Link href={profilePath} aria-label={brokerName} className="min-w-0">
-            {logoUrl ? (
-              <Image
-                src={logoUrl}
-                alt={brokerName}
-                width={260}
-                height={90}
-                className="h-10 w-auto max-w-[190px] object-contain md:max-w-[250px]"
-                priority
-                unoptimized
-              />
-            ) : (
-              <span className="block truncate text-lg font-bold text-slate-950 md:text-xl">{brokerName}</span>
-            )}
-          </Link>
-          <nav className="hidden items-center gap-1 text-sm font-light text-slate-600 lg:flex">
-            <Link className="rounded-lg px-3 py-2 transition hover:bg-slate-100 hover:text-slate-950" href={profilePath}>
-              Home
-            </Link>
-            <Link className="rounded-lg px-3 py-2 transition hover:bg-slate-100 hover:text-slate-950" href={`${profilePath}/imoveis/venda`}>
-              Venda
-            </Link>
-            <Link className="rounded-lg px-3 py-2 transition hover:bg-slate-100 hover:text-slate-950" href={`${profilePath}/imoveis/aluguel`}>
-              Locação
-            </Link>
-            <Link className="rounded-lg px-3 py-2 transition hover:bg-slate-100 hover:text-slate-950" href={`${profilePath}/anuncie`}>
-              Anunciar
-            </Link>
-            <Link className="rounded-lg px-3 py-2 transition hover:bg-slate-100 hover:text-slate-950" href={`${profilePath}/empreendimentos`}>
-              Empreendimentos
-            </Link>
-            <Link className="rounded-lg px-3 py-2 transition hover:bg-slate-100 hover:text-slate-950" href={`${profilePath}#contato`}>
-              Contato
-            </Link>
-          </nav>
-          <div className="flex shrink-0 items-center gap-3">
-            <Link
-              href={`${profilePath}#contato`}
-              className="hidden items-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-2 text-sm font-bold text-white transition hover:brightness-95 sm:inline-flex"
-            >
-              Falar agora
-              <ArrowRight size={16} />
-            </Link>
-            <Link
-              href={profilePath}
-              aria-label={`Perfil de ${brokerName}`}
-              className="relative h-11 w-11 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-slate-700 shadow-sm"
-            >
-              {avatarUrl ? (
-                <Image src={avatarUrl} alt={brokerName} fill sizes="44px" className="object-cover" priority unoptimized />
-              ) : (
-                <span className="flex h-full w-full items-center justify-center text-sm font-bold">{initials}</span>
-              )}
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicBrokerHeader
+        nickname={profile.nickname ?? nickname}
+        brokerName={brokerName}
+        logoUrl={logoUrl}
+        avatarUrl={avatarUrl}
+        initials={initials}
+      />
 
       <main>
         <section className="relative overflow-hidden border-b border-stone-200 bg-slate-950 px-5 py-20 text-white md:py-28">

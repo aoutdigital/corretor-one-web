@@ -1,4 +1,5 @@
 import { fail, ok, type ApiResult } from "@/lib/api/result";
+import sharp from "sharp";
 import { authenticateByAccessToken } from "@/lib/db/_auth";
 import type { DynamicClient } from "@/lib/db/_dynamic-client";
 import { mapDbError } from "@/lib/db/_errors";
@@ -229,16 +230,6 @@ async function assertOwnImovel(
 function buildStoragePath(ownerId: string, fileName: string): string {
   const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   return `${ownerId}/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
-}
-
-function buildRenderImageUrl(publicUrl: string) {
-  if (!publicUrl.includes("/storage/v1/object/public/")) return null;
-  const base = publicUrl.replace(
-    "/storage/v1/object/public/",
-    "/storage/v1/render/image/public/",
-  );
-  const separator = base.includes("?") ? "&" : "?";
-  return `${base}${separator}width=1920&quality=82`;
 }
 
 function slugifyPathToken(value: string): string {
@@ -2046,25 +2037,40 @@ export async function optimizeMidiaOwnedTo1920(
   if (!isOptimizable) return ok({ id: midia.id });
   if (oldPath.includes("/optimized/")) return ok({ id: midia.id });
 
-  const renderUrl = buildRenderImageUrl(midia.url);
-  if (!renderUrl) return fail("VALIDATION_ERROR", "Midia URL is not renderable");
+  const sourceBufferResult = await fetchSourceImageBuffer({
+    storageProvider: midia.storage_provider,
+    storageBucket: midia.storage_bucket,
+    storagePath: midia.storage_path,
+    url: midia.url,
+  });
+  if (!sourceBufferResult.ok) return sourceBufferResult;
 
-  const renderedResponse = await fetch(renderUrl);
-  if (!renderedResponse.ok) {
-    return fail("DATABASE_ERROR", "Falha ao renderizar imagem 1920", {
-      status: renderedResponse.status,
+  let renderedBuffer: Buffer;
+  try {
+    renderedBuffer = await sharp(sourceBufferResult.data, { failOn: "none" })
+      .rotate()
+      .resize({
+        width: 1920,
+        height: 1920,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toBuffer();
+  } catch (error) {
+    return fail("DATABASE_ERROR", "Falha ao otimizar imagem para 1920px", {
+      message: (error as Error).message,
     });
   }
 
-  const renderedBlob = await renderedResponse.blob();
-  if (!renderedBlob.size) {
-    return fail("DATABASE_ERROR", "Render de imagem retornou vazio");
+  if (!renderedBuffer.byteLength) {
+    return fail("DATABASE_ERROR", "Imagem otimizada retornou vazia");
   }
 
-  const mime = renderedBlob.type || "image/jpeg";
-  const ext = mime.includes("webp") ? "webp" : mime.includes("png") ? "png" : "jpg";
+  const mime = "image/jpeg";
+  const ext = "jpg";
   const newPath = `${user.id}/optimized/${Date.now()}-${crypto.randomUUID()}-w1920.${ext}`;
-  const uploadFile = new File([renderedBlob], `w1920.${ext}`, { type: mime });
+  const uploadFile = new File([bufferToArrayBuffer(renderedBuffer)], `w1920.${ext}`, { type: mime });
 
   let uploaded: { publicUrl: string; path: string; bucket: string; size: number | null };
   try {

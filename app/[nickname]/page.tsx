@@ -7,10 +7,8 @@ import {
   Buildings,
   ChartLineUp,
   Clock,
-  EnvelopeSimple,
   HouseLine,
   MapPin,
-  PhoneCall,
   SealCheck,
   ShieldCheck,
   UsersThree,
@@ -20,6 +18,8 @@ import {
 import { ProfileContactSection, type PublicContactChannel } from "@/app/[nickname]/_components/profile-contact-section";
 import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
 import { HorizontalLoopCarousel } from "@/app/[nickname]/_components/horizontal-loop-carousel";
+import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
+import { PublicEmpreendimentoCard } from "@/app/[nickname]/_components/public-empreendimento-card";
 import { PublicPropertyCard, type PublicPropertyCardImovel } from "@/app/[nickname]/_components/public-property-card";
 import { SocialProofCarousel, type SocialProofItem } from "@/app/[nickname]/_components/social-proof-carousel";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -38,11 +38,14 @@ type EmpreendimentoRow = Pick<
   | "nome"
   | "resumo_curto"
   | "descricao"
+  | "logradouro"
+  | "numero"
   | "bairro"
   | "cidade"
   | "estado"
   | "fase"
   | "estagio_obra"
+  | "previsao_entrega_em"
   | "n_torres"
   | "n_unidades"
   | "publicado_em"
@@ -191,11 +194,14 @@ const EMPREENDIMENTO_SELECT = `
   nome,
   resumo_curto,
   descricao,
+  logradouro,
+  numero,
   bairro,
   cidade,
   estado,
   fase,
   estagio_obra,
+  previsao_entrega_em,
   n_torres,
   n_unidades,
   publicado_em
@@ -275,76 +281,19 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
   const phoneHref = buildPhoneHref(profile.telefone);
   const coverUrl = getPublicImageUrl(profile.imagem_capa_url) || "/images/corretor-one-chaves-casal.jpeg";
   const avatarUrl = getPublicImageUrl(profile.avatar_url);
-  const headerLogoUrl = getPublicImageUrl(profile.logo_nickname_url || profile.logo_nickname_white_url);
+  const logoUrl = getPublicImageUrl(profile.logo_nickname_url || profile.logo_nickname_white_url);
   const socialLinks = getSocialLinks(profile);
   const bioHtml = sanitizeBioHtml(profile.bio);
 
   return (
     <div className="min-h-screen bg-white text-slate-950">
-      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4">
-          <Link href={`/${profile.nickname}`} aria-label={brokerName} className="min-w-0">
-            {headerLogoUrl ? (
-              <Image
-                src={headerLogoUrl}
-                alt={brokerName}
-                width={260}
-                height={90}
-                className="h-10 w-auto max-w-[210px] object-contain md:max-w-[260px]"
-                priority
-                unoptimized
-              />
-            ) : (
-              <span className="block truncate text-lg font-bold text-slate-950 md:text-xl">{brokerName}</span>
-            )}
-          </Link>
-          <nav className="hidden items-center gap-2 text-sm font-light text-slate-600 md:flex">
-            <a className="rounded-lg px-3 py-2 transition hover:bg-slate-100" href="#imoveis">
-              Imóveis
-            </a>
-            <a className="rounded-lg px-3 py-2 transition hover:bg-slate-100" href="#empreendimentos">
-              Empreendimentos
-            </a>
-            <a className="rounded-lg px-3 py-2 transition hover:bg-slate-100" href="#contato">
-              Contato
-            </a>
-          </nav>
-          <div className="flex shrink-0 items-center gap-3">
-            {whatsappHref ? (
-              <a
-                href={whatsappHref}
-                className="hidden items-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-2 text-sm font-bold text-white transition hover:brightness-95 sm:inline-flex"
-              >
-                <PhoneCall size={16} />
-                Falar agora
-              </a>
-            ) : (
-              <a
-                href={`mailto:${profile.email}`}
-                className="hidden items-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-2 text-sm font-bold text-white transition hover:brightness-95 sm:inline-flex"
-              >
-                <EnvelopeSimple size={16} />
-                Enviar email
-              </a>
-            )}
-            <div className="relative h-11 w-11 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-slate-700 shadow-sm">
-              {avatarUrl ? (
-                <Image
-                  src={avatarUrl}
-                  alt={brokerName}
-                  fill
-                  sizes="44px"
-                  className="object-cover"
-                  priority
-                  unoptimized
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm font-bold">{initials}</div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <PublicBrokerHeader
+        nickname={profile.nickname ?? nickname}
+        brokerName={brokerName}
+        logoUrl={logoUrl}
+        avatarUrl={avatarUrl}
+        initials={initials}
+      />
 
       <main>
         <section className="relative min-h-[620px] overflow-hidden border-b border-slate-200">
@@ -485,14 +434,17 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
               </div>
 
               <div className="mx-auto max-w-7xl px-5">
-                <div className="flex flex-col items-start justify-between gap-5 border-t border-stone-200 pt-8 md:flex-row md:items-center">
+                <div className="mt-8 flex flex-col items-start justify-between gap-5 border-t border-stone-200 pt-10 md:flex-row md:items-center">
                   <div>
                     <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--grey-olive)]">
-                      Curadoria completa
+                      Estoque completo
                     </p>
                     <h3 className="mt-2 max-w-3xl text-2xl font-light leading-tight text-slate-950 md:text-3xl">
-                      Veja todos os imóveis que selecionei para o seu momento.
+                      Tenho outros imóveis publicados para você comparar.
                     </h3>
+                    <p className="mt-3 max-w-2xl text-base font-light leading-7 text-slate-600">
+                      Acesse a listagem completa e filtre por bairro, valor, área e características.
+                    </p>
                   </div>
                   <Link
                     href={`/${profile.nickname}/imoveis`}
@@ -515,33 +467,65 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
           )}
         </section>
 
-        <section id="empreendimentos" className="border-y border-slate-200 bg-slate-50">
-          <div className="mx-auto max-w-7xl px-5 py-14">
+        <section id="empreendimentos" className="border-y border-slate-200 bg-white py-14">
+          <div className="mx-auto max-w-7xl px-5">
             <SectionHeader
               eyebrow="Empreendimentos"
               title="Lançamentos e projetos"
-              actionHref={`/${profile.nickname}/empreendimentos`}
-              actionLabel="Ver todos"
             />
+          </div>
 
-            {empreendimentos.length > 0 ? (
-              <div className="mt-8 grid gap-5 md:grid-cols-2">
+          {empreendimentos.length > 0 ? (
+            <>
+              <div className="mt-2">
+                <HorizontalLoopCarousel
+                  ariaLabel="Empreendimentos em destaque"
+                  previousLabel="Ver empreendimento anterior"
+                  nextLabel="Ver próximo empreendimento"
+                  scrollerClassName="overflow-x-auto scroll-smooth overscroll-x-contain pb-20 pt-10 pl-[max(1.25rem,calc((100vw-80rem)/2+1.25rem))] pr-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                >
                 {empreendimentos.map((empreendimento) => (
-                  <EmpreendimentoCard
+                  <PublicEmpreendimentoCard
                     key={empreendimento.id}
                     nickname={profile.nickname ?? ""}
                     empreendimento={empreendimento}
                   />
                 ))}
+                </HorizontalLoopCarousel>
               </div>
-            ) : (
+
+              <div className="mx-auto max-w-7xl px-5">
+                <div className="mt-8 flex flex-col items-start justify-between gap-5 border-t border-stone-200 pt-10 md:flex-row md:items-center">
+                  <div>
+                    <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--grey-olive)]">
+                      Projetos e condomínios
+                    </p>
+                    <h3 className="mt-2 max-w-3xl text-2xl font-light leading-tight text-slate-950 md:text-3xl">
+                      Veja os empreendimentos que eu acompanho de perto.
+                    </h3>
+                    <p className="mt-3 max-w-2xl text-base font-light leading-7 text-slate-600">
+                      Acesse a lista completa para comparar fases, localização e imóveis disponíveis em cada projeto.
+                    </p>
+                  </div>
+                  <Link
+                    href={`/${profile.nickname}/empreendimentos`}
+                    className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-[var(--grey-olive)]/45 px-5 py-3 text-sm font-semibold text-[var(--grey-olive)] transition hover:bg-[var(--grey-olive)] hover:text-white"
+                  >
+                    Ver empreendimentos
+                    <ArrowRight size={16} />
+                  </Link>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="mx-auto max-w-7xl px-5">
               <EmptyState
                 icon={<Buildings size={28} />}
                 title="Nenhum empreendimento publicado no momento"
                 description="Os empreendimentos ativos desse corretor aparecerão nesta área."
               />
-            )}
-          </div>
+            </div>
+          )}
         </section>
 
         <ProfileContactSection
@@ -775,7 +759,7 @@ async function getPublishedEmpreendimentos(ownerId: string) {
     .eq("status", "PUBLICADO")
     .not("slug_publico", "is", null)
     .order("publicado_em", { ascending: false })
-    .limit(4);
+    .limit(20);
 
   if (result.error) {
     throw new Error(`Erro ao carregar empreendimentos publicos: ${result.error.message}`);
@@ -1093,15 +1077,6 @@ function buildSocialLink(
   return { type: provider, href, label, value: trimmed };
 }
 
-function formatEnumLabel(value: string | null) {
-  if (!value) return null;
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function ListingStatsCards({
   imoveisCount,
   empreendimentosCount,
@@ -1184,59 +1159,6 @@ function SectionHeader({
         </Link>
       ) : null}
     </div>
-  );
-}
-
-function EmpreendimentoCard({
-  nickname,
-  empreendimento,
-}: {
-  nickname: string;
-  empreendimento: EmpreendimentoRow & { capa_url_publica_thumb_webp: string | null };
-}) {
-  const href = `/${nickname}/empreendimento/${empreendimento.slug_publico}`;
-  const stage = formatEnumLabel(empreendimento.estagio_obra);
-  const phase = formatEnumLabel(empreendimento.fase);
-  const description = empreendimento.resumo_curto || empreendimento.descricao;
-
-  return (
-    <Link href={href} className="group grid overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:grid-cols-[0.9fr_1.1fr]">
-      <div className="relative min-h-64 bg-slate-100">
-        {empreendimento.capa_url_publica_thumb_webp ? (
-          <Image
-            src={empreendimento.capa_url_publica_thumb_webp}
-            alt={empreendimento.nome}
-            fill
-            sizes="(min-width: 768px) 40vw, 100vw"
-            className="object-cover transition duration-300 group-hover:scale-105"
-            unoptimized
-          />
-        ) : (
-          <div className="flex h-full min-h-64 w-full items-center justify-center text-slate-400">
-            <Buildings size={34} />
-          </div>
-        )}
-      </div>
-      <div className="flex flex-col justify-between p-5">
-        <div>
-          <p className="text-sm font-light text-slate-500">
-            {[empreendimento.bairro, `${empreendimento.cidade}/${empreendimento.estado}`].filter(Boolean).join(" - ")}
-          </p>
-          <h3 className="mt-2 text-2xl font-bold leading-tight text-slate-950">{empreendimento.nome}</h3>
-          {description ? <p className="mt-3 line-clamp-3 font-light leading-7 text-slate-600">{description}</p> : null}
-        </div>
-        <div className="mt-5 flex flex-wrap gap-2 text-xs text-slate-600">
-          {phase ? <span className="rounded-lg bg-slate-100 px-2 py-1">{phase}</span> : null}
-          {stage ? <span className="rounded-lg bg-slate-100 px-2 py-1">{stage}</span> : null}
-          {empreendimento.n_unidades ? (
-            <span className="rounded-lg bg-slate-100 px-2 py-1">{empreendimento.n_unidades} unidades</span>
-          ) : null}
-          {empreendimento.n_torres ? (
-            <span className="rounded-lg bg-slate-100 px-2 py-1">{empreendimento.n_torres} torres</span>
-          ) : null}
-        </div>
-      </div>
-    </Link>
   );
 }
 

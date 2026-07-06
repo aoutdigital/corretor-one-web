@@ -175,6 +175,9 @@ type MidiaRelacaoApi = {
   midia_id: string;
   tipo: "IMAGEM" | "VIDEO" | "PDF";
   url: string;
+  storage_path?: string | null;
+  tamanho_bytes?: number | null;
+  titulo?: string | null;
   alt?: string | null;
   legenda?: string | null;
   caracteristica?: string | null;
@@ -766,6 +769,69 @@ type RejectedImageDraftItem = {
   reasons: RejectedImageReason[];
 };
 
+function getMidiaFileName(item: MidiaRelacaoApi) {
+  const title = item.titulo?.trim();
+  if (title) return title;
+
+  const path = item.storage_path?.trim();
+  if (path) {
+    const fileName = path.split("/").filter(Boolean).at(-1);
+    if (fileName) {
+      try {
+        return decodeURIComponent(fileName);
+      } catch {
+        return fileName;
+      }
+    }
+  }
+
+  const urlPath = item.url.split("?")[0] ?? "";
+  const fileName = urlPath.split("/").filter(Boolean).at(-1);
+  if (fileName) {
+    try {
+      return decodeURIComponent(fileName);
+    } catch {
+      return fileName;
+    }
+  }
+
+  return "imagem";
+}
+
+function mapMidiaRelacaoToImageDraftItem(item: MidiaRelacaoApi): ImageDraftItem {
+  return {
+    id: crypto.randomUUID(),
+    midiaId: item.midia_id,
+    fileName: getMidiaFileName(item),
+    sizeBytes: item.tamanho_bytes ?? 0,
+    previewUrl: item.url,
+    thumbUrl: null,
+    isHeic: false,
+    alt: item.alt ?? "",
+    legenda: item.legenda ?? "",
+    caracteristica: item.caracteristica ?? "",
+  };
+}
+
+function mapMidiaRelacaoToYoutubeDraftItem(item: MidiaRelacaoApi): YoutubeVideoDraftItem | null {
+  const normalized = normalizeYouTubeUrl(item.url);
+  const videoId = normalized ? getYouTubeVideoId(normalized) : null;
+  if (!normalized || !videoId) return null;
+  return {
+    id: crypto.randomUUID(),
+    url: normalized,
+    videoId,
+    title: item.titulo ?? null,
+  };
+}
+
+function buildMidiaSignature(items: Array<{ midia_id: string; tipo: string; url: string }>) {
+  return items
+    .map((item) => `${item.tipo}:${item.midia_id}:${item.url}`)
+    .sort()
+    .join("|");
+}
+
 type AykaPublicoSelecao = {
   categoria: string;
   subcategoria: string;
@@ -792,11 +858,7 @@ function getFileExtension(file: File) {
 }
 
 function buildThumbUrl(url: string) {
-  if (!url) return url;
-  if (!url.includes("/storage/v1/object/public/")) return url;
-  const transformed = url.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
-  const separator = transformed.includes("?") ? "&" : "?";
-  return `${transformed}${separator}width=480&height=360&quality=60&resize=cover`;
+  return url;
 }
 
 function isSupportedImageUpload(file: File) {
@@ -1026,6 +1088,8 @@ function NovoEmpreendimentoContent() {
   const markerBoundRef = useRef(false);
   const lastPayloadHashRef = useRef("");
   const hydratingEmpreendimentoIdRef = useRef<string | null>(null);
+  const syncingMidiaEmpreendimentoIdRef = useRef<string | null>(null);
+  const lastPersistedMidiaSignatureRef = useRef("");
   const bypassUnsavedGuardRef = useRef(false);
   const unsavedHistoryLockRef = useRef(false);
 
@@ -1602,7 +1666,7 @@ function NovoEmpreendimentoContent() {
 
     setUploadingTempImages(true);
     setUploadingTempImagesPercent(0);
-    const failedFiles: string[] = [];
+    const uploadFailures: string[] = [];
     const totalBytesToUpload = approved.reduce((acc, file) => acc + file.size, 0);
     let uploadedBytesDone = 0;
 
@@ -1618,7 +1682,7 @@ function NovoEmpreendimentoContent() {
 
       const token = await getAccessToken();
       if (!token) {
-        failedFiles.push(file.name);
+        uploadFailures.push(`${file.name}: sessão expirada. Faça login novamente.`);
         uploadedBytesDone += file.size;
         if (totalBytesToUpload > 0) {
           setUploadingTempImagesPercent(
@@ -1699,7 +1763,7 @@ function NovoEmpreendimentoContent() {
       }
 
       if (!uploadResult.ok) {
-        failedFiles.push(file.name);
+        uploadFailures.push(`${file.name}: ${uploadResult.error}`);
         continue;
       }
 
@@ -1736,8 +1800,8 @@ function NovoEmpreendimentoContent() {
     setUploadingTempImages(false);
     setUploadingTempImagesPercent(null);
 
-    if (failedFiles.length > 0) {
-      setError(`Falha no upload das imagens: ${failedFiles.join(", ")}`);
+    if (uploadFailures.length > 0) {
+      setError(`Falha no upload das imagens: ${uploadFailures.join(" | ")}`);
     }
   }
 
@@ -1970,31 +2034,10 @@ function NovoEmpreendimentoContent() {
       if (!cancelled && midiaResult.ok) {
         const imageItems = midiaResult.data
           .filter((item) => item.tipo === "IMAGEM")
-          .map((item) => ({
-            id: crypto.randomUUID(),
-            midiaId: item.midia_id,
-            fileName: "imagem",
-            sizeBytes: 0,
-            previewUrl: item.url,
-            thumbUrl: null,
-            isHeic: false,
-            alt: item.alt ?? "",
-            legenda: item.legenda ?? "",
-            caracteristica: item.caracteristica ?? "",
-          }));
+          .map(mapMidiaRelacaoToImageDraftItem);
         const videoItems = midiaResult.data
           .filter((item) => item.tipo === "VIDEO")
-          .map((item): YoutubeVideoDraftItem | null => {
-            const normalized = normalizeYouTubeUrl(item.url);
-            const videoId = normalized ? getYouTubeVideoId(normalized) : null;
-            if (!normalized || !videoId) return null;
-            return {
-              id: crypto.randomUUID(),
-              url: normalized,
-              videoId,
-              title: null,
-            };
-          })
+          .map(mapMidiaRelacaoToYoutubeDraftItem)
           .filter((item): item is YoutubeVideoDraftItem => item !== null)
           .slice(0, MAX_YOUTUBE_VIDEOS);
 
@@ -2017,6 +2060,51 @@ function NovoEmpreendimentoContent() {
       }
     };
   }, [empreendimentoFromUrl, empreendimentoId, router, stepFromUrlParam]);
+
+  useEffect(() => {
+    if (step !== 7 || !empreendimentoId || uploadingTempImages) return;
+    if (syncingMidiaEmpreendimentoIdRef.current === empreendimentoId) return;
+
+    let cancelled = false;
+    syncingMidiaEmpreendimentoIdRef.current = empreendimentoId;
+
+    void (async () => {
+      const result = await apiFetchWithAuth<MidiaRelacaoApi[]>(
+        `/api/empreendimentos/${empreendimentoId}/midia`,
+      );
+
+      if (cancelled) return;
+      syncingMidiaEmpreendimentoIdRef.current = null;
+
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      const signature = buildMidiaSignature(result.data);
+      if (signature === lastPersistedMidiaSignatureRef.current) return;
+      lastPersistedMidiaSignatureRef.current = signature;
+
+      const imageItems = result.data
+        .filter((item) => item.tipo === "IMAGEM")
+        .map(mapMidiaRelacaoToImageDraftItem);
+      const videoItems = result.data
+        .filter((item) => item.tipo === "VIDEO")
+        .map(mapMidiaRelacaoToYoutubeDraftItem)
+        .filter((item): item is YoutubeVideoDraftItem => item !== null)
+        .slice(0, MAX_YOUTUBE_VIDEOS);
+
+      setImagemItems(imageItems);
+      setYoutubeVideos(videoItems);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (syncingMidiaEmpreendimentoIdRef.current === empreendimentoId) {
+        syncingMidiaEmpreendimentoIdRef.current = null;
+      }
+    };
+  }, [empreendimentoId, step, uploadingTempImages]);
 
   useEffect(() => {
     if (!descricaoEditorRef.current) return;
