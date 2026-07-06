@@ -41,6 +41,7 @@ import {
 } from "@phosphor-icons/react";
 import {
   FormEvent,
+  type ClipboardEvent as ReactClipboardEvent,
   useEffect,
   useMemo,
   useRef,
@@ -78,6 +79,7 @@ type Profile = {
   youtube: string | null;
   uf: string | null;
   cidades_foco: string[] | null;
+  cidades_foco_json: CidadeOption[] | null;
   imoveis_residenciais: boolean;
   imoveis_comerciais: boolean;
   imoveis_industriais: boolean;
@@ -209,6 +211,7 @@ type CoverCropperProps = {
 
 const COVER_FRAME = { width: 960, height: 300 };
 const COVER_OUTPUT = { width: 1600, height: 500 };
+const BIO_MAX_LENGTH = 650;
 const SOCIAL_PROOF_TYPE_OPTIONS: Array<{ value: SocialProofType; label: string }> = [
   { value: "ENTREGA_CHAVES", label: "Entrega de chaves" },
   { value: "ASSINATURA_CONTRATO", label: "Assinatura de contrato" },
@@ -229,35 +232,40 @@ const AUTHORITY_NUMBER_OPTIONS: Array<{
   title: string;
   defaultLabel: string;
   placeholder: string;
+  maxLength: number;
   hint: string;
 }> = [
   {
     value: "VGV_NEGOCIADO",
-    title: "VGV Negociado",
-    defaultLabel: "em VGV negociado",
-    placeholder: "R$ 150M+",
-    hint: "Volume financeiro aproximado das negociações.",
+    title: "VGV negociado",
+    defaultLabel: "Em VGV negociado",
+    placeholder: "R$ 150M",
+    maxLength: 12,
+    hint: "Use um valor compacto, sem o sinal de mais. Ex.: R$ 80M, 150M, R$ 1,2BI.",
   },
   {
     value: "IMOVEIS_VENDIDOS_ALUGADOS",
-    title: "Imóveis vendidos/alugados",
-    defaultLabel: "imóveis vendidos/alugados",
-    placeholder: "120+",
-    hint: "Use a soma de vendas e locações concluídas.",
+    title: "Imóveis comercializados",
+    defaultLabel: "Imóveis comercializados",
+    placeholder: "120",
+    maxLength: 5,
+    hint: "Informe apenas o total. Vale somar vendas e locações concluídas.",
   },
   {
     value: "CLIENTES_ATENDIDOS",
     title: "Clientes atendidos",
-    defaultLabel: "clientes atendidos",
-    placeholder: "300+",
-    hint: "Bom para demonstrar recorrência e atendimento consultivo.",
+    defaultLabel: "Clientes atendidos",
+    placeholder: "300",
+    maxLength: 5,
+    hint: "Informe o total aproximado de pessoas ou famílias atendidas.",
   },
   {
     value: "ANOS_CARREIRA",
     title: "Anos de carreira",
-    defaultLabel: "anos de carreira",
-    placeholder: "12+",
-    hint: "Tempo de atuação no mercado imobiliário.",
+    defaultLabel: "Anos de carreira",
+    placeholder: "12",
+    maxLength: 2,
+    hint: "Informe somente o número de anos de atuação.",
   },
 ];
 const DEFAULT_PROFILE_TAB: ProfileTab = "dadosprincipais";
@@ -308,6 +316,23 @@ const UF_OPTIONS = [
   "SE",
   "TO",
 ] as const;
+
+function normalizeProfileCidadesFoco(value: unknown, fallbackUf: string | null): CidadeOption[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const cidade = item as Partial<CidadeOption>;
+      const codigoIbge = Number(cidade.codigo_ibge);
+      const nome = typeof cidade.nome === "string" ? cidade.nome.trim() : "";
+      const uf = typeof cidade.uf === "string" ? cidade.uf.trim().toUpperCase() : fallbackUf ?? "";
+
+      if (!Number.isInteger(codigoIbge) || codigoIbge <= 0 || !nome || !uf) return null;
+      return { codigo_ibge: codigoIbge, nome, uf };
+    })
+    .filter((item): item is CidadeOption => Boolean(item));
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -925,9 +950,9 @@ function mapAuthorityNumberRowsToDrafts(rows: AuthorityNumber[]): AuthorityNumbe
     const row = byType.get(option.value);
     return {
       tipo: option.value,
-      valor: row?.valor ?? "",
-      rotulo: row?.rotulo ?? option.defaultLabel,
-      descricao: row?.descricao ?? "",
+      valor: normalizeAuthorityNumberValue(row?.valor ?? "", option.maxLength),
+      rotulo: option.defaultLabel,
+      descricao: "",
       ordem: row?.ordem ?? index,
       visivel: row?.visivel ?? index < 3,
     };
@@ -943,6 +968,30 @@ function getAuthorityNumberIcon(type: AuthorityNumberType) {
   if (type === "CLIENTES_ATENDIDOS") return <UsersThree size={18} />;
   if (type === "ANOS_CARREIRA") return <Clock size={18} />;
   return <HouseLine size={18} />;
+}
+
+function normalizeAuthorityNumberValue(value: string, maxLength: number) {
+  return value.replace(/\+/g, "").replace(/\s{2,}/g, " ").trim().slice(0, maxLength);
+}
+
+function getReadableBioText(value: string) {
+  if (!value) return "";
+  if (typeof document === "undefined") {
+    return value
+      .replace(/<br\s*\/?>/gi, " ")
+      .replace(/<\/(div|p|li|ul|ol)>/gi, " ")
+      .replace(/<[^>]*>/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  const element = document.createElement("div");
+  element.innerHTML = value;
+  return (element.textContent ?? "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function getBioTextLength(value: string) {
+  return getReadableBioText(value).length;
 }
 
 function getSocialProofTitlePlaceholder(type: SocialProofType) {
@@ -1438,7 +1487,7 @@ export default function PerfilPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
 
@@ -1449,6 +1498,7 @@ export default function PerfilPage() {
   const [fraseImpacto, setFraseImpacto] = useState("");
   const [bio, setBio] = useState("");
   const bioEditorRef = useRef<HTMLDivElement | null>(null);
+  const errorRef = useRef<HTMLParagraphElement | null>(null);
   const [instagram, setInstagram] = useState("");
   const [linkedin, setLinkedin] = useState("");
   const [pinterest, setPinterest] = useState("");
@@ -1508,6 +1558,13 @@ export default function PerfilPage() {
   );
   const [loadingAuthorityNumbers, setLoadingAuthorityNumbers] = useState(false);
   const [activeProfileTab, setActiveProfileTab] = useState<ProfileTab>(DEFAULT_PROFILE_TAB);
+  const bioTextLength = useMemo(() => getBioTextLength(bio), [bio]);
+  const bioCounterClass =
+    bioTextLength > BIO_MAX_LENGTH
+      ? "text-rose-600"
+      : bioTextLength > BIO_MAX_LENGTH * 0.9
+        ? "text-amber-600"
+        : "text-slate-400";
 
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1551,12 +1608,15 @@ export default function PerfilPage() {
       setFraseImpacto(data.frase_impacto ?? "");
       setBio(data.bio ?? "");
       setUf(data.uf ?? "");
+      const cidadesPadronizadas = normalizeProfileCidadesFoco(data.cidades_foco_json, data.uf);
       setCidadesFoco(
-        (data.cidades_foco ?? []).map((nome, index) => ({
-          codigo_ibge: -(index + 1),
-          nome,
-          uf: data.uf ?? "",
-        })),
+        cidadesPadronizadas.length > 0
+          ? cidadesPadronizadas
+          : (data.cidades_foco ?? []).map((nome, index) => ({
+              codigo_ibge: -(index + 1),
+              nome,
+              uf: data.uf ?? "",
+            })),
       );
       setInstagram(data.instagram ?? "");
       setLinkedin(data.linkedin ?? "");
@@ -1669,10 +1729,19 @@ export default function PerfilPage() {
     if (!loading) void loadEmailProfStatus();
   }, [loading]);
 
-  function showToast(message: string) {
-    setToast(message);
+  function showToast(message: string, type: "success" | "error" = "success") {
+    setToast({ message, type });
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
+  }
+
+  function showProfileSaveError(message: string) {
+    setError(message);
+    showToast(message, "error");
+    window.requestAnimationFrame(() => {
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      errorRef.current?.focus({ preventScroll: true });
+    });
   }
 
   function selectProfileTab(tab: ProfileTab) {
@@ -1794,6 +1863,37 @@ export default function PerfilPage() {
       });
     }
     setBio(bioEditorRef.current.innerHTML);
+  }
+
+  function syncBioFromEditor(element = bioEditorRef.current) {
+    if (!element) return;
+    setBio(element.innerHTML);
+  }
+
+  function handleBioBeforeInput(event: FormEvent<HTMLDivElement>) {
+    const nativeEvent = event.nativeEvent as InputEvent;
+    if (!nativeEvent.inputType.startsWith("insert")) return;
+    if (!nativeEvent.data) return;
+    if (bioTextLength + nativeEvent.data.length <= BIO_MAX_LENGTH) return;
+
+    event.preventDefault();
+    showToast(`A bio pode ter até ${BIO_MAX_LENGTH} caracteres.`);
+  }
+
+  function handleBioPaste(event: ReactClipboardEvent<HTMLDivElement>) {
+    if (!bioEditorRef.current) return;
+    const text = event.clipboardData.getData("text/plain");
+    if (!text) return;
+
+    event.preventDefault();
+    const remaining = BIO_MAX_LENGTH - getBioTextLength(bioEditorRef.current.innerHTML);
+    if (remaining <= 0) {
+      showToast(`A bio pode ter até ${BIO_MAX_LENGTH} caracteres.`);
+      return;
+    }
+
+    document.execCommand("insertText", false, text.slice(0, remaining));
+    syncBioFromEditor();
   }
 
   function selectCidade(cidade: CidadeOption) {
@@ -2036,27 +2136,31 @@ export default function PerfilPage() {
   }
 
   function buildAuthorityNumbersPayloadForSave() {
-    const filledItems = authorityNumbers.filter((item) => item.valor.trim().length > 0);
+    const normalizedItems = authorityNumbers.map((item) => ({
+      ...item,
+      valor: normalizeAuthorityNumberValue(item.valor, getAuthorityNumberOption(item.tipo).maxLength),
+    }));
+    const filledItems = normalizedItems.filter((item) => item.valor.length > 0);
     const visibleItems = filledItems.filter((item) => item.visivel);
 
     if (visibleItems.length > 3) {
-      setError("Escolha até 3 números de autoridade para exibir no perfil público.");
+      showProfileSaveError("Escolha até 3 números de autoridade para exibir no perfil público.");
       return null;
     }
 
-    const missingVisible = authorityNumbers.find((item) => item.visivel && !item.valor.trim());
+    const missingVisible = normalizedItems.find((item) => item.visivel && !item.valor);
     if (missingVisible) {
       const option = getAuthorityNumberOption(missingVisible.tipo);
-      setError(`Informe o valor de "${option.title}" ou desmarque a exibição.`);
+      showProfileSaveError(`Informe o valor de "${option.title}" ou desmarque a exibição.`);
       return null;
     }
 
     return {
       items: filledItems.map((item, index) => ({
         tipo: item.tipo,
-        valor: item.valor.trim(),
-        rotulo: (item.rotulo.trim() || getAuthorityNumberOption(item.tipo).defaultLabel).slice(0, 80),
-        descricao: item.descricao.trim() || null,
+        valor: normalizeAuthorityNumberValue(item.valor, getAuthorityNumberOption(item.tipo).maxLength),
+        rotulo: getAuthorityNumberOption(item.tipo).defaultLabel,
+        descricao: null,
         ordem: index,
         visivel: item.visivel,
       })),
@@ -2085,13 +2189,18 @@ export default function PerfilPage() {
       }
 
       if (!uf || cidadesFoco.length === 0) {
-        setError("Selecione UF e pelo menos uma cidade foco.");
+        showProfileSaveError("Selecione UF e pelo menos uma cidade foco.");
+        return;
+      }
+
+      if (bioTextLength > BIO_MAX_LENGTH) {
+        showProfileSaveError(`Reduza a bio para até ${BIO_MAX_LENGTH} caracteres.`);
         return;
       }
 
       const unresolvedCity = cidadesFoco.some((item) => item.codigo_ibge <= 0);
       if (unresolvedCity) {
-        setError("Remova e selecione novamente cidades antigas para padronizar pelo IBGE.");
+        showProfileSaveError("Remova e selecione novamente cidades antigas para padronizar pelo IBGE.");
         return;
       }
 
@@ -2103,7 +2212,7 @@ export default function PerfilPage() {
         }),
       });
       if (!cidadesResult.ok) {
-        setError(cidadesResult.error);
+        showProfileSaveError(cidadesResult.error);
         return;
       }
 
@@ -2129,7 +2238,7 @@ export default function PerfilPage() {
       });
 
       if (!result.ok) {
-        setError(result.error);
+        showProfileSaveError(result.error);
         return;
       }
 
@@ -2142,7 +2251,7 @@ export default function PerfilPage() {
       });
 
       if (!authorityResult.ok) {
-        setError(authorityResult.error);
+        showProfileSaveError(authorityResult.error);
         return;
       }
 
@@ -2155,6 +2264,7 @@ export default function PerfilPage() {
               ...patch,
               uf,
               cidades_foco: cidadesFoco.map((item) => item.nome),
+              cidades_foco_json: cidadesFoco,
             }
           : prev,
       );
@@ -2162,7 +2272,7 @@ export default function PerfilPage() {
       setCoverUploadFile(null);
       showToast("Perfil atualizado com sucesso.");
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : "Não foi possível salvar.");
+      showProfileSaveError(uploadError instanceof Error ? uploadError.message : "Não foi possível salvar.");
     } finally {
       setUploading(false);
       setSaving(false);
@@ -2232,13 +2342,26 @@ export default function PerfilPage() {
     <AppShell title="Meu Perfil" subtitle="Gerencie presença, identidade visual e dados públicos.">
       <div className="space-y-5">
         {toast ? (
-          <div className="fixed right-5 top-5 z-50 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-md">
-            {toast}
+          <div
+            className={
+              toast.type === "error"
+                ? "fixed right-5 top-5 z-50 max-w-md rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 shadow-md"
+                : "fixed right-5 top-5 z-50 max-w-md rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-md"
+            }
+            role="status"
+          >
+            {toast.message}
           </div>
         ) : null}
 
         {error ? (
-          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>
+          <p
+            ref={errorRef}
+            tabIndex={-1}
+            className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 outline-none"
+          >
+            {error}
+          </p>
         ) : null}
 
         <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -2446,7 +2569,12 @@ export default function PerfilPage() {
             </label>
 
             <div className="block text-sm">
-              <span className="mb-1 block text-slate-500">Bio (rich text)</span>
+              <span className="mb-1 flex items-center justify-between gap-3 text-slate-500">
+                <span>Bio (rich text)</span>
+                <span className={`text-xs tabular-nums ${bioCounterClass}`}>
+                  {bioTextLength}/{BIO_MAX_LENGTH}
+                </span>
+              </span>
               <div className="rounded-t-lg border border-b-0 border-slate-300 bg-slate-50 p-2">
                 <div className="flex flex-wrap items-center gap-1">
                   <button
@@ -2486,10 +2614,15 @@ export default function PerfilPage() {
               <div
                 ref={bioEditorRef}
                 contentEditable
-                onInput={(event) => setBio((event.target as HTMLDivElement).innerHTML)}
-                className="min-h-[140px] rounded-b-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--blue-slate)] [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1"
+                onBeforeInput={handleBioBeforeInput}
+                onPaste={handleBioPaste}
+                onInput={(event) => syncBioFromEditor(event.target as HTMLDivElement)}
+                className="min-h-[180px] rounded-b-lg border border-slate-300 px-4 py-3 text-base leading-7 outline-none focus:border-[var(--blue-slate)] [&_div+div]:mt-2 [&_li]:my-1.5 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-6 [&_p+p]:mt-3 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-6"
                 style={{ whiteSpace: "pre-wrap" }}
               />
+              <p className="mt-1 text-xs text-slate-500">
+                Sugestão: 2 a 3 parágrafos curtos, com uma trajetória, especialidade e forma de atendimento.
+              </p>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -2533,42 +2666,35 @@ export default function PerfilPage() {
                         </label>
                       </div>
 
-                      <div className="mt-3 grid gap-3 md:grid-cols-[0.75fr_1.25fr]">
+                      <div className="mt-4 grid gap-3 md:grid-cols-[0.62fr_1.38fr] md:items-end">
                         <label className="block text-sm">
                           <span className="mb-1 block text-slate-500">Valor</span>
                           <input
                             value={item.valor}
                             onChange={(event) =>
-                              updateAuthorityNumber(item.tipo, { valor: event.target.value.slice(0, 24) })
+                              updateAuthorityNumber(item.tipo, {
+                                valor: normalizeAuthorityNumberValue(event.target.value, option.maxLength),
+                              })
                             }
+                            maxLength={option.maxLength}
+                            inputMode={item.tipo === "VGV_NEGOCIADO" ? "text" : "numeric"}
                             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-lg outline-none focus:border-[var(--blue-slate)]"
                             placeholder={option.placeholder}
                           />
                         </label>
-                        <label className="block text-sm">
-                          <span className="mb-1 block text-slate-500">Rótulo público</span>
-                          <input
-                            value={item.rotulo}
-                            onChange={(event) =>
-                              updateAuthorityNumber(item.tipo, { rotulo: event.target.value.slice(0, 80) })
-                            }
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--blue-slate)]"
-                            placeholder={option.defaultLabel}
-                          />
-                        </label>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                          <span className="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                            Como aparece no perfil
+                          </span>
+                          <p className="mt-1 text-sm text-slate-700">
+                            <strong className="font-semibold text-slate-950">
+                              {item.valor || option.placeholder}
+                              <span className="ml-0.5 text-[var(--stone-gold)]">+</span>
+                            </strong>{" "}
+                            {option.defaultLabel}
+                          </p>
+                        </div>
                       </div>
-
-                      <label className="mt-3 block text-sm">
-                        <span className="mb-1 block text-slate-500">Observação opcional</span>
-                        <input
-                          value={item.descricao}
-                          onChange={(event) =>
-                            updateAuthorityNumber(item.tipo, { descricao: event.target.value.slice(0, 160) })
-                          }
-                          className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-[var(--blue-slate)]"
-                          placeholder="Ex.: número aproximado, atualizado manualmente."
-                        />
-                      </label>
                     </article>
                   );
                 })}

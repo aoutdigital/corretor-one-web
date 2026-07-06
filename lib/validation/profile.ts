@@ -35,6 +35,7 @@ const NICKNAME_REGEX = /^[a-z0-9]{1,35}$/;
 const NICKNAME_BLOCKED_TERMS_REGEX = /(corret|imob|imov|aparta|casa)/i;
 const CRECI_NUMERO_REGEX = /^[0-9]{1,6}$/;
 const FRASE_IMPACTO_MAX_LENGTH = 90;
+const BIO_TEXT_MAX_LENGTH = 650;
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -116,6 +117,21 @@ function parseNullableString(value: unknown, field: string): ApiResult<string | 
   return ok(value.trim());
 }
 
+function getReadableTextLengthFromHtml(value: string) {
+  return value
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/(div|p|li|ul|ol)>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim().length;
+}
+
 export function validateProfilePatch(payload: unknown): ApiResult<UpdateProfileInput> {
   if (!asObject(payload)) {
     return fail("VALIDATION_ERROR", "Body must be a JSON object");
@@ -148,6 +164,9 @@ export function validateProfilePatch(payload: unknown): ApiResult<UpdateProfileI
     if (!(field in payload)) continue;
     const result = parseNullableString(payload[field], field);
     if (!result.ok) return result;
+    if (field === "bio" && result.data && getReadableTextLengthFromHtml(result.data) > BIO_TEXT_MAX_LENGTH) {
+      return fail("VALIDATION_ERROR", `bio must contain at most ${BIO_TEXT_MAX_LENGTH} readable characters`);
+    }
     parsed[field] = result.data;
   }
 

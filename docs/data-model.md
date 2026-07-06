@@ -227,8 +227,8 @@ Perfil público
 - imagem_capa_url (text, nullable)
 - logo_nickname_url (text, nullable) *(logo público do corretor com nickname, versão padrão)*
 - logo_nickname_white_url (text, nullable) *(logo público do corretor com nickname, versão branca para marca d'água)*
-- frase_impacto (text, nullable) *(máx. 90 caracteres; frase curta exibida no hero do perfil público)*
-- bio (text, nullable)
+- frase_impacto (text, nullable) *(máx. 90 caracteres; frase curta exibida como headline da seção Sobre no perfil público)*
+- bio (text, nullable) *(rich text sanitizado; limite editorial de 650 caracteres em texto legível)*
 
 Atuação
 - uf (text, enum UF)
@@ -326,9 +326,9 @@ Conteúdo:
   - IMOVEIS_VENDIDOS_ALUGADOS
   - CLIENTES_ATENDIDOS
   - ANOS_CARREIRA
-- valor (text) *(ex.: R$ 150M+, 120+, 18)*
-- rotulo (text) *(label pública abaixo do número)*
-- descricao (text, nullable) *(apoio curto opcional para contexto interno/futuro)*
+- valor (text) *(ex.: R$ 150M, 120, 18; o sinal `+` é aplicado pela UI pública quando exibido)*
+- rotulo (text) *(label pública fixa por tipo: Em VGV negociado, Imóveis comercializados, Clientes atendidos, Anos de carreira)*
+- descricao (text, nullable) *(reservado para uso futuro; não aparece no cadastro V1)*
 
 Publicação:
 - ordem (int, default 0)

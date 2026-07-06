@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  ArrowRight,
   Buildings,
   ChartLineUp,
   Clock,
@@ -18,8 +19,9 @@ import {
 
 import { ProfileContactSection, type PublicContactChannel } from "@/app/[nickname]/_components/profile-contact-section";
 import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
+import { HorizontalLoopCarousel } from "@/app/[nickname]/_components/horizontal-loop-carousel";
+import { PublicPropertyCard, type PublicPropertyCardImovel } from "@/app/[nickname]/_components/public-property-card";
 import { SocialProofCarousel, type SocialProofItem } from "@/app/[nickname]/_components/social-proof-carousel";
-import { buildImovelHeaderTitle } from "@/lib/imoveis/display-title";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -28,31 +30,7 @@ type PageProps = {
 };
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
-type ImovelRow = Pick<
-  Database["public"]["Tables"]["imoveis"]["Row"],
-  | "id"
-  | "slug_publico"
-  | "titulo"
-  | "codigo"
-  | "finalidade"
-  | "tipo_negociacao"
-  | "tipo"
-  | "subtipo"
-  | "cidade"
-  | "bairro"
-  | "bairro_comercial"
-  | "estado"
-  | "preco_venda"
-  | "preco_locacao"
-  | "area_util"
-  | "area_terreno"
-  | "dormitorios"
-  | "suites"
-  | "salas"
-  | "vagas"
-  | "destaque"
-  | "publicado_em"
->;
+type ImovelRow = PublicPropertyCardImovel;
 type EmpreendimentoRow = Pick<
   Database["public"]["Tables"]["empreendimentos"]["Row"],
   | "id"
@@ -175,24 +153,35 @@ const IMOVEL_SELECT = `
   id,
   slug_publico,
   titulo,
-  codigo,
   finalidade,
   tipo_negociacao,
   tipo,
   subtipo,
-  cidade,
-  bairro,
   bairro_comercial,
+  bairro,
+  cidade,
   estado,
+  logradouro,
+  numero,
+  cep,
+  endereco_complemento,
+  enderecovisualizacao,
+  ocultar_numero_publico,
+  mostrar_complemento_no_anuncio,
+  empreendimento_id,
+  empreendimento_tipologia_label,
+  empreendimentos(nome,slug_publico),
   preco_venda,
   preco_locacao,
+  condominio,
+  iptu,
+  iptu_periodicidade,
   area_util,
-  area_terreno,
+  area_total,
   dormitorios,
   suites,
-  salas,
+  banheiros,
   vagas,
-  destaque,
   publicado_em
 `;
 
@@ -241,12 +230,6 @@ const AUTHORITY_NUMBER_SELECT = `
 const OBJECT_PUBLIC_SEGMENT = "/storage/v1/object/public/";
 const RENDER_PUBLIC_SEGMENT = "/storage/v1/render/image/public/";
 
-const currencyFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-  maximumFractionDigits: 0,
-});
-
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -261,7 +244,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const name = getProfileName(profile);
   const cityFocus = getLocationLine(profile);
-  const impactPhrase = getImpactPhrase(profile);
+  const impactPhrase = getImpactPhrase(profile, { includeCustom: false });
 
   return {
     title: `${name} | Corretor.one`,
@@ -287,7 +270,7 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
   const initials = getInitials(brokerName);
   const locationLine = getLocationLine(profile);
   const creci = formatCreci(profile);
-  const impactPhrase = getImpactPhrase(profile);
+  const impactPhrase = getImpactPhrase(profile, { includeCustom: false });
   const whatsappHref = buildWhatsAppHref(profile.whatsapp || profile.telefone);
   const phoneHref = buildPhoneHref(profile.telefone);
   const coverUrl = getPublicImageUrl(profile.imagem_capa_url) || "/images/corretor-one-chaves-casal.jpeg";
@@ -473,26 +456,62 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
 
         <SocialProofCarousel items={socialProofs} />
 
-        <section id="imoveis" className="mx-auto max-w-7xl px-5 py-14">
-          <SectionHeader
-            eyebrow="Imóveis"
-            title="Oportunidades em destaque"
-            actionHref={`/${profile.nickname}/imoveis`}
-            actionLabel="Ver todos"
-          />
+        <section id="imoveis" className="py-14">
+          <div className="mx-auto max-w-7xl px-5">
+            <SectionHeader
+              eyebrow="Imóveis"
+              title="Oportunidades em destaque"
+            />
+          </div>
 
           {imoveis.length > 0 ? (
-            <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {imoveis.map((imovel) => (
-                <ImovelCard key={imovel.id} nickname={profile.nickname ?? ""} imovel={imovel} />
-              ))}
-            </div>
+            <>
+              <div className="mt-2">
+                <HorizontalLoopCarousel
+                  ariaLabel="Imóveis em destaque"
+                  previousLabel="Ver imóvel anterior"
+                  nextLabel="Ver próximo imóvel"
+                  scrollerClassName="overflow-x-auto scroll-smooth overscroll-x-contain pb-20 pt-10 pl-[max(1.25rem,calc((100vw-80rem)/2+1.25rem))] pr-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {imoveis.map((imovel) => (
+                    <PublicPropertyCard
+                      key={imovel.id}
+                      nickname={profile.nickname ?? ""}
+                      imovel={imovel}
+                      imageUrl={imovel.capa_url_publica_thumb_webp}
+                    />
+                  ))}
+                </HorizontalLoopCarousel>
+              </div>
+
+              <div className="mx-auto max-w-7xl px-5">
+                <div className="flex flex-col items-start justify-between gap-5 border-t border-stone-200 pt-8 md:flex-row md:items-center">
+                  <div>
+                    <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--grey-olive)]">
+                      Curadoria completa
+                    </p>
+                    <h3 className="mt-2 max-w-3xl text-2xl font-light leading-tight text-slate-950 md:text-3xl">
+                      Veja todos os imóveis que selecionei para o seu momento.
+                    </h3>
+                  </div>
+                  <Link
+                    href={`/${profile.nickname}/imoveis`}
+                    className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-[var(--grey-olive)]/45 px-5 py-3 text-sm font-semibold text-[var(--grey-olive)] transition hover:bg-[var(--grey-olive)] hover:text-white"
+                  >
+                    Ver imóveis disponíveis
+                    <ArrowRight size={16} />
+                  </Link>
+                </div>
+              </div>
+            </>
           ) : (
-            <EmptyState
-              icon={<HouseLine size={28} />}
-              title="Nenhum imóvel publicado no momento"
-              description="Quando novos anúncios forem publicados, eles aparecerão aqui."
-            />
+            <div className="mx-auto max-w-7xl px-5">
+              <EmptyState
+                icon={<HouseLine size={28} />}
+                title="Nenhum imóvel publicado no momento"
+                description="Quando novos anúncios forem publicados, eles aparecerão aqui."
+              />
+            </div>
           )}
         </section>
 
@@ -626,7 +645,7 @@ function AboutAuthoritySection({
 
           {bioHtml ? (
             <div
-              className="mt-8 max-w-3xl text-lg font-light leading-8 text-slate-600 [&_b]:font-semibold [&_div+div]:mt-4 [&_em]:italic [&_i]:italic [&_li]:my-1 [&_ol]:mt-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_p+p]:mt-4 [&_strong]:font-semibold [&_u]:underline [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-6"
+              className="mt-8 max-w-3xl text-lg font-light leading-8 text-slate-600 [&_b]:font-semibold [&_div+div]:mt-4 [&_em]:italic [&_i]:italic [&_li]:my-1.5 [&_ol]:mt-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_p+p]:mt-4 [&_strong]:font-semibold [&_u]:underline [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-6"
               dangerouslySetInnerHTML={{ __html: bioHtml }}
             />
           ) : (
@@ -636,14 +655,24 @@ function AboutAuthoritySection({
           )}
 
           {authorityNumbers.length > 0 ? (
-            <div className="mt-12 grid gap-6 border-t border-slate-200 pt-8 sm:grid-cols-3 sm:divide-x sm:divide-slate-200">
+            <div className="mt-12 grid gap-8 border-t border-slate-200 pt-8 text-center sm:grid-cols-3 sm:gap-0">
               {authorityNumbers.slice(0, 3).map((item) => (
-                <div key={item.id} className="sm:px-6 first:sm:pl-0">
+                <div
+                  key={item.id}
+                  className="relative flex min-w-0 flex-col items-center px-4 sm:px-8 [&:not(:last-child)]:sm:after:absolute [&:not(:last-child)]:sm:after:right-0 [&:not(:last-child)]:sm:after:top-0 [&:not(:last-child)]:sm:after:h-full [&:not(:last-child)]:sm:after:w-px [&:not(:last-child)]:sm:after:bg-slate-200"
+                >
                   <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-[var(--stone-gold)]">
                     {getAuthorityNumberPublicIcon(item.tipo)}
                   </div>
-                  <p className="text-4xl font-light leading-none text-slate-950 md:text-5xl">{item.valor}</p>
-                  <p className="mt-3 text-sm font-light leading-6 text-slate-600">{item.rotulo}</p>
+                  <p className="inline-flex items-start text-4xl font-light leading-none text-slate-950 md:text-5xl">
+                    <span className="relative -mr-0.5 top-1 text-[0.5em] leading-none text-[var(--stone-gold)]">
+                      +
+                    </span>
+                    <span>{formatAuthorityNumberPublicValue(item.valor)}</span>
+                  </p>
+                  <p className="mt-3 w-full text-center text-sm font-light leading-6 text-slate-600 sm:whitespace-nowrap">
+                    {getAuthorityNumberPublicLabel(item.tipo)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -663,6 +692,17 @@ function getAuthorityNumberPublicIcon(type: AuthorityNumberRow["tipo"]) {
   if (type === "CLIENTES_ATENDIDOS") return <UsersThree size={18} />;
   if (type === "ANOS_CARREIRA") return <Clock size={18} />;
   return <HouseLine size={18} />;
+}
+
+function getAuthorityNumberPublicLabel(type: AuthorityNumberRow["tipo"]) {
+  if (type === "VGV_NEGOCIADO") return "Em VGV negociado";
+  if (type === "CLIENTES_ATENDIDOS") return "Clientes atendidos";
+  if (type === "ANOS_CARREIRA") return "Anos de carreira";
+  return "Imóveis comercializados";
+}
+
+function formatAuthorityNumberPublicValue(value: string) {
+  return value.replace(/\+/g, "").trim();
 }
 
 async function getProfileByNickname(rawNickname: string) {
@@ -711,7 +751,7 @@ async function getPublishedImoveis(ownerId: string) {
     .not("slug_publico", "is", null)
     .order("destaque", { ascending: false })
     .order("publicado_em", { ascending: false })
-    .limit(6);
+    .limit(20);
 
   if (result.error) {
     throw new Error(`Erro ao carregar imoveis publicos: ${result.error.message}`);
@@ -912,8 +952,9 @@ function getImpactPhrase(
     | "imoveis_alto_padrao"
     | "imoveis_luxo"
   >,
+  options: { includeCustom?: boolean } = {},
 ) {
-  const custom = profile.frase_impacto?.trim();
+  const custom = options.includeCustom === false ? "" : profile.frase_impacto?.trim();
   if (custom) return custom;
 
   const role =
@@ -1052,20 +1093,6 @@ function buildSocialLink(
   return { type: provider, href, label, value: trimmed };
 }
 
-function formatPrice(imovel: ImovelRow) {
-  if (imovel.tipo_negociacao === "ALUGUEL" && imovel.preco_locacao) {
-    return `${currencyFormatter.format(imovel.preco_locacao)}/mês`;
-  }
-  if (imovel.preco_venda) return currencyFormatter.format(imovel.preco_venda);
-  if (imovel.preco_locacao) return `${currencyFormatter.format(imovel.preco_locacao)}/mês`;
-  return "Consulte valores";
-}
-
-function getImovelHref(nickname: string, imovel: ImovelRow) {
-  const operation = imovel.tipo_negociacao === "ALUGUEL" ? "aluguel" : "venda";
-  return `/${nickname}/${operation}/${imovel.slug_publico}`;
-}
-
 function formatEnumLabel(value: string | null) {
   if (!value) return null;
   return value
@@ -1139,64 +1166,24 @@ function SectionHeader({
 }: {
   eyebrow: string;
   title: string;
-  actionHref: string;
-  actionLabel: string;
+  actionHref?: string;
+  actionLabel?: string;
 }) {
   return (
     <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
       <div>
-        <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--primary-scarlet)]">{eyebrow}</p>
+        <p className="text-sm font-bold uppercase tracking-[0.18em] text-[var(--grey-olive)]">{eyebrow}</p>
         <h2 className="mt-2 text-3xl font-bold">{title}</h2>
       </div>
-      <Link
-        href={actionHref}
-        className="inline-flex w-fit items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
-      >
-        {actionLabel}
-      </Link>
+      {actionHref && actionLabel ? (
+        <Link
+          href={actionHref}
+          className="inline-flex w-fit items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
+        >
+          {actionLabel}
+        </Link>
+      ) : null}
     </div>
-  );
-}
-
-function ImovelCard({ nickname, imovel }: { nickname: string; imovel: ImovelRow & { capa_url_publica_thumb_webp: string | null } }) {
-  const title = buildImovelHeaderTitle(imovel);
-  const href = getImovelHref(nickname, imovel);
-
-  return (
-    <Link href={href} className="group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="relative aspect-[4/3] bg-slate-100">
-        {imovel.capa_url_publica_thumb_webp ? (
-          <Image
-            src={imovel.capa_url_publica_thumb_webp}
-            alt={title}
-            fill
-            sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
-            className="object-cover transition duration-300 group-hover:scale-105"
-            unoptimized
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-slate-400">
-            <HouseLine size={34} />
-          </div>
-        )}
-        {imovel.destaque ? (
-          <span className="absolute left-3 top-3 rounded-lg bg-[var(--primary-scarlet)] px-3 py-1 text-xs font-bold text-white">
-            Destaque
-          </span>
-        ) : null}
-      </div>
-      <div className="p-4">
-        <p className="text-lg font-bold leading-snug text-slate-950">{title}</p>
-        <p className="mt-3 text-xl font-bold text-[var(--primary-scarlet)]">{formatPrice(imovel)}</p>
-        <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">
-          {imovel.area_util ? <span className="rounded-lg bg-slate-100 px-2 py-1">{imovel.area_util} m²</span> : null}
-          {imovel.dormitorios ? (
-            <span className="rounded-lg bg-slate-100 px-2 py-1">{imovel.dormitorios} dorm.</span>
-          ) : null}
-          {imovel.vagas ? <span className="rounded-lg bg-slate-100 px-2 py-1">{imovel.vagas} vagas</span> : null}
-        </div>
-      </div>
-    </Link>
   );
 }
 
