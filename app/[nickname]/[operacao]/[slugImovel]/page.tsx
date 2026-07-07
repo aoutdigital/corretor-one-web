@@ -17,6 +17,8 @@ import {
 
 import { PropertyGallery } from "@/app/[nickname]/_components/property-gallery";
 import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
+import { LeadVisitScheduleButton } from "@/app/[nickname]/_components/lead-visit-schedule-button";
+import { LeadWhatsAppButton } from "@/app/[nickname]/_components/lead-whatsapp-button";
 import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
 import { PropertyInsights, type PropertyInsightsData } from "@/app/[nickname]/_components/property-insights";
 import { PropertyLeadCard } from "@/app/[nickname]/_components/property-lead-card";
@@ -353,6 +355,7 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
         logoUrl={logoUrl}
         avatarUrl={avatarUrl}
         initials={initials}
+        creci={formatCreci(profile)}
       />
 
       <main>
@@ -409,21 +412,33 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
                 </p>
               ) : null}
               <div className="mt-8 flex flex-wrap gap-3">
-                <a
-                  href="#atendimento-imovel"
+                <LeadVisitScheduleButton
+                  nickname={profile.nickname ?? nickname}
+                  brokerName={brokerName}
+                  avatarUrl={avatarUrl}
+                  creci={formatCreci(profile)}
+                  imovelId={imovel.id}
+                  imovelTitulo={title}
+                  permiteVisitaImediata={imovel.permite_visita_imediata}
                   className="inline-flex items-center justify-center gap-3 rounded-lg border border-[var(--grey-olive)] bg-white px-5 py-3 text-sm font-bold text-[var(--grey-olive)] transition hover:bg-[color:rgba(145,139,118,0.08)]"
                 >
                   <CalendarBlank size={19} />
                   Agendar visita
-                </a>
+                </LeadVisitScheduleButton>
                 {whatsappHref ? (
-                  <a
-                    href={whatsappHref}
+                  <LeadWhatsAppButton
+                    nickname={profile.nickname ?? nickname}
+                    brokerName={brokerName}
+                    avatarUrl={avatarUrl}
+                    creci={formatCreci(profile)}
+                    imovelId={imovel.id}
+                    imovelTitulo={title}
+                    label="Iniciar conversa no WhatsApp"
                     className="inline-flex items-center justify-center gap-3 rounded-lg border border-[var(--grey-olive)] bg-white px-5 py-3 text-sm font-bold text-[var(--grey-olive)] transition hover:bg-[color:rgba(145,139,118,0.08)]"
                   >
                     <WhatsappLogo size={19} />
                     Iniciar conversa no WhatsApp
-                  </a>
+                  </LeadWhatsAppButton>
                 ) : null}
               </div>
             </div>
@@ -460,6 +475,7 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
 
           <PropertyLeadCard
             nickname={profile.nickname ?? nickname}
+            imovelId={imovel.id}
             slugImovel={imovel.slug_publico ?? slugImovel}
             title={title}
             operationLabel={operationLabel}
@@ -467,6 +483,7 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
             carryingCosts={heroCosts}
             brokerName={brokerName}
             brokerAvatarUrl={getPublicImageUrl(profile.avatar_url)}
+            brokerCreci={formatCreci(profile)}
             whatsappHref={whatsappHref}
             phoneHref={phoneHref}
           />

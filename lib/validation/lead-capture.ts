@@ -37,6 +37,10 @@ export type LeadCaptureInput = {
   mensagem?: string | null;
   imovel_id?: string | null;
   utm?: Record<string, unknown> | null;
+  form_key?: string | null;
+  page_url?: string | null;
+  referrer?: string | null;
+  form_payload?: Record<string, unknown> | null;
 };
 
 function asObject(value: unknown): value is Record<string, unknown> {
@@ -93,6 +97,20 @@ export function validateLeadCaptureInput(payload: unknown): ApiResult<LeadCaptur
     return fail("VALIDATION_ERROR", "utm must be an object or null");
   }
 
+  const formKey = parseNullableString(payload.form_key, "form_key");
+  if (!formKey.ok) return formKey;
+
+  const pageUrl = parseNullableString(payload.page_url, "page_url");
+  if (!pageUrl.ok) return pageUrl;
+
+  const referrer = parseNullableString(payload.referrer, "referrer");
+  if (!referrer.ok) return referrer;
+
+  const formPayload = payload.form_payload;
+  if (formPayload !== null && formPayload !== undefined && !asObject(formPayload)) {
+    return fail("VALIDATION_ERROR", "form_payload must be an object or null");
+  }
+
   if (!email.data && !telefoneE164.data) {
     return fail("VALIDATION_ERROR", "At least one key is required: email or telefone_e164");
   }
@@ -108,5 +126,9 @@ export function validateLeadCaptureInput(payload: unknown): ApiResult<LeadCaptur
     mensagem: mensagem.data,
     imovel_id: imovelId.data,
     utm: (utm as Record<string, unknown> | null | undefined) ?? null,
+    form_key: formKey.data,
+    page_url: pageUrl.data,
+    referrer: referrer.data,
+    form_payload: (formPayload as Record<string, unknown> | null | undefined) ?? null,
   });
 }

@@ -713,6 +713,10 @@ export async function captureLeadByKeys(
       mensagem: input.mensagem ?? current.mensagem,
       imovel_id: input.imovel_id ?? current.imovel_id,
       utm: (input.utm ?? current.utm) as LeadUpdate["utm"],
+      form_key: input.form_key ?? current.form_key,
+      page_url: input.page_url ?? current.page_url,
+      referrer: input.referrer ?? current.referrer,
+      form_payload: (input.form_payload ?? current.form_payload) as LeadUpdate["form_payload"],
     };
 
     const updateResult = await client
@@ -755,6 +759,10 @@ export async function captureLeadByKeys(
     mensagem: input.mensagem ?? null,
     imovel_id: input.imovel_id ?? null,
     utm: (input.utm ?? null) as LeadInsert["utm"],
+    form_key: input.form_key ?? null,
+    page_url: input.page_url ?? null,
+    referrer: input.referrer ?? null,
+    form_payload: (input.form_payload ?? {}) as LeadInsert["form_payload"],
   };
 
   const insertResult = await client

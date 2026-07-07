@@ -116,6 +116,7 @@ export default async function PublicBrokerEmpreendimentosPage({ params }: PagePr
         logoUrl={logoUrl}
         avatarUrl={avatarUrl}
         initials={initials}
+        creci={formatCreci(profile)}
       />
 
       <main>

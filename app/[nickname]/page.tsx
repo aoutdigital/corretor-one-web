@@ -12,12 +12,12 @@ import {
   SealCheck,
   ShieldCheck,
   UsersThree,
-  WhatsappLogo,
 } from "@phosphor-icons/react/dist/ssr";
 
 import { ProfileContactSection, type PublicContactChannel } from "@/app/[nickname]/_components/profile-contact-section";
 import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
 import { HorizontalLoopCarousel } from "@/app/[nickname]/_components/horizontal-loop-carousel";
+import { LeadWhatsAppButton } from "@/app/[nickname]/_components/lead-whatsapp-button";
 import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
 import { PublicEmpreendimentoCard } from "@/app/[nickname]/_components/public-empreendimento-card";
 import { PublicPropertyCard, type PublicPropertyCardImovel } from "@/app/[nickname]/_components/public-property-card";
@@ -293,6 +293,7 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
         logoUrl={logoUrl}
         avatarUrl={avatarUrl}
         initials={initials}
+        creci={creci}
       />
 
       <main>
@@ -364,13 +365,14 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
 
                 <div className="mt-8 flex flex-wrap gap-3">
                   {whatsappHref ? (
-                    <a
-                      href={whatsappHref}
+                    <LeadWhatsAppButton
+                      nickname={profile.nickname ?? nickname}
+                      brokerName={brokerName}
+                      avatarUrl={avatarUrl}
+                      creci={creci}
+                      label="Chamar no WhatsApp"
                       className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-5 py-3 text-sm font-bold text-white transition hover:brightness-95"
-                    >
-                      <WhatsappLogo size={18} />
-                      Chamar no WhatsApp
-                    </a>
+                    />
                   ) : null}
                   <a
                     href="#imoveis"

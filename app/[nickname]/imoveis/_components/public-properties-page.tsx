@@ -326,6 +326,7 @@ export async function PublicPropertiesPage({ nickname, searchParams, seoSlug }: 
         logoUrl={logoUrl}
         avatarUrl={avatarUrl}
         initials={initials}
+        creci={formatCreci(profile)}
       />
 
       <main>

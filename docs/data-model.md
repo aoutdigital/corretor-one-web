@@ -899,6 +899,10 @@ Constraint: unique(contato_id, imovel_id, papel)
 - mensagem (text, nullable)
 - imovel_id (uuid, FK imoveis.id, nullable)
 - utm (jsonb, nullable)
+- form_key (text, nullable) — origem funcional do formulário público (`whatsapp_contact`, `property_info`, `visit_schedule`, `curadoria`)
+- page_url (text, nullable) — URL pública onde a captação aconteceu
+- referrer (text, nullable) — referência HTTP/browser quando disponível
+- form_payload (jsonb, default `{}`) — contexto flexível do formulário, sem substituir campos normalizados do lead
 - status (text, enum STATUS_LEAD, default NOVO)
 - motivo_desqualificacao (text, enum MOTIVO_DESQUALIFICACAO, nullable)
 - aguardando_produto (boolean, default false)
@@ -908,6 +912,7 @@ Constraint: unique(contato_id, imovel_id, papel)
 Regras:
 - `motivo_desqualificacao` só pode existir quando `status = DESQUALIFICADO`
 - `aguardando_produto` é um sinal auxiliar operacional e não substitui o estágio comercial principal do lead
+- formulários públicos V1 gravam em `leads` e usam `form_payload` para contexto; não criam `lead_briefings` automaticamente
 
 ---
 

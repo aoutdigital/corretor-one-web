@@ -1248,6 +1248,8 @@ export type Database = {
           endereco: string | null
           email: string | null
           email_lower: string | null
+          form_key: string | null
+          form_payload: Json
           id: string
           imovel_id: string | null
           mensagem: string | null
@@ -1258,8 +1260,10 @@ export type Database = {
           numero: string | null
           origem: Database["public"]["Enums"]["origem_lead"]
           owner_id: string
+          page_url: string | null
           pais: string | null
           profissao: string | null
+          referrer: string | null
           status: Database["public"]["Enums"]["status_lead"]
           telefone: string | null
           telefone_e164: string | null
@@ -1277,6 +1281,8 @@ export type Database = {
           endereco?: string | null
           email?: string | null
           email_lower?: string | null
+          form_key?: string | null
+          form_payload?: Json
           id?: string
           imovel_id?: string | null
           mensagem?: string | null
@@ -1287,8 +1293,10 @@ export type Database = {
           numero?: string | null
           origem: Database["public"]["Enums"]["origem_lead"]
           owner_id: string
+          page_url?: string | null
           pais?: string | null
           profissao?: string | null
+          referrer?: string | null
           status?: Database["public"]["Enums"]["status_lead"]
           telefone?: string | null
           telefone_e164?: string | null
@@ -1306,6 +1314,8 @@ export type Database = {
           endereco?: string | null
           email?: string | null
           email_lower?: string | null
+          form_key?: string | null
+          form_payload?: Json
           id?: string
           imovel_id?: string | null
           mensagem?: string | null
@@ -1316,8 +1326,10 @@ export type Database = {
           numero?: string | null
           origem?: Database["public"]["Enums"]["origem_lead"]
           owner_id?: string
+          page_url?: string | null
           pais?: string | null
           profissao?: string | null
+          referrer?: string | null
           status?: Database["public"]["Enums"]["status_lead"]
           telefone?: string | null
           telefone_e164?: string | null

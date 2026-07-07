@@ -233,6 +233,7 @@ export default async function PublicEmpreendimentoDetailPage({ params }: PagePro
         logoUrl={logoUrl}
         avatarUrl={avatarUrl}
         initials={initials}
+        creci={formatCreci(profile)}
       />
 
       <main>

@@ -4,7 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ArrowRight, List, X } from "@phosphor-icons/react";
+import { List, X } from "@phosphor-icons/react";
+
+import { LeadWhatsAppButton } from "./lead-whatsapp-button";
 
 type PublicBrokerHeaderProps = {
   nickname: string;
@@ -12,12 +14,13 @@ type PublicBrokerHeaderProps = {
   logoUrl: string | null;
   avatarUrl: string | null;
   initials: string;
+  creci?: string | null;
 };
 
 const linkBaseClass =
   "rounded-lg px-3 py-2 text-sm font-light transition hover:bg-slate-100 hover:text-slate-950";
 
-export function PublicBrokerHeader({ nickname, brokerName, logoUrl, avatarUrl, initials }: PublicBrokerHeaderProps) {
+export function PublicBrokerHeader({ nickname, brokerName, logoUrl, avatarUrl, initials, creci }: PublicBrokerHeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const profilePath = `/${nickname}`;
@@ -71,13 +74,13 @@ export function PublicBrokerHeader({ nickname, brokerName, logoUrl, avatarUrl, i
         </nav>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <Link
-            href={contactPath}
+          <LeadWhatsAppButton
+            nickname={nickname}
+            brokerName={brokerName}
+            avatarUrl={avatarUrl}
+            creci={creci}
             className="hidden items-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-2 text-sm font-bold text-white transition hover:brightness-95 sm:inline-flex"
-          >
-            Falar agora
-            <ArrowRight size={16} />
-          </Link>
+          />
           <Link
             href={profilePath}
             aria-label={`Perfil de ${brokerName}`}
@@ -122,14 +125,13 @@ export function PublicBrokerHeader({ nickname, brokerName, logoUrl, avatarUrl, i
                 </Link>
               );
             })}
-            <Link
-              href={contactPath}
+            <LeadWhatsAppButton
+              nickname={nickname}
+              brokerName={brokerName}
+              avatarUrl={avatarUrl}
+              creci={creci}
               className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-3 text-sm font-bold text-white transition hover:brightness-95"
-              onClick={() => setIsOpen(false)}
-            >
-              Falar agora
-              <ArrowRight size={16} />
-            </Link>
+            />
           </nav>
         </div>
       ) : null}

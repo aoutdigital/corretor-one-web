@@ -4,10 +4,13 @@ import Image from "next/image";
 import { FormEvent, useState } from "react";
 import { ChatCircleText, PaperPlaneTilt, PhoneCall, WhatsappLogo } from "@phosphor-icons/react";
 
+import { LeadWhatsAppButton } from "./lead-whatsapp-button";
+
 type SubmitState = "idle" | "submitting" | "success" | "error";
 
 type PropertyLeadCardProps = {
   nickname: string;
+  imovelId: string;
   slugImovel: string;
   title: string;
   operationLabel: string;
@@ -15,6 +18,7 @@ type PropertyLeadCardProps = {
   carryingCosts: Array<{ label: string; value: string; period: string }>;
   brokerName: string;
   brokerAvatarUrl: string | null;
+  brokerCreci?: string | null;
   whatsappHref: string | null;
   phoneHref: string | null;
 };
@@ -27,6 +31,7 @@ function normalizeErrorMessage(value: unknown) {
 
 export function PropertyLeadCard({
   nickname,
+  imovelId,
   slugImovel,
   title,
   operationLabel,
@@ -34,6 +39,7 @@ export function PropertyLeadCard({
   carryingCosts,
   brokerName,
   brokerAvatarUrl,
+  brokerCreci,
   whatsappHref,
   phoneHref,
 }: PropertyLeadCardProps) {
@@ -121,13 +127,19 @@ export function PropertyLeadCard({
 
         <div className="mt-4 grid gap-2">
           {whatsappHref ? (
-            <a
-              href={whatsappHref}
+            <LeadWhatsAppButton
+              nickname={nickname}
+              brokerName={brokerName}
+              avatarUrl={brokerAvatarUrl}
+              creci={brokerCreci}
+              imovelId={imovelId}
+              imovelTitulo={title}
+              label="Falar no WhatsApp"
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-600"
             >
               <WhatsappLogo size={18} weight="fill" />
               Falar no WhatsApp
-            </a>
+            </LeadWhatsAppButton>
           ) : null}
           {phoneHref ? (
             <a
