@@ -6,12 +6,15 @@
 
 O Corretor.one terá um motor único de formulários públicos para gerar leads nas páginas do corretor.
 
-Na V1, os formulários não criam cadastro de visitante, não exigem login e não usam `lead_briefings`. O visitante informa seus dados, o sistema cria um lead para o corretor e salva o contexto do formulário em um payload flexível.
+Na V1, os formulários não criam cadastro de visitante e não exigem login. O visitante informa seus dados, o sistema cria ou atualiza um lead para o corretor, salva o contexto do formulário em um payload flexível e registra a submissão na timeline do lead.
+
+Quando o formulário estiver associado a um imóvel, o motor também alimenta o `lead_briefings` com as características do imóvel de origem, preenchendo apenas campos vazios. Para leads recorrentes, nenhum dado de perfil já preenchido deve ser sobrescrito.
+
+Exceção: no formulário de `curadoria`, os campos preenchidos explicitamente pelo visitante têm prioridade sobre dados inferidos do imóvel de origem. O imóvel serve como contexto e sugestão inicial, mas não pode sobrescrever o briefing consultivo informado pelo visitante.
 
 Ficam para uma etapa futura:
 
 - cadastro/login de visitantes do portal;
-- briefings persistidos em `lead_briefings`;
 - preferências por visitante;
 - área logada do comprador/inquilino;
 - automações avançadas por perfil de busca.
@@ -54,9 +57,19 @@ Pós-submit:
 
 - cria o lead;
 - salva `form_key = whatsapp_contact`, `page_url`, `referrer`, UTMs e contexto em `form_payload`;
+- registra o formulário na timeline do lead;
 - depois abre o WhatsApp do corretor com mensagem contextual.
 
 Quando tiver imóvel, a mensagem deve citar o código/título do imóvel. Quando não tiver, deve mencionar que o contato veio pelo perfil público.
+
+Quando tiver imóvel associado, o perfil do lead recebe dados iniciais derivados do imóvel, sem sobrescrever campos já preenchidos:
+
+- objetivo do lead (`COMPRAR` para venda, `ALUGAR` para locação);
+- tipo de negociação;
+- uso, tipo, categoria e subcategoria;
+- valor, área, dormitórios, suítes e vagas;
+- localização do imóvel;
+- conteúdo de interesse `IMOVEL`.
 
 ### `property_info`
 
@@ -80,6 +93,18 @@ Pós-submit:
 
 - cria o lead;
 - mostra confirmação na própria página.
+- alimenta o perfil do lead a partir do imóvel, preenchendo apenas campos vazios.
+
+Status de implementação:
+
+- o card sticky da página do imóvel envia para `/api/public/lead-forms`;
+- usa `form_key = property_info`;
+- exige imóvel, telefone e e-mail;
+- salva `page_url`, `referrer`, UTMs e contexto em `form_payload`;
+- cria/atualiza o lead via serviço único;
+- vincula o imóvel em `lead_imoveis`;
+- alimenta `lead_briefings` a partir do imóvel somente em campos vazios;
+- registra o formulário na timeline do lead.
 
 ### `visit_schedule`
 
@@ -114,14 +139,29 @@ Regras:
 Pós-submit:
 
 - cria o lead;
+- alimenta o perfil do lead a partir do imóvel, preenchendo apenas campos vazios;
+- cria uma atividade pendente no CRM para o corretor confirmar a visita;
 - exibe confirmação;
-- futuramente pode criar atividade de visita no CRM.
+- não abre WhatsApp automaticamente.
 
 Status de implementação:
 
 - endpoint público aceita `form_key = visit_schedule`;
 - valida imóvel obrigatório, data futura, janela de 14 dias, horário comercial e antecedência mínima;
 - salva agenda em `leads.form_payload.visit`;
+- cria atividade em `atividades` com:
+  - `categoria = EM_ATENDIMENTO`;
+  - `modelo = EM_ATENDIMENTO_CONFIRMAR_VISITA`;
+  - `tipo = VISITA`;
+  - `status = PENDENTE`;
+  - `quando_em` como prazo operacional de confirmação, calculado para uma hora útil a partir da captura;
+- mantém a data/hora solicitada pelo visitante em `leads.form_payload.visit`, na mensagem do lead e na descrição da atividade;
+- evita duplicar atividade de confirmação pendente para o mesmo lead;
+- registra o formulário na timeline do lead;
+- na gestão do lead, a atividade de confirmação pode ser convertida em visita agendada:
+  - a confirmação original é concluída;
+  - uma nova atividade pendente é criada como `EM_ATENDIMENTO_VISITA_PRESENCIAL` ou `EM_ATENDIMENTO_VISITA_VIRTUAL`;
+  - o histórico da solicitação permanece preservado;
 - não abre WhatsApp automaticamente.
 
 ### `curadoria`
@@ -142,24 +182,43 @@ Objetivos:
 - alugar;
 - vender.
 
-O campo objetivo aceita múltipla seleção.
+O campo objetivo aceita seleção estruturada por `OBJETIVO_LEAD`.
+
+O tipo de imóvel deve seguir a mesma tipologia do cadastro de imóvel. A UI pode apresentar uso, categoria e subcategoria, mas o dado persistido precisa continuar compatível com os enums/catálogos do imóvel:
+
+- `tipouso`;
+- `tipoimovel`;
+- `categoriaimovel`;
+- `subcategoriaimovel`.
 
 Campos V1:
 
 - objetivos;
-- regiões/bairros de interesse;
-- tipo de imóvel;
-- faixa de valor;
-- dormitórios;
-- vagas;
-- prazo;
+- tipo de uso, categoria e subcategoria do imóvel;
+- dormitórios, suítes e vagas mínimas;
+- área útil mínima e máxima;
+- intenção de compra quando o objetivo for comprar;
+- valor mínimo e máximo;
+- localização por Google Places;
+- raio de busca em km;
 - nome;
 - sobrenome;
 - telefone;
 - e-mail;
 - mensagem.
 
-Na V1, todos os detalhes da curadoria entram em `leads.form_payload`. Não alimentar `lead_briefings` por enquanto.
+Pós-submit:
+
+- cria ou atualiza o lead;
+- salva `form_key = curadoria`, `page_url`, `referrer`, UTMs e contexto em `form_payload`;
+- salva o briefing estruturado em `form_payload.briefing`;
+- quando houver `imovel_id`, vincula o lead ao imóvel em `lead_imoveis`;
+- quando houver localização Google, normaliza o endereço em `geolocacoes`;
+- cria ou complementa `lead_briefings` com os dados informados;
+- campos preenchidos no formulário têm prioridade sobre dados inferidos do imóvel associado;
+- campos não informados no formulário não apagam preferências já cadastradas;
+- registra o formulário na timeline do lead;
+- exibe confirmação sem abrir WhatsApp automaticamente.
 
 ## 4) Schema Atual e Ajuste Necessário
 
@@ -181,7 +240,7 @@ Campos atuais relevantes:
 - `created_at`;
 - `updated_at`.
 
-Para suportar o motor sem depender de `lead_briefings`, a V1 deve adicionar campos de contexto ao lead.
+Para suportar o motor, a V1 adiciona campos de contexto ao lead e usa `lead_briefings` como perfil de interesse quando houver imóvel associado.
 
 Migration sugerida:
 

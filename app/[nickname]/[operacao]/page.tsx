@@ -398,8 +398,7 @@ export default async function PublicEmpreendimentoDetailPage({ params }: PagePro
         nickname={profile.nickname ?? nickname}
         brokerName={brokerName}
         creci={formatCreci(profile)}
-        whatsappHref={whatsappHref}
-        phoneHref={phoneHref}
+        avatarUrl={avatarUrl}
       />
     </div>
   );

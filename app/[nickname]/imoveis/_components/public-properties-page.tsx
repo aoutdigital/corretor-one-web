@@ -312,8 +312,6 @@ export async function PublicPropertiesPage({ nickname, searchParams, seoSlug }: 
   const initials = getInitials(brokerName);
   const profilePath = `/${profile.nickname ?? nickname}`;
   const breadcrumbItems = buildBreadcrumbItems(profilePath, profile.nickname ?? nickname, filters);
-  const whatsappHref = buildWhatsAppHref(profile.whatsapp || profile.telefone, "Olá, quero conversar sobre os seus imóveis.");
-  const phoneHref = buildPhoneHref(profile.telefone);
   const clearHref = seoIntent?.canonicalPath
     ? `/${profile.nickname ?? nickname}/imoveis/${seoIntent.canonicalPath}`
     : `/${profile.nickname ?? nickname}/imoveis?operacao=${filters.operacao}`;
@@ -439,8 +437,7 @@ export async function PublicPropertiesPage({ nickname, searchParams, seoSlug }: 
         nickname={profile.nickname ?? nickname}
         brokerName={brokerName}
         creci={formatCreci(profile)}
-        whatsappHref={whatsappHref}
-        phoneHref={phoneHref}
+        avatarUrl={avatarUrl}
       />
     </>
   );
@@ -621,20 +618,6 @@ function getProfileName(profile: ProfileRow) {
 function formatCreci(profile: ProfileRow) {
   if (!profile.creci_uf || !profile.creci_numero) return null;
   return `CRECI ${profile.creci_uf} ${profile.creci_numero}-${profile.creci_sufixo ?? "F"}`;
-}
-
-function buildWhatsAppHref(phone: string | null | undefined, message: string) {
-  const digits = phone?.replace(/\D/g, "") ?? "";
-  if (!digits) return null;
-  const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
-  return `https://wa.me/${withCountry}?text=${encodeURIComponent(message)}`;
-}
-
-function buildPhoneHref(phone: string | null | undefined) {
-  const digits = phone?.replace(/\D/g, "") ?? "";
-  if (!digits) return null;
-  const localDigits = digits.startsWith("55") ? digits.slice(2) : digits;
-  return `tel:0${localDigits}`;
 }
 
 function getInitials(name: string) {

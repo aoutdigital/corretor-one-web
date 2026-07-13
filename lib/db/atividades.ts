@@ -27,6 +27,12 @@ export type UpdateAtividadeInput = Partial<
   }
 >;
 
+export type ConfirmVisitAtividadeInput = {
+  modelo: Extract<Atividade["modelo"], "EM_ATENDIMENTO_VISITA_PRESENCIAL" | "EM_ATENDIMENTO_VISITA_VIRTUAL">;
+  quando_em: string;
+  descricao?: string | null;
+};
+
 export async function listAtividades(
   accessToken: string,
   leadId?: string,
@@ -97,6 +103,118 @@ export async function updateAtividade(
   if (result.error) return mapDbError(result.error);
   if (!result.data) return fail("NOT_FOUND", "Atividade not found");
   return ok({ id: result.data.id as string });
+}
+
+export async function confirmVisitAtividade(
+  accessToken: string,
+  atividadeId: string,
+  input: ConfirmVisitAtividadeInput,
+): Promise<ApiResult<{ id: string; atividade_confirmacao_id: string }>> {
+  const auth = await authenticateByAccessToken(accessToken);
+  if (!auth.ok) return auth;
+
+  if (!input.quando_em || Number.isNaN(new Date(input.quando_em).getTime())) {
+    return fail("VALIDATION_ERROR", "quando_em is required");
+  }
+
+  if (input.modelo !== "EM_ATENDIMENTO_VISITA_PRESENCIAL" && input.modelo !== "EM_ATENDIMENTO_VISITA_VIRTUAL") {
+    return fail("VALIDATION_ERROR", "modelo must be a visit activity model");
+  }
+
+  const { user, client } = auth.data;
+  const originalResult = await client
+    .from("atividades")
+    .select("*")
+    .eq("id", atividadeId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (originalResult.error) return mapDbError(originalResult.error);
+  if (!originalResult.data) return fail("NOT_FOUND", "Atividade not found");
+
+  const original = originalResult.data as Atividade;
+  if (original.modelo !== "EM_ATENDIMENTO_CONFIRMAR_VISITA") {
+    return fail("VALIDATION_ERROR", "Only visit confirmation activities can be converted");
+  }
+  if (original.status !== "PENDENTE") {
+    return fail("VALIDATION_ERROR", "Only pending activities can be converted");
+  }
+
+  const note = input.descricao?.trim() ?? "";
+  const createdDescription = [
+    "Visita criada a partir de uma solicitação recebida pelo portal.",
+    original.descricao?.trim() ? `Contexto da solicitação:\n${original.descricao.trim()}` : null,
+    note ? `Observação da confirmação:\n${note}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const existingVisitResult = await client
+    .from("atividades")
+    .select("id")
+    .eq("owner_id", user.id)
+    .eq("lead_id", original.lead_id)
+    .eq("modelo", input.modelo)
+    .eq("status", "PENDENTE")
+    .eq("quando_em", input.quando_em)
+    .maybeSingle();
+
+  if (existingVisitResult.error) return mapDbError(existingVisitResult.error);
+
+  let newActivityId = existingVisitResult.data?.id as string | undefined;
+
+  if (!newActivityId) {
+    const newActivityResult = await client
+      .from("atividades")
+      .insert({
+        owner_id: user.id,
+        lead_id: original.lead_id,
+        negocio_id: original.negocio_id,
+        categoria: "EM_ATENDIMENTO",
+        modelo: input.modelo,
+        tipo: "VISITA",
+        titulo:
+          input.modelo === "EM_ATENDIMENTO_VISITA_VIRTUAL"
+            ? "Visita virtual agendada"
+            : "Visita presencial agendada",
+        descricao: createdDescription,
+        quando_em: input.quando_em,
+        status: "PENDENTE",
+      })
+      .select("id")
+      .single();
+
+    if (newActivityResult.error) return mapDbError(newActivityResult.error);
+    newActivityId = newActivityResult.data.id as string;
+  }
+
+  const completionDescription = [
+    original.descricao?.trim(),
+    `Solicitação confirmada e convertida em visita agendada.`,
+    note ? `Confirmação: ${note}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const completeOriginalResult = await client
+    .from("atividades")
+    .update({
+      descricao: completionDescription || null,
+      status: "CONCLUIDA",
+      concluida_em: new Date().toISOString(),
+    })
+    .eq("id", original.id)
+    .eq("owner_id", user.id)
+    .select("id")
+    .maybeSingle();
+
+  if (completeOriginalResult.error) return mapDbError(completeOriginalResult.error);
+  if (!completeOriginalResult.data) return fail("NOT_FOUND", "Atividade not found");
+
+  return ok({
+    id: newActivityId,
+    atividade_confirmacao_id: original.id,
+  });
 }
 
 export async function deleteAtividade(

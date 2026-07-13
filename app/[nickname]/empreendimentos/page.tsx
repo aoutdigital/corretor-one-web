@@ -105,8 +105,6 @@ export default async function PublicBrokerEmpreendimentosPage({ params }: PagePr
   const avatarUrl = getPublicImageUrl(profile.avatar_url);
   const coverUrl = getPublicImageUrl(profile.imagem_capa_url) || getPublicImageUrl(mediaById.get(empreendimentos[0]?.id ?? "")?.[0]?.url);
   const initials = getInitials(brokerName);
-  const whatsappHref = buildWhatsAppHref(profile.whatsapp || profile.telefone);
-  const phoneHref = buildPhoneHref(profile.telefone);
 
   return (
     <div className="min-h-screen bg-white text-slate-950">
@@ -174,8 +172,7 @@ export default async function PublicBrokerEmpreendimentosPage({ params }: PagePr
         nickname={profile.nickname ?? nickname}
         brokerName={brokerName}
         creci={formatCreci(profile)}
-        whatsappHref={whatsappHref}
-        phoneHref={phoneHref}
+        avatarUrl={avatarUrl}
       />
     </div>
   );
@@ -245,19 +242,6 @@ function getInitials(name: string) {
 function formatCreci(profile: Pick<ProfileRow, "creci_uf" | "creci_numero" | "creci_sufixo">) {
   if (!profile.creci_uf || !profile.creci_numero) return "CRECI em verificação";
   return `CRECI ${profile.creci_uf} ${profile.creci_numero}-${profile.creci_sufixo || "F"}`;
-}
-
-function buildWhatsAppHref(value: string | null) {
-  const digits = value?.replace(/\D/g, "") ?? "";
-  if (digits.length < 10) return null;
-  return `https://wa.me/${digits}`;
-}
-
-function buildPhoneHref(value: string | null) {
-  const digits = value?.replace(/\D/g, "") ?? "";
-  const localDigits = digits.length > 11 && digits.startsWith("55") ? digits.slice(2) : digits;
-  if (localDigits.length < 10) return null;
-  return `tel:0${localDigits}`;
 }
 
 function getPublicImageUrl(url: string | null | undefined) {

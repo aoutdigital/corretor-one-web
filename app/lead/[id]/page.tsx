@@ -233,6 +233,13 @@ type FinishActivityFormState = {
   resultado: "POSITIVO" | "NEGATIVO";
 };
 
+type ConfirmVisitFormState = {
+  modelo: Extract<LeadWorkspaceAtividadeItem["modelo"], "EM_ATENDIMENTO_VISITA_PRESENCIAL" | "EM_ATENDIMENTO_VISITA_VIRTUAL">;
+  data: string;
+  hora: string;
+  nota: string;
+};
+
 type MapPoint = {
   id: string;
   label: string;
@@ -2202,6 +2209,14 @@ export default function LeadDetalhePage() {
     resultado: "POSITIVO",
   });
   const [savingComplete, setSavingComplete] = useState(false);
+  const [confirmVisitTarget, setConfirmVisitTarget] = useState<LeadWorkspaceAtividadeItem | null>(null);
+  const [confirmVisitForm, setConfirmVisitForm] = useState<ConfirmVisitFormState>({
+    modelo: "EM_ATENDIMENTO_VISITA_PRESENCIAL",
+    data: "",
+    hora: "",
+    nota: "",
+  });
+  const [savingConfirmVisit, setSavingConfirmVisit] = useState(false);
 
   const [associateModalOpen, setAssociateModalOpen] = useState(false);
   const [ownedImoveis, setOwnedImoveis] = useState<OwnedImovelOption[]>([]);
@@ -4120,6 +4135,17 @@ export default function LeadDetalhePage() {
     });
   }
 
+  function openConfirmVisitModal(atividade: LeadWorkspaceAtividadeItem) {
+    const split = splitLocalDatetime(toLocalDatetimeValue(atividade.quando_em));
+    setConfirmVisitTarget(atividade);
+    setConfirmVisitForm({
+      modelo: "EM_ATENDIMENTO_VISITA_PRESENCIAL",
+      data: split.date,
+      hora: split.time,
+      nota: "",
+    });
+  }
+
   async function handleCreateActivity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!leadId) return;
@@ -4266,6 +4292,58 @@ export default function LeadDetalhePage() {
       resultado: "POSITIVO",
     });
     pushToast("success", "Atividade finalizada.");
+    setReloadToken((current) => current + 1);
+  }
+
+  async function handleConfirmVisitActivity(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!confirmVisitTarget) return;
+
+    const localDatetime = combineLocalDateAndTime(confirmVisitForm.data, confirmVisitForm.hora);
+    const whenIso = localDatetime ? new Date(localDatetime).toISOString() : "";
+    if (!whenIso) {
+      pushToast("error", "Defina a data e hora da visita.");
+      return;
+    }
+
+    setSavingConfirmVisit(true);
+    const result = await apiFetchWithAuth<{ id: string; atividade_confirmacao_id: string }>(
+      `/api/atividades/${confirmVisitTarget.id}/confirmar-visita`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          modelo: confirmVisitForm.modelo,
+          quando_em: whenIso,
+          descricao: confirmVisitForm.nota.trim() || null,
+        }),
+      },
+    );
+    setSavingConfirmVisit(false);
+
+    if (!result.ok) {
+      pushToast("error", result.error);
+      return;
+    }
+
+    await postTimelineEvent({
+      tipo: "ATIVIDADE",
+      titulo: `Visita confirmada para ${formatDate(whenIso, "datetime")}`,
+      detalhes: {
+        atividade_id: result.data.id,
+        atividade_confirmacao_id: result.data.atividade_confirmacao_id,
+        modelo: confirmVisitForm.modelo,
+        origem: "confirmacao_visita_portal",
+      },
+    });
+
+    setConfirmVisitTarget(null);
+    setConfirmVisitForm({
+      modelo: "EM_ATENDIMENTO_VISITA_PRESENCIAL",
+      data: "",
+      hora: "",
+      nota: "",
+    });
+    pushToast("success", "Visita confirmada e agendada.");
     setReloadToken((current) => current + 1);
   }
 
@@ -4839,6 +4917,8 @@ export default function LeadDetalhePage() {
               {filteredActivities.map((atividade) => {
                 const visualStatus = getActivityVisualStatus(atividade, activityStatusReferenceIso);
                 const isConcluded = visualStatus.label === "Concluída";
+                const canConfirmVisit =
+                  atividade.modelo === "EM_ATENDIMENTO_CONFIRMAR_VISITA" && atividade.status === "PENDENTE";
 
                 return (
                   <article
@@ -4879,6 +4959,16 @@ export default function LeadDetalhePage() {
                         </span>
                       ) : (
                         <div className="flex flex-wrap gap-2 lg:justify-end">
+                          {canConfirmVisit ? (
+                            <button
+                              type="button"
+                              onClick={() => openConfirmVisitModal(atividade)}
+                              className={buildInlineActionClass("primary")}
+                            >
+                              <CalendarBlank size={15} />
+                              Confirmar visita
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             onClick={() => openRescheduleModal(atividade)}
@@ -4890,7 +4980,7 @@ export default function LeadDetalhePage() {
                           <button
                             type="button"
                             onClick={() => openCompleteModal(atividade)}
-                            className={buildInlineActionClass("primary")}
+                            className={buildInlineActionClass(canConfirmVisit ? "secondary" : "primary")}
                           >
                             <CheckCircle size={15} />
                             Finalizar
@@ -7603,6 +7693,122 @@ export default function LeadDetalhePage() {
               </div>
             </>
           )}
+        </form>
+      </ModalShell>
+
+      <ModalShell
+        open={Boolean(confirmVisitTarget)}
+        title="Confirmar visita"
+        subtitle={confirmVisitTarget?.titulo ?? "Transforme a solicitação do portal em uma visita agendada."}
+        onClose={() => setConfirmVisitTarget(null)}
+      >
+        <form onSubmit={handleConfirmVisitActivity} className="grid gap-4">
+          <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4">
+            <p className="text-sm font-semibold text-slate-900">Solicitação recebida</p>
+            <p className="mt-1 text-sm text-slate-500">
+              {confirmVisitTarget?.quando_em
+                ? `Horário pedido pelo visitante: ${formatDate(confirmVisitTarget.quando_em, "datetime")}.`
+                : "Confirme uma data e horário para a visita."}
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            <span className="text-sm font-medium text-slate-700">Tipo de visita</span>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirmVisitForm((current) => ({
+                    ...current,
+                    modelo: "EM_ATENDIMENTO_VISITA_PRESENCIAL",
+                  }))
+                }
+                className={`inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold ${
+                  confirmVisitForm.modelo === "EM_ATENDIMENTO_VISITA_PRESENCIAL"
+                    ? "border-[var(--blue-slate)] bg-[var(--blue-slate)]/8 text-[var(--blue-slate)]"
+                    : "border-slate-200 bg-white text-slate-600"
+                }`}
+              >
+                Presencial
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirmVisitForm((current) => ({
+                    ...current,
+                    modelo: "EM_ATENDIMENTO_VISITA_VIRTUAL",
+                  }))
+                }
+                className={`inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold ${
+                  confirmVisitForm.modelo === "EM_ATENDIMENTO_VISITA_VIRTUAL"
+                    ? "border-[var(--blue-slate)] bg-[var(--blue-slate)]/8 text-[var(--blue-slate)]"
+                    : "border-slate-200 bg-white text-slate-600"
+                }`}
+              >
+                Virtual
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="grid gap-2">
+              <span className="text-sm font-medium text-slate-700">Data</span>
+              <input
+                type="date"
+                value={confirmVisitForm.data}
+                onChange={(event) =>
+                  setConfirmVisitForm((current) => ({
+                    ...current,
+                    data: event.target.value,
+                  }))
+                }
+                className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none focus:border-[var(--blue-slate)] focus:bg-white"
+              />
+            </label>
+            <label className="grid gap-2">
+              <span className="text-sm font-medium text-slate-700">Horário</span>
+              <input
+                type="time"
+                value={confirmVisitForm.hora}
+                onChange={(event) =>
+                  setConfirmVisitForm((current) => ({
+                    ...current,
+                    hora: event.target.value,
+                  }))
+                }
+                className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none focus:border-[var(--blue-slate)] focus:bg-white"
+              />
+            </label>
+          </div>
+
+          <label className="grid gap-2">
+            <span className="text-sm font-medium text-slate-700">Observação da confirmação</span>
+            <textarea
+              value={confirmVisitForm.nota}
+              onChange={(event) =>
+                setConfirmVisitForm((current) => ({
+                  ...current,
+                  nota: event.target.value,
+                }))
+              }
+              rows={4}
+              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-[var(--blue-slate)] focus:bg-white"
+              placeholder="Ex.: confirmado por WhatsApp, portaria avisada, enviar lembrete antes da visita."
+            />
+          </label>
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={() => setConfirmVisitTarget(null)} className={buildModalButtonClass()}>
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={savingConfirmVisit || !confirmVisitForm.data || !confirmVisitForm.hora}
+              className={`${buildModalButtonClass("primary")} disabled:cursor-not-allowed disabled:opacity-50`}
+            >
+              {savingConfirmVisit ? "Agendando..." : "Confirmar e agendar"}
+            </button>
+          </div>
         </form>
       </ModalShell>
 

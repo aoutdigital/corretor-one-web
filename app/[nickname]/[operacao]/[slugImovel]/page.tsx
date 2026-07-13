@@ -10,13 +10,13 @@ import {
   Car,
   HouseLine,
   MapPin,
-  MagnifyingGlass,
   Ruler,
   WhatsappLogo,
 } from "@phosphor-icons/react/dist/ssr";
 
 import { PropertyGallery } from "@/app/[nickname]/_components/property-gallery";
 import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
+import { LeadCuradoriaButton } from "@/app/[nickname]/_components/lead-curadoria-button";
 import { LeadVisitScheduleButton } from "@/app/[nickname]/_components/lead-visit-schedule-button";
 import { LeadWhatsAppButton } from "@/app/[nickname]/_components/lead-whatsapp-button";
 import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
@@ -272,8 +272,6 @@ const SOCIAL_PROOF_SELECT = [
   "publicado_em",
 ].join(",");
 
-const BROKER_SEARCH_MIN_LISTINGS = 30;
-
 const RENDER_PUBLIC_SEGMENT = "/storage/v1/render/image/public/";
 const OBJECT_PUBLIC_SEGMENT = "/storage/v1/object/public/";
 
@@ -309,7 +307,6 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
     medias,
     related,
     socialProofs,
-    publishedImoveisCount,
     empreendimento,
     empreendimentoImages,
     ambientes,
@@ -320,9 +317,16 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
     locationLine,
     addressLine,
     whatsappHref,
-    phoneHref,
+    phoneAvailable,
   } = data;
   const heroImages = medias.map((item) => ({ url: item.url }));
+  const alternativeCtaBackgroundUrl = empreendimentoImages[0]?.url ?? heroImages[0]?.url ?? null;
+  const alternativeCtaTitle = buildAlternativeCtaTitle({
+    imovel,
+    empreendimento,
+    addressLine,
+    locationLine,
+  });
   const stats = buildStats(imovel);
   const heroCosts = buildHeroCosts(imovel);
   const heroPrice = buildHeroPrice(imovel);
@@ -348,7 +352,7 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
   });
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
+    <>
       <PublicBrokerHeader
         nickname={headerNickname}
         brokerName={brokerName}
@@ -358,7 +362,7 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
         creci={formatCreci(profile)}
       />
 
-      <main>
+      <main className="bg-white text-slate-950">
         <section className="mx-auto grid max-w-7xl gap-7 px-5 pb-12 pt-8 lg:grid-cols-[0.86fr_1.14fr]">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--grey-olive)]">{operationLabel}</p>
@@ -485,24 +489,46 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
             brokerAvatarUrl={getPublicImageUrl(profile.avatar_url)}
             brokerCreci={formatCreci(profile)}
             whatsappHref={whatsappHref}
-            phoneHref={phoneHref}
+            phoneAvailable={phoneAvailable}
           />
         </section>
 
-        <section className="border-y border-slate-900 bg-slate-950 px-5 py-20 text-white md:min-h-[72vh]">
-          <div className="mx-auto flex min-h-[calc(72vh-10rem)] max-w-5xl flex-col items-center justify-center text-center">
+        <section
+          className="relative overflow-hidden px-5 py-28 text-white md:py-36"
+          style={{ clipPath: "polygon(0 5%, 100% 0, 100% 95%, 0% 100%)" }}
+        >
+          {alternativeCtaBackgroundUrl ? (
+            <Image
+              src={alternativeCtaBackgroundUrl}
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover"
+              unoptimized
+            />
+          ) : null}
+          <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(2,6,23,0.96),rgba(2,6,23,0.88)_48%,rgba(2,6,23,0.76))]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(145,139,118,0.18),transparent_36%)]" />
+          <div className="relative mx-auto flex max-w-5xl flex-col items-center justify-center text-center">
             <p className="text-xs font-bold uppercase tracking-[0.28em] text-[var(--grey-olive)]">
               Ainda pesquisando?
             </p>
             <h2 className="mt-5 max-w-4xl text-4xl font-light leading-[1.05] text-white md:text-6xl">
-              Este {formatEnumLabel(imovel.tipo)?.toLowerCase()} não é exatamente o que você procura?
+              {alternativeCtaTitle}
             </h2>
             <p className="mt-6 max-w-3xl text-lg font-light leading-8 text-white/68 md:text-xl">
               Me conte o que seria ideal e eu preparo uma curadoria mais alinhada ao seu momento.
             </p>
-            <PropertySearchOrShortcuts
+            <PropertyAlternativeCtaActions
               nickname={profile.nickname ?? nickname}
-              canSearch={publishedImoveisCount >= BROKER_SEARCH_MIN_LISTINGS}
+              brokerName={brokerName}
+              avatarUrl={avatarUrl}
+              creci={formatCreci(profile)}
+              imovelId={imovel.id}
+              imovelTitulo={title}
+              imovelTipo={imovel.tipo}
+              imovelSubtipo={imovel.subtipo}
+              initialObjective={operationLabel === "Aluguel" ? "ALUGAR" : "COMPRAR"}
             />
           </div>
         </section>
@@ -514,10 +540,16 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
         nickname={profile.nickname ?? nickname}
         brokerName={brokerName}
         creci={formatCreci(profile)}
-        whatsappHref={whatsappHref}
-        phoneHref={phoneHref}
+        avatarUrl={avatarUrl}
+        title="Vamos encontrar uma alternativa que faça mais sentido para você."
+        description="Me conte o que faltou neste imóvel e eu preparo uma curadoria com opções mais alinhadas ao seu momento."
+        imovelId={imovel.id}
+        imovelTitulo={title}
+        imovelTipo={imovel.tipo}
+        imovelSubtipo={imovel.subtipo}
+        initialObjective={operationLabel === "Aluguel" ? "ALUGAR" : "COMPRAR"}
       />
-    </div>
+    </>
   );
 }
 
@@ -621,14 +653,13 @@ async function getPropertyPageData(rawNickname: string, rawOperation: string, ra
 
   const empreendimento = empreendimentoResult.data as unknown as PublicEmpreendimento | null;
   const publicEmpreendimento = empreendimento?.slug_publico ? empreendimento : null;
-  const [relatedMedia, video, ambientes, empreendimentoMedia, caracteristicasLabels, socialProofs, publishedImoveisCount] = await Promise.all([
+  const [relatedMedia, video, ambientes, empreendimentoMedia, caracteristicasLabels, socialProofs] = await Promise.all([
     getFirstMediaByImovelId(relatedRows.map((item) => item.id)),
     getFirstVideoByImovelId(profile.id, imovel.id),
     getAmbientesByImovelId(profile.id, imovel.id),
     publicEmpreendimento ? getEmpreendimentoMediaById(publicEmpreendimento.id) : Promise.resolve([]),
     getCaracteristicasCatalogoLabels([...(imovel.caracteristicas ?? []), ...(publicEmpreendimento?.caracteristicas ?? [])]),
     getPublishedSocialProofs(profile.id),
-    getPublishedImoveisCount(profile.id),
   ]);
   const title = buildImovelHeaderTitle(imovel);
   const brokerName = [profile.primeiro_nome, profile.sobrenome].filter(Boolean).join(" ") || "Corretor.one";
@@ -652,7 +683,6 @@ async function getPropertyPageData(rawNickname: string, rawOperation: string, ra
       capa_url: getPublicImageUrl(relatedMedia.get(item.id)?.url),
     })),
     socialProofs,
-    publishedImoveisCount,
     brokerName,
     title,
     price: formatPrice(imovel),
@@ -660,7 +690,7 @@ async function getPropertyPageData(rawNickname: string, rawOperation: string, ra
     locationLine: buildLocationLine(imovel),
     addressLine: buildAddressLine(imovel),
     whatsappHref: buildWhatsAppHref(profile.whatsapp || profile.telefone, title),
-    phoneHref: buildPhoneHref(profile.telefone),
+    phoneAvailable: hasPublicPhone(profile.telefone),
   };
 }
 
@@ -700,22 +730,6 @@ async function getEmpreendimentoMediaById(empreendimentoId: string): Promise<Emp
   }
 
   return (result.data ?? []) as EmpreendimentoMediaRow[];
-}
-
-async function getPublishedImoveisCount(ownerId: string) {
-  const supabase = createSupabaseServerClient();
-  const result = await supabase
-    .from("imoveis")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", ownerId)
-    .eq("status", "PUBLICADO")
-    .not("slug_publico", "is", null);
-
-  if (result.error) {
-    throw new Error(`Erro ao contar imoveis publicos: ${result.error.message}`);
-  }
-
-  return result.count ?? 0;
 }
 
 async function getPublishedSocialProofs(ownerId: string): Promise<SocialProofItem[]> {
@@ -982,6 +996,36 @@ function buildAddressLine(
 
 function buildHeroLocationLine(addressLine: string, locationLine: string) {
   return addressLine || locationLine;
+}
+
+function buildAlternativeCtaTitle({
+  imovel,
+  empreendimento,
+  addressLine,
+  locationLine,
+}: {
+  imovel: Pick<PublicImovel, "tipo" | "logradouro">;
+  empreendimento: Pick<PublicEmpreendimento, "nome"> | null;
+  addressLine: string;
+  locationLine: string;
+}) {
+  const propertyType = formatEnumLabel(imovel.tipo)?.toLowerCase() ?? "imóvel";
+  const pronoun = isFemininePropertyType(propertyType) ? "Esta" : "Este";
+  const context = empreendimento?.nome
+    ? `no ${empreendimento.nome}`
+    : imovel.logradouro && addressLine
+      ? `na ${addressLine}`
+      : locationLine
+        ? `em ${locationLine}`
+        : "";
+
+  return `${pronoun} ${propertyType}${context ? ` ${context}` : ""} não é exatamente o que você procura?`;
+}
+
+function isFemininePropertyType(propertyType: string) {
+  return ["casa", "cobertura", "kitnet", "loja", "sala", "chácara", "fazenda"].some((term) =>
+    propertyType.includes(term),
+  );
 }
 
 function buildStats(imovel: PublicImovel) {
@@ -1452,11 +1496,10 @@ function buildWhatsAppHref(value: string | null, title: string) {
   return `https://wa.me/${digits}?text=${message}`;
 }
 
-function buildPhoneHref(value: string | null) {
+function hasPublicPhone(value: string | null) {
   const digits = value?.replace(/\D/g, "") ?? "";
   const localDigits = digits.length > 11 && digits.startsWith("55") ? digits.slice(2) : digits;
-  if (localDigits.length < 10) return null;
-  return `tel:0${localDigits}`;
+  return localDigits.length >= 10 && localDigits.length <= 11;
 }
 
 function getImovelHref(nickname: string, imovel: Pick<PublicImovel, "tipo_negociacao" | "slug_publico">) {
@@ -1464,69 +1507,49 @@ function getImovelHref(nickname: string, imovel: Pick<PublicImovel, "tipo_negoci
   return `/${nickname}/${operation}/${imovel.slug_publico}`;
 }
 
-function PropertySearchOrShortcuts({
+function PropertyAlternativeCtaActions({
   nickname,
-  canSearch,
+  brokerName,
+  avatarUrl,
+  creci,
+  imovelId,
+  imovelTitulo,
+  imovelTipo,
+  imovelSubtipo,
+  initialObjective,
 }: {
   nickname: string;
-  canSearch: boolean;
+  brokerName: string;
+  avatarUrl: string | null;
+  creci: string;
+  imovelId: string;
+  imovelTitulo: string;
+  imovelTipo: string | null;
+  imovelSubtipo: string | null;
+  initialObjective: "COMPRAR" | "ALUGAR";
 }) {
-  if (canSearch) {
-    return (
-      <form
-        action={`/${nickname}/imoveis`}
-        className="mt-10 grid w-full max-w-4xl gap-3 rounded-xl border border-white/12 bg-white/8 p-3 shadow-[0_22px_70px_rgba(0,0,0,0.28)] backdrop-blur md:grid-cols-[1fr_170px_auto]"
-      >
-        <label className="sr-only" htmlFor="busca-imovel">
-          Buscar imóveis
-        </label>
-        <div className="flex items-center gap-3 rounded-lg bg-white px-4 py-3 text-slate-950">
-          <MagnifyingGlass size={20} className="shrink-0 text-[var(--grey-olive)]" />
-          <input
-            id="busca-imovel"
-            name="busca"
-            type="search"
-            placeholder="Bairro, cidade, condomínio ou perfil do imóvel"
-            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-light text-slate-950 outline-none placeholder:text-slate-400 focus:shadow-none"
-          />
-        </div>
-        <label className="sr-only" htmlFor="operacao-imovel">
-          Finalidade
-        </label>
-        <select
-          id="operacao-imovel"
-          name="operacao"
-          defaultValue="venda"
-          className="rounded-lg border border-white/12 bg-white px-4 py-3 text-sm font-bold text-slate-950 outline-none"
-        >
-          <option value="venda">Comprar</option>
-          <option value="aluguel">Alugar</option>
-        </select>
-        <button
-          type="submit"
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--grey-olive)] px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[color:rgba(145,139,118,0.86)]"
-        >
-          Buscar
-          <ArrowRight size={18} />
-        </button>
-      </form>
-    );
-  }
-
   return (
     <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-      <a
-        href={`/${nickname}/imoveis?operacao=venda`}
+      <LeadCuradoriaButton
+        nickname={nickname}
+        brokerName={brokerName}
+        avatarUrl={avatarUrl}
+        creci={creci}
+        imovelId={imovelId}
+        imovelTitulo={imovelTitulo}
+        imovelTipo={imovelTipo}
+        imovelSubtipo={imovelSubtipo}
+        initialObjective={initialObjective}
         className="inline-flex items-center gap-3 rounded-lg bg-[var(--grey-olive)] px-6 py-4 text-sm font-bold text-white shadow-[0_18px_45px_rgba(0,0,0,0.32)] transition hover:-translate-y-0.5 hover:bg-[color:rgba(145,139,118,0.86)]"
       >
-        Ver opções para comprar
+        Pedir curadoria
         <ArrowRight size={18} />
-      </a>
+      </LeadCuradoriaButton>
       <a
-        href={`/${nickname}/imoveis?operacao=aluguel`}
+        href={`/${nickname}/imoveis`}
         className="inline-flex items-center gap-3 rounded-lg border border-white/18 bg-white/8 px-6 py-4 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-white/14"
       >
-        Ver opções para alugar
+        Ver estoque de imóveis
         <ArrowRight size={18} />
       </a>
     </div>

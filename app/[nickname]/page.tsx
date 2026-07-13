@@ -572,8 +572,7 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
         nickname={profile.nickname ?? nickname}
         brokerName={brokerName}
         creci={formatCreci(profile)}
-        whatsappHref={whatsappHref}
-        phoneHref={phoneHref}
+        avatarUrl={avatarUrl}
       />
     </div>
   );

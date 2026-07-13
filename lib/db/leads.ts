@@ -4,6 +4,10 @@ import { fail, ok, type ApiResult } from "@/lib/api/result";
 import { isVisitActivity } from "@/lib/crm/activity-playbook";
 import { authenticateByAccessToken } from "@/lib/db/_auth";
 import { mapDbError as mapAuthenticatedDbError } from "@/lib/db/_errors";
+import {
+  getBriefingSubcategoriaOptions,
+  inferBriefingCategoriaToken,
+} from "@/lib/imoveis/briefing-tipologia";
 import type { Database } from "@/lib/supabase/database.types";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { LeadCaptureInput } from "@/lib/validation/lead-capture";
@@ -32,11 +36,43 @@ type GeolocacaoRow = Database["public"]["Tables"]["geolocacoes"]["Row"];
 type ImovelRow = Database["public"]["Tables"]["imoveis"]["Row"];
 type ImovelMidiaPublicaRow = Database["public"]["Tables"]["imovel_midia_publica"]["Row"];
 type UserBriefingRow = Database["public"]["Tables"]["user_briefings"]["Row"];
+type ImovelBriefingSeedRow = Pick<
+  ImovelRow,
+  | "id"
+  | "tipo"
+  | "subtipo"
+  | "tipo_negociacao"
+  | "preco_venda"
+  | "preco_locacao"
+  | "area_util"
+  | "dormitorios"
+  | "suites"
+  | "vagas"
+  | "geolocacao_id"
+  | "logradouro"
+  | "numero"
+  | "bairro"
+  | "cidade"
+  | "estado"
+  | "lat"
+  | "lng"
+>;
 
 type CaptureOutcome = {
   lead_id: string;
   action: "created" | "updated";
 };
+
+const COMMERCIAL_PROPERTY_TYPES = new Set<string>([
+  "CASA_COMERCIAL",
+  "ESCRITORIO",
+  "GALPAO_DEPOSITO_ARMAZEM",
+  "HOTEL_MOTEL_POUSADA",
+  "PONTO_COMERCIAL_LOJA_BOX",
+  "PREDIO_EDIFICIO_INTEIRO",
+  "SELF_STORAGE",
+  "SHOPPING",
+]);
 
 function normalizeLocationText(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
@@ -401,9 +437,120 @@ function deriveObjetivoLeadFromTipoNegociacao(
 ): LeadBriefingInsert["objetivolead"] {
   const values = new Set(tipos ?? []);
   const derived: NonNullable<LeadBriefingInsert["objetivolead"]> = [];
-  if (values.has("VENDA")) derived.push("COMPRAR");
-  if (values.has("ALUGUEL")) derived.push("ALUGAR");
+  if (values.has("VENDA") || values.has("VENDA_E_ALUGUEL")) derived.push("COMPRAR");
+  if (values.has("ALUGUEL") || values.has("VENDA_E_ALUGUEL")) derived.push("ALUGAR");
   return derived.length > 0 ? derived : null;
+}
+
+function deriveObjetivoLeadFromImovel(
+  tipoNegociacao: ImovelBriefingSeedRow["tipo_negociacao"],
+): LeadBriefingInsert["objetivolead"] {
+  if (tipoNegociacao === "VENDA") return ["COMPRAR"];
+  if (tipoNegociacao === "ALUGUEL") return ["ALUGAR"];
+  if (tipoNegociacao === "VENDA_E_ALUGUEL") return ["COMPRAR", "ALUGAR"];
+  return null;
+}
+
+function getPrimaryPropertyPrice(property: ImovelBriefingSeedRow) {
+  if (property.tipo_negociacao === "ALUGUEL") return property.preco_locacao;
+  return property.preco_venda ?? property.preco_locacao;
+}
+
+function buildPropertyLocationText(property: ImovelBriefingSeedRow) {
+  const street = [property.logradouro, property.numero]
+    .map((item) => trimNullableString(item))
+    .filter(Boolean)
+    .join(", ");
+  const locality = buildLeadLocationText([property.bairro, property.cidade, property.estado]);
+  return [street, locality].filter(Boolean).join(" · ") || null;
+}
+
+function inferLeadBriefingSubcategoria(input: {
+  uso: LeadBriefingInsert["tipouso"];
+  categoria: string | null;
+  tipo: ImovelBriefingSeedRow["tipo"];
+  subtipo: ImovelBriefingSeedRow["subtipo"];
+}) {
+  const options = getBriefingSubcategoriaOptions(input.uso, input.categoria);
+  if (!options.length) return null;
+  if (input.subtipo && options.some((item) => item.value === input.subtipo)) return input.subtipo;
+  return options.find((item) => item.tipo_imovel === input.tipo)?.value ?? options[0]?.value ?? null;
+}
+
+function buildLeadBriefingFromImovel(
+  property: ImovelBriefingSeedRow,
+): Omit<LeadBriefingInsert, "id" | "owner_id" | "lead_id" | "created_at" | "updated_at"> {
+  const uso: LeadBriefingInsert["tipouso"] = COMMERCIAL_PROPERTY_TYPES.has(property.tipo)
+    ? "COMERCIAL"
+    : "RESIDENCIAL";
+  const categoria = inferBriefingCategoriaToken({ uso, tipoImovel: property.tipo }) ?? property.tipo;
+  const subcategoria = inferLeadBriefingSubcategoria({
+    uso,
+    categoria,
+    tipo: property.tipo,
+    subtipo: property.subtipo,
+  });
+  const price = getPrimaryPropertyPrice(property);
+
+  return {
+    objetivolead: deriveObjetivoLeadFromImovel(property.tipo_negociacao),
+    tipouso: uso,
+    tipoimovel: [property.tipo],
+    categoriaimovel: categoria ? [categoria] : null,
+    subcategoriaimovel: subcategoria ? [subcategoria] : null,
+    construcao: null,
+    tiponegociacao: property.tipo_negociacao ? [property.tipo_negociacao] : null,
+    intencao_compra: null,
+    valor_min: price,
+    valor_max: price,
+    area_util_min: uso === "RESIDENCIAL" ? property.area_util : null,
+    area_util_max: uso === "RESIDENCIAL" ? property.area_util : null,
+    quartos_min: uso === "RESIDENCIAL" ? property.dormitorios : null,
+    suites_min: uso === "RESIDENCIAL" ? property.suites : null,
+    vagas_min: uso === "RESIDENCIAL" ? property.vagas : null,
+    caracteristicas_residenciais: null,
+    area_util_min_comercial: uso === "COMERCIAL" ? property.area_util : null,
+    area_util_max_comercial: uso === "COMERCIAL" ? property.area_util : null,
+    vagas_min_comercial: uso === "COMERCIAL" ? property.vagas : null,
+    caracteristicas_comerciais: null,
+    geolocacao_id: property.geolocacao_id,
+    localizacao_texto: buildPropertyLocationText(property),
+    lat: property.lat,
+    lng: property.lng,
+    raio_km: null,
+    texto_livre: null,
+    conteudos: ["IMOVEL"],
+    canais: null,
+  };
+}
+
+function isEmptyLeadBriefingValue(value: unknown) {
+  if (Array.isArray(value)) return value.length === 0;
+  return value === null || value === undefined || value === "";
+}
+
+function shouldUseBriefingSeedValue(value: unknown) {
+  if (Array.isArray(value)) return value.length > 0;
+  return value !== null && value !== undefined && value !== "";
+}
+
+function mergeLeadBriefingOnlyEmptyFields(
+  current: LeadBriefingShape,
+  suggested: Omit<LeadBriefingInsert, "id" | "owner_id" | "lead_id" | "created_at" | "updated_at">,
+) {
+  const patch: LeadBriefingUpdate = {};
+
+  for (const [key, value] of Object.entries(suggested) as Array<[
+    keyof typeof suggested,
+    (typeof suggested)[keyof typeof suggested],
+  ]>) {
+    if (!shouldUseBriefingSeedValue(value)) continue;
+    if (isEmptyLeadBriefingValue(current[key])) {
+      (patch as Record<string, unknown>)[key] = value;
+    }
+  }
+
+  return patch;
 }
 
 function buildLeadBriefingPatch(input: UpdateLeadBriefingInput): LeadBriefingUpdate {
@@ -687,6 +834,90 @@ async function seedLeadBriefingFromPortalUserIfMissing(
   return ok(undefined);
 }
 
+async function seedLeadBriefingFromImovelEmptyFields(
+  client: SupabaseClient<Database>,
+  ownerId: string,
+  leadId: string,
+  imovelId: string | null | undefined,
+): Promise<ApiResult<void>> {
+  if (!imovelId) return ok(undefined);
+
+  const propertyResult = await client
+    .from("imoveis")
+    .select(
+      [
+        "id",
+        "tipo",
+        "subtipo",
+        "tipo_negociacao",
+        "preco_venda",
+        "preco_locacao",
+        "area_util",
+        "dormitorios",
+        "suites",
+        "vagas",
+        "geolocacao_id",
+        "logradouro",
+        "numero",
+        "bairro",
+        "cidade",
+        "estado",
+        "lat",
+        "lng",
+      ].join(","),
+    )
+    .eq("owner_id", ownerId)
+    .eq("id", imovelId)
+    .maybeSingle();
+
+  if (propertyResult.error) return mapLeadCaptureDbError(propertyResult.error);
+  if (!propertyResult.data) return ok(undefined);
+
+  const suggested = buildLeadBriefingFromImovel(propertyResult.data as unknown as ImovelBriefingSeedRow);
+  const currentResult = await client
+    .from("lead_briefings")
+    .select(LEAD_BRIEFING_SELECT)
+    .eq("owner_id", ownerId)
+    .eq("lead_id", leadId)
+    .maybeSingle();
+
+  if (currentResult.error) return mapLeadCaptureDbError(currentResult.error);
+
+  if (!currentResult.data) {
+    const insertResult = await client
+      .from("lead_briefings")
+      .insert({
+        owner_id: ownerId,
+        lead_id: leadId,
+        ...suggested,
+      })
+      .select("id")
+      .single();
+
+    if (insertResult.error) {
+      if (insertResult.error.code === "23505") return ok(undefined);
+      return mapLeadCaptureDbError(insertResult.error);
+    }
+
+    return ok(undefined);
+  }
+
+  const patch = mergeLeadBriefingOnlyEmptyFields(currentResult.data as unknown as LeadBriefingShape, suggested);
+  if (Object.keys(patch).length === 0) return ok(undefined);
+
+  const updateResult = await client
+    .from("lead_briefings")
+    .update(patch)
+    .eq("owner_id", ownerId)
+    .eq("lead_id", leadId)
+    .select("id")
+    .single();
+
+  if (updateResult.error) return mapLeadCaptureDbError(updateResult.error);
+
+  return ok(undefined);
+}
+
 export async function captureLeadByKeys(
   input: LeadCaptureInput,
 ): Promise<ApiResult<CaptureOutcome>> {
@@ -735,6 +966,14 @@ export async function captureLeadByKeys(
     );
     if (!seedResult.ok) return seedResult;
 
+    const imovelSeedResult = await seedLeadBriefingFromImovelEmptyFields(
+      client,
+      input.owner_id,
+      current.id,
+      input.imovel_id,
+    );
+    if (!imovelSeedResult.ok) return imovelSeedResult;
+
     await insertLeadSystemTimelineEvent(
       client,
       input.owner_id,
@@ -779,6 +1018,14 @@ export async function captureLeadByKeys(
     input.portal_user_id,
   );
   if (!seedResult.ok) return seedResult;
+
+  const imovelSeedResult = await seedLeadBriefingFromImovelEmptyFields(
+    client,
+    input.owner_id,
+    insertResult.data.id,
+    input.imovel_id,
+  );
+  if (!imovelSeedResult.ok) return imovelSeedResult;
 
   await insertLeadSystemTimelineEvent(
     client,
@@ -1633,9 +1880,20 @@ export async function getLeadWorkspace(
     return values;
   });
 
+  const hasBriefingValue =
+    typeof briefing?.valor_min === "number" ||
+    typeof briefing?.valor_max === "number";
   const valueCandidates = negocioValores.length > 0 ? negocioValores : imovelValores;
-  const valorMin = valueCandidates.length > 0 ? Math.min(...valueCandidates) : null;
-  const valorMax = valueCandidates.length > 0 ? Math.max(...valueCandidates) : null;
+  const valorMin = hasBriefingValue
+    ? briefing?.valor_min ?? null
+    : valueCandidates.length > 0
+      ? Math.min(...valueCandidates)
+      : null;
+  const valorMax = hasBriefingValue
+    ? briefing?.valor_max ?? null
+    : valueCandidates.length > 0
+      ? Math.max(...valueCandidates)
+      : null;
   const proximaVisita =
     atividades.find((item) => item.status === "PENDENTE" && item.quando_em && isVisitActivity(item))?.quando_em ?? null;
 

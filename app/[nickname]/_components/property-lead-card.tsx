@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { FormEvent, useState } from "react";
-import { ChatCircleText, PaperPlaneTilt, PhoneCall, WhatsappLogo } from "@phosphor-icons/react";
+import { ChatCircleText, CheckCircle, PaperPlaneTilt, PhoneCall, WhatsappLogo } from "@phosphor-icons/react";
 
 import { LeadWhatsAppButton } from "./lead-whatsapp-button";
+import { ProtectedPhoneButton } from "./protected-phone-button";
 
 type SubmitState = "idle" | "submitting" | "success" | "error";
 
@@ -20,7 +21,7 @@ type PropertyLeadCardProps = {
   brokerAvatarUrl: string | null;
   brokerCreci?: string | null;
   whatsappHref: string | null;
-  phoneHref: string | null;
+  phoneAvailable: boolean;
 };
 
 function normalizeErrorMessage(value: unknown) {
@@ -29,10 +30,35 @@ function normalizeErrorMessage(value: unknown) {
   return typeof error?.message === "string" ? error.message : "Não foi possível enviar agora. Tente novamente.";
 }
 
+function getUtmParams() {
+  if (typeof window === "undefined") return {};
+
+  const params = new URLSearchParams(window.location.search);
+  const utm: Record<string, string> = {};
+
+  for (const key of ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]) {
+    const value = params.get(key);
+    if (value) utm[key] = value;
+  }
+
+  return utm;
+}
+
+function formatBrPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  const ddd = digits.slice(0, 2);
+  const prefix = digits.length > 10 ? digits.slice(2, 7) : digits.slice(2, 6);
+  const suffix = digits.length > 10 ? digits.slice(7, 11) : digits.slice(6, 10);
+
+  if (digits.length <= 2) return digits.length > 0 ? `(${digits}` : "";
+  if (!prefix) return `(${ddd})`;
+  if (!suffix) return `(${ddd}) ${prefix}`;
+  return `(${ddd}) ${prefix}-${suffix}`;
+}
+
 export function PropertyLeadCard({
   nickname,
   imovelId,
-  slugImovel,
   title,
   operationLabel,
   price,
@@ -41,7 +67,7 @@ export function PropertyLeadCard({
   brokerAvatarUrl,
   brokerCreci,
   whatsappHref,
-  phoneHref,
+  phoneAvailable,
 }: PropertyLeadCardProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -57,15 +83,24 @@ export function PropertyLeadCard({
     setFeedback(null);
 
     try {
-      const response = await fetch(`/api/public/profiles/${nickname}/imoveis/${slugImovel}/lead`, {
+      const response = await fetch("/api/public/lead-forms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          form_key: "property_info",
+          nickname,
           nome: name,
           telefone: phone,
           email,
           mensagem: message,
           website,
+          page_url: window.location.href,
+          referrer: document.referrer,
+          utm: getUtmParams(),
+          context: {
+            imovel_id: imovelId,
+            imovel_titulo: title,
+          },
         }),
       });
 
@@ -141,87 +176,102 @@ export function PropertyLeadCard({
               Falar no WhatsApp
             </LeadWhatsAppButton>
           ) : null}
-          {phoneHref ? (
-            <a
-              href={phoneHref}
+          {phoneAvailable ? (
+            <ProtectedPhoneButton
+              nickname={nickname}
+              brokerName={brokerName}
+              avatarUrl={brokerAvatarUrl}
+              creci={brokerCreci}
+              imovelId={imovelId}
+              imovelTitulo={title}
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
             >
               <PhoneCall size={18} />
               Ligar agora
-            </a>
+            </ProtectedPhoneButton>
           ) : null}
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 border-t border-slate-200 pt-5">
-          <p className="flex items-center gap-2 text-sm font-bold text-slate-950">
-            <ChatCircleText size={18} />
-            Receber atendimento
-          </p>
-
-          <input
-            tabIndex={-1}
-            autoComplete="off"
-            value={website}
-            onChange={(event) => setWebsite(event.target.value)}
-            className="hidden"
-            aria-hidden="true"
-          />
-
-          <div className="mt-3 grid gap-3">
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary-scarlet)] focus:ring-4 focus:ring-red-100"
-              placeholder="Seu nome"
-              autoComplete="name"
-            />
-            <input
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary-scarlet)] focus:ring-4 focus:ring-red-100"
-              placeholder="WhatsApp ou telefone"
-              autoComplete="tel"
-              inputMode="tel"
-            />
-            <input
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary-scarlet)] focus:ring-4 focus:ring-red-100"
-              placeholder="E-mail"
-              autoComplete="email"
-              inputMode="email"
-            />
-            <textarea
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              rows={4}
-              className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary-scarlet)] focus:ring-4 focus:ring-red-100"
-              placeholder="Mensagem"
-            />
-          </div>
-
-          {feedback ? (
-            <div
-              className={[
-                "mt-3 rounded-lg border px-3 py-2 text-sm font-bold",
-                submitState === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-red-200 bg-red-50 text-red-700",
-              ].join(" ")}
-            >
-              {feedback}
+        <div className="mt-5 border-t border-slate-200 pt-5">
+          {submitState === "success" ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-4 text-emerald-800">
+              <p className="flex items-center gap-2 text-sm font-bold">
+                <CheckCircle size={18} weight="fill" />
+                Pedido enviado
+              </p>
+              <p className="mt-2 text-sm font-light leading-6">
+                O corretor recebeu seu interesse neste imóvel e vai entrar em contato.
+              </p>
             </div>
-          ) : null}
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <p className="flex items-center gap-2 text-sm font-bold text-slate-950">
+                <ChatCircleText size={18} />
+                Receber atendimento
+              </p>
 
-          <button
-            type="submit"
-            disabled={submitState === "submitting"}
-            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-3 text-sm font-bold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <PaperPlaneTilt size={17} weight="fill" />
-            {submitState === "submitting" ? "Enviando..." : "Enviar interesse"}
-          </button>
-        </form>
+              <input
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(event) => setWebsite(event.target.value)}
+                className="hidden"
+                aria-hidden="true"
+              />
+
+              <div className="mt-3 grid gap-3">
+                <input
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary-scarlet)] focus:ring-4 focus:ring-red-100"
+                  placeholder="Seu nome"
+                  autoComplete="name"
+                  required
+                />
+                <input
+                  value={phone}
+                  onChange={(event) => setPhone(formatBrPhone(event.target.value))}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary-scarlet)] focus:ring-4 focus:ring-red-100"
+                  placeholder="(11) 99999-9999"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  required
+                />
+                <input
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary-scarlet)] focus:ring-4 focus:ring-red-100"
+                  placeholder="E-mail"
+                  autoComplete="email"
+                  inputMode="email"
+                  required
+                />
+                <textarea
+                  value={message}
+                  onChange={(event) => setMessage(event.target.value)}
+                  rows={4}
+                  className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary-scarlet)] focus:ring-4 focus:ring-red-100"
+                  placeholder="Mensagem"
+                />
+              </div>
+
+              {feedback ? (
+                <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+                  {feedback}
+                </div>
+              ) : null}
+
+              <button
+                type="submit"
+                disabled={submitState === "submitting"}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--primary-scarlet)] px-4 py-3 text-sm font-bold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <PaperPlaneTilt size={17} weight="fill" />
+                {submitState === "submitting" ? "Enviando..." : "Enviar interesse"}
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </aside>
   );

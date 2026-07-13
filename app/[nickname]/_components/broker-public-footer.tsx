@@ -1,24 +1,36 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { ArrowRight, Buildings, Check, HouseLine, SealCheck, WhatsappLogo } from "@phosphor-icons/react/dist/ssr";
+
+import { LeadCuradoriaButton } from "./lead-curadoria-button";
+import { LeadWhatsAppButton } from "./lead-whatsapp-button";
 
 type BrokerPublicFooterProps = {
   nickname: string;
   brokerName: string;
   creci?: string | null;
-  whatsappHref?: string | null;
-  phoneHref?: string | null;
+  avatarUrl?: string | null;
+  title?: string;
+  description?: string;
+  imovelId?: string | null;
+  imovelTitulo?: string | null;
+  imovelTipo?: string | null;
+  imovelSubtipo?: string | null;
+  initialObjective?: "COMPRAR" | "ALUGAR" | "VENDER";
 };
 
 export function BrokerPublicFooter({
   nickname,
   brokerName,
   creci,
-  whatsappHref,
-  phoneHref,
+  avatarUrl,
+  title = "Me conte o que você procura e eu preparo uma curadoria para o seu momento.",
+  description = "Posso te mostrar imóveis publicados, oportunidades parecidas e caminhos que façam sentido para compra, locação ou venda.",
+  imovelId,
+  imovelTitulo,
+  imovelTipo,
+  imovelSubtipo,
+  initialObjective,
 }: BrokerPublicFooterProps) {
-  const profilePath = `/${nickname}`;
-
   return (
     <footer className="relative isolate overflow-hidden bg-white pb-0 pt-10">
       <div
@@ -32,52 +44,44 @@ export function BrokerPublicFooter({
               Ainda pesquisando?
             </p>
             <h2 className="mt-5 max-w-3xl text-4xl font-light leading-[1.05] md:text-6xl">
-              Me conte o que você procura e eu preparo uma curadoria para o seu momento.
+              {title}
             </h2>
             <p className="mt-5 max-w-2xl text-lg font-light leading-8 text-white/68">
-              Posso te mostrar imóveis publicados, oportunidades parecidas e caminhos que façam sentido para compra, locação ou venda.
+              {description}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                href={`${profilePath}#contato`}
+              <LeadCuradoriaButton
+                nickname={nickname}
+                brokerName={brokerName}
+                avatarUrl={avatarUrl}
+                creci={creci}
+                imovelId={imovelId}
+                imovelTitulo={imovelTitulo}
+                imovelTipo={imovelTipo}
+                imovelSubtipo={imovelSubtipo}
+                initialObjective={initialObjective}
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--grey-olive)] px-5 py-3 text-sm font-bold text-white shadow-lg shadow-black/20 transition hover:brightness-110"
               >
                 Pedir curadoria
                 <ArrowRight size={18} />
-              </Link>
-              {whatsappHref ? (
-                <Link
-                  href={whatsappHref}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/18 bg-white/8 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/14"
-                >
-                  <WhatsappLogo size={18} />
-                  Falar no WhatsApp
-                </Link>
-              ) : phoneHref ? (
-                <Link
-                  href={phoneHref}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/18 bg-white/8 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/14"
-                >
-                  Ligar agora
-                  <ArrowRight size={18} />
-                </Link>
-              ) : null}
+              </LeadCuradoriaButton>
+              <LeadWhatsAppButton
+                nickname={nickname}
+                brokerName={brokerName}
+                avatarUrl={avatarUrl}
+                creci={creci}
+                imovelId={imovelId}
+                imovelTitulo={imovelTitulo}
+                label="Falar no WhatsApp"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/18 bg-white/8 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/14"
+              >
+                <WhatsappLogo size={18} />
+                Falar no WhatsApp
+              </LeadWhatsAppButton>
             </div>
           </div>
 
-          <div className="grid gap-5">
-            <div className="rounded-xl border border-white/12 bg-white/7 p-5 backdrop-blur">
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/42">Navegação</p>
-              <nav className="mt-4 grid grid-cols-2 gap-2 text-sm font-light text-white/72">
-                <FooterLink href={profilePath}>Home</FooterLink>
-                <FooterLink href={`${profilePath}/imoveis/venda`}>Venda</FooterLink>
-                <FooterLink href={`${profilePath}/imoveis/aluguel`}>Locação</FooterLink>
-                <FooterLink href={`${profilePath}/anuncie`}>Anunciar</FooterLink>
-                <FooterLink href={`${profilePath}/empreendimentos`}>Empreendimentos</FooterLink>
-                <FooterLink href={`${profilePath}#contato`}>Contato</FooterLink>
-              </nav>
-            </div>
-
+          <div className="grid content-end gap-5">
             <div className="rounded-xl border border-white/12 bg-slate-950/36 p-5 backdrop-blur">
               <div className="flex items-start gap-3">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/8 text-[var(--grey-olive)]">
@@ -126,13 +130,5 @@ export function BrokerPublicFooter({
         </div>
       </div>
     </footer>
-  );
-}
-
-function FooterLink({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <Link href={href} className="rounded-md px-2 py-1.5 transition hover:bg-white/8 hover:text-white">
-      {children}
-    </Link>
   );
 }

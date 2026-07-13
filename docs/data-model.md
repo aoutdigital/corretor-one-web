@@ -912,7 +912,7 @@ Constraint: unique(contato_id, imovel_id, papel)
 Regras:
 - `motivo_desqualificacao` só pode existir quando `status = DESQUALIFICADO`
 - `aguardando_produto` é um sinal auxiliar operacional e não substitui o estágio comercial principal do lead
-- formulários públicos V1 gravam em `leads` e usam `form_payload` para contexto; não criam `lead_briefings` automaticamente
+- formulários públicos V1 gravam em `leads` e usam `form_payload` para contexto; o formulário de `curadoria` também cria ou complementa `lead_briefings` com os campos estruturados enviados pelo visitante
 
 ---
 
