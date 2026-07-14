@@ -35,6 +35,7 @@ export function PublicBrokerHeader({ nickname, brokerName, logoUrl, avatarUrl, i
       href: `${profilePath}/empreendimentos`,
       match: (path: string) => path.startsWith(`${profilePath}/empreendimentos`),
     },
+    { label: "Artigos", href: `${profilePath}/artigos`, match: (path: string) => path.startsWith(`${profilePath}/artigos`) },
     { label: "Contato", href: contactPath, match: () => false },
   ];
 

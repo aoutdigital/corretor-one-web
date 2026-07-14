@@ -1225,6 +1225,80 @@ Observação de produto: categoria/modelo representam a intenção comercial da 
 
 ## 9) Marketing (Templates, Posts, Campanhas, Audiência)
 
+### artigos
+- id (uuid, PK)
+- owner_id (uuid, FK profiles.id)
+
+Publicação:
+- status (text, enum ARTIGO_STATUS, default RASCUNHO)
+- categoria (text, enum ARTIGO_CATEGORIA)
+- ordem_manual (int, default 0)
+- publicado_em (timestamptz, nullable)
+- arquivado_em (timestamptz, nullable)
+
+Conteúdo editorial:
+- titulo (text) *(8-120 caracteres; único H1 da página pública)*
+- subtitulo (text, nullable, max 180)
+- resumo (text, nullable, max 260)
+- slug (text) *(único por owner; gerado automaticamente a partir do título, lowercase, sem acentos e sem caracteres especiais; não editável pelo corretor; colisões recebem sufixo numérico como `-2`, `-3`)*
+- capa_midia_id (uuid, FK midia.id, nullable)
+- capa_url (text, nullable)
+- conteudo_blocos (jsonb) *(versionado; blocos controlados pelo Corretor.one; rich text sanitizado apenas no bloco de parágrafo)*
+- tags (text[], default '{}')
+
+SEO:
+- meta_title (text, nullable, max 70)
+- meta_description (text, nullable, max 180)
+- canonical_url (text, nullable)
+- indexar (bool, default true)
+- leitura_minutos (int, default 1)
+
+Categoria LOCAL:
+- local_nome (text, nullable)
+- local_categoria (text, nullable)
+- local_horario_funcionamento (text, nullable)
+- local_website_url (text, nullable)
+- local_whatsapp (text, nullable)
+- local_telefone (text, nullable)
+- geolocacao_id (uuid, FK geolocacoes.id, nullable)
+- localizacao_texto (text, nullable)
+- local_payload (jsonb, nullable)
+
+- created_at (timestamptz)
+- updated_at (timestamptz)
+
+Índices: (owner_id, status, publicado_em desc), (owner_id, categoria), (owner_id, ordem_manual, publicado_em desc)
+
+Regras:
+- RLS por owner para CRUD no app.
+- Leitura pública apenas para `status = PUBLICADO` e corretor ativo.
+- Rascunho não é indexável e não entra em sitemap.
+- Renderização pública interpreta `conteudo_blocos`; HTML/CSS/JS enviados pelo usuário não são aceitos.
+- Links externos publicados devem receber `rel="nofollow noopener noreferrer"` por padrão.
+- Blocos permitidos: paragraph, heading h2/h3, quote, list bullet/ordered, image, gallery, youtube, cta, button, property_feature e property_carousel.
+- CTAs editoriais são fechados pelo sistema: curadoria, WhatsApp, ligação protegida e estoque de imóveis.
+- Blocos de imóveis são fechados pelo sistema: `property_feature` destaca um imóvel publicado do corretor; `property_carousel` monta uma listagem por filtros AND (cidade, bairro, empreendimento, dormitórios, suítes, vagas, faixa de valor e características de imóvel/empreendimento), sempre limitada a imóveis publicados do próprio corretor.
+- Categoria `LOCAL` exige campos mínimos de local antes de publicar.
+
+---
+
+### profile_artigos_config
+- owner_id (uuid, PK/FK profiles.id)
+- ordenacao_publica (text, enum ARTIGOS_ORDENACAO_PUBLICA, default PUBLICACAO_DESC)
+- updated_at (timestamptz)
+
+---
+
+### artigo_categoria_sugestoes
+- id (uuid, PK)
+- owner_id (uuid, FK profiles.id)
+- nome (text)
+- contexto (text, nullable)
+- status (text) *(PENDENTE | APROVADA | RECUSADA)*
+- created_at (timestamptz)
+
+---
+
 ### templates (criativos — criados pela equipe)
 - id (uuid, PK)
 - nome (text)

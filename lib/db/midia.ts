@@ -5,7 +5,7 @@ import type { DynamicClient } from "@/lib/db/_dynamic-client";
 import { mapDbError } from "@/lib/db/_errors";
 import { ensureProfileNicknameLogos } from "@/lib/branding/profile-logo";
 import { createMediaStorageProvider } from "@/lib/media";
-import { renderWatermarkedPublicImage } from "@/lib/media/watermark";
+import { renderCornerWatermarkedImage, renderWatermarkedPublicImage } from "@/lib/media/watermark";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type MidiaTipo = "IMAGEM" | "VIDEO" | "PDF";
@@ -31,6 +31,7 @@ export type UploadMidiaInput = {
   legenda?: string | null;
   caracteristica?: string | null;
   skip_optimization?: boolean;
+  apply_watermark?: boolean;
 };
 
 export type UploadMidiaResult = {
@@ -1381,6 +1382,15 @@ export async function uploadMidia(
     if (!optimized.ok) return optimized;
   }
 
+  const shouldApplyArticleWatermark =
+    tipo === "IMAGEM" &&
+    input.apply_watermark === true &&
+    input.ref_tipo === "ARTIGO";
+  if (shouldApplyArticleWatermark) {
+    const watermarked = await applyArticleCornerWatermarkToMidia(accessToken, midiaId);
+    if (!watermarked.ok) return watermarked;
+  }
+
   if (input.ref_tipo && input.ref_id) {
     const relInsert = await db
       .from("midia_relacoes")
@@ -2109,6 +2119,150 @@ export async function optimizeMidiaOwnedTo1920(
       await storage.remove(oldBucket, oldPath);
     } catch (error) {
       return fail("DATABASE_ERROR", "Imagem otimizada salva, mas falhou ao remover original", {
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  return ok({ id: midia.id });
+}
+
+async function applyArticleCornerWatermarkToMidia(
+  accessToken: string,
+  midiaId: string,
+): Promise<ApiResult<{ id: string }>> {
+  const auth = await authenticateByAccessToken(accessToken);
+  if (!auth.ok) return auth;
+
+  const { user, client } = auth.data;
+  const db = client as unknown as DynamicClient;
+
+  const midiaResult = await db
+    .from("midia")
+    .select("id,owner_id,tipo,storage_provider,storage_bucket,storage_path,url")
+    .eq("id", midiaId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (midiaResult.error) return mapDbError(midiaResult.error);
+  if (!midiaResult.data) return fail("NOT_FOUND", "Midia not found");
+
+  const midia = midiaResult.data as {
+    id: string;
+    owner_id: string;
+    tipo: MidiaTipo;
+    storage_provider: "SUPABASE" | "S3";
+    storage_bucket: string;
+    storage_path: string;
+    url: string;
+  };
+
+  const oldPath = (midia.storage_path ?? "").trim();
+  const oldBucket = (midia.storage_bucket ?? "").trim();
+  const canWatermark =
+    midia.tipo === "IMAGEM" &&
+    midia.storage_provider === "SUPABASE" &&
+    oldBucket.length > 0 &&
+    oldPath.length > 0 &&
+    !oldPath.startsWith("youtube:");
+
+  if (!canWatermark) return ok({ id: midia.id });
+  if (oldPath.includes("/article-watermarked/")) return ok({ id: midia.id });
+
+  const profileResult = await db
+    .from("profiles")
+    .select("nickname,logo_nickname_white_url")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileResult.error) return mapDbError(profileResult.error);
+
+  const nickname =
+    typeof (profileResult.data as { nickname?: string | null } | null)?.nickname === "string"
+      ? ((profileResult.data as { nickname?: string | null }).nickname ?? "").trim()
+      : "";
+  let logoNicknameWhiteUrl =
+    typeof (profileResult.data as { logo_nickname_white_url?: string | null } | null)
+      ?.logo_nickname_white_url === "string"
+      ? ((profileResult.data as { logo_nickname_white_url?: string | null }).logo_nickname_white_url ?? "").trim()
+      : "";
+
+  if (!logoNicknameWhiteUrl && nickname) {
+    const logoResult = await ensureProfileNicknameLogos(user.id);
+    if (logoResult.ok) logoNicknameWhiteUrl = logoResult.data.logo_nickname_white_url;
+  }
+
+  let logoWhiteBuffer: Buffer | null = null;
+  if (logoNicknameWhiteUrl) {
+    const logoBufferResult = await fetchPublicImageBuffer(logoNicknameWhiteUrl);
+    if (logoBufferResult.ok) logoWhiteBuffer = logoBufferResult.data;
+  }
+
+  const sourceBufferResult = await fetchSourceImageBuffer({
+    storageProvider: midia.storage_provider,
+    storageBucket: midia.storage_bucket,
+    storagePath: midia.storage_path,
+    url: midia.url,
+  });
+  if (!sourceBufferResult.ok) return sourceBufferResult;
+
+  let watermarkedBuffer: Buffer;
+  try {
+    watermarkedBuffer = await renderCornerWatermarkedImage(sourceBufferResult.data, {
+      nickname: nickname || null,
+      logoPngBuffer: logoWhiteBuffer,
+    });
+  } catch (error) {
+    return fail("DATABASE_ERROR", "Falha ao aplicar marca d'água na imagem do artigo.", {
+      message: (error as Error).message,
+    });
+  }
+
+  if (!watermarkedBuffer.byteLength) {
+    return fail("DATABASE_ERROR", "Imagem com marca d'água retornou vazia");
+  }
+
+  const mime = "image/jpeg";
+  const newPath = `${user.id}/article-watermarked/${Date.now()}-${crypto.randomUUID()}-w1920.jpg`;
+  const uploadFile = new File([bufferToArrayBuffer(watermarkedBuffer)], `article-w1920.jpg`, { type: mime });
+
+  let uploaded: { publicUrl: string; path: string; bucket: string; size: number | null };
+  try {
+    const storage = createMediaStorageProvider();
+    uploaded = await storage.upload({
+      bucket: oldBucket,
+      path: newPath,
+      file: uploadFile,
+      contentType: mime,
+    });
+  } catch (error) {
+    return fail("DATABASE_ERROR", "Falha ao salvar imagem do artigo com marca d'água", {
+      message: (error as Error).message,
+    });
+  }
+
+  const updateResult = await db
+    .from("midia")
+    .update({
+      storage_bucket: uploaded.bucket,
+      storage_path: uploaded.path,
+      url: uploaded.publicUrl,
+      tamanho_bytes: uploaded.size,
+    })
+    .eq("id", midia.id)
+    .eq("owner_id", user.id)
+    .select("id")
+    .maybeSingle();
+
+  if (updateResult.error) return mapDbError(updateResult.error);
+  if (!updateResult.data) return fail("NOT_FOUND", "Midia not found");
+
+  if (oldPath !== uploaded.path) {
+    try {
+      const storage = createMediaStorageProvider();
+      await storage.remove(oldBucket, oldPath);
+    } catch (error) {
+      return fail("DATABASE_ERROR", "Imagem salva com marca d'água, mas falhou ao remover versão anterior", {
         message: (error as Error).message,
       });
     }

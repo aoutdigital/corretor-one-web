@@ -60,6 +60,7 @@ export async function POST(request: Request) {
   const altValue = form.get("alt");
   const legendaValue = form.get("legenda");
   const skipOptimizationValue = form.get("skip_optimization");
+  const applyWatermarkValue = form.get("apply_watermark");
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const inspection = inspectImage(bytes, { fileName: file.name, mimeType: file.type });
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
     alt: typeof altValue === "string" && altValue.length > 0 ? altValue : null,
     legenda: typeof legendaValue === "string" && legendaValue.length > 0 ? legendaValue : null,
     skip_optimization: skipOptimizationValue === "true",
+    apply_watermark: applyWatermarkValue === "true",
   });
 
   if (!result.ok) {

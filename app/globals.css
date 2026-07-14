@@ -89,6 +89,22 @@ body {
   font-family: var(--font-brand);
 }
 
+.input-base {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(203 213 225);
+  background: #ffffff;
+  padding: 0.625rem 0.75rem;
+  color: rgb(15 23 42);
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.input-base:focus {
+  border-color: var(--grey-olive);
+  box-shadow: 0 0 0 3px rgb(145 139 118 / 0.16);
+}
+
 :is(
     input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
         [type="file"]

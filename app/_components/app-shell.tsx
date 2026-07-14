@@ -56,7 +56,7 @@ const MAIN_ITEMS: NavItem[] = [
   { href: "/empreendimentos", label: "Empreendimentos", icon: Buildings },
   { href: "/imoveis", label: "Imóveis", icon: House },
   { href: "/captura", label: "Páginas de Captura", icon: FunnelSimple, disabled: true },
-  { href: "/artigos", label: "Artigos", icon: NotePencil, disabled: true },
+  { href: "/artigos", label: "Artigos", icon: NotePencil },
 ];
 
 const BUSINESS_ITEMS: NavItem[] = [

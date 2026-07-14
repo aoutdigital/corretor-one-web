@@ -37,6 +37,9 @@ const WATERMARK_SCALE_FACTOR = 0.5;
 const WATERMARK_MIN_WIDTH = 220;
 const WATERMARK_MAX_WIDTH = 620;
 const WATERMARK_OPACITY = 0.6;
+const ARTICLE_WATERMARK_HEIGHT = 60;
+const ARTICLE_WATERMARK_MARGIN = 24;
+const ARTICLE_WATERMARK_OPACITY = 0.72;
 
 let logoSvgTemplateCache: string | null = null;
 let logoGlyphMapCache: LogoGlyphMap | null = null;
@@ -216,6 +219,26 @@ async function buildWatermarkOverlay(
   return Buffer.from(svg);
 }
 
+async function buildCornerWatermarkOverlay(
+  baseWidth: number,
+  baseHeight: number,
+  logoPngBase64: string | null,
+): Promise<Buffer> {
+  const watermarkHeight = Math.min(ARTICLE_WATERMARK_HEIGHT, Math.max(32, Math.round(baseHeight * 0.13)));
+  const watermarkWidth = Math.round(watermarkHeight * LOGO_RATIO);
+  const margin = Math.min(ARTICLE_WATERMARK_MARGIN, Math.max(12, Math.round(Math.min(baseWidth, baseHeight) * 0.035)));
+  const x = Math.max(margin, baseWidth - watermarkWidth - margin);
+  const y = Math.max(margin, baseHeight - watermarkHeight - margin);
+  const logoSvg = logoPngBase64
+    ? `<image x="${x}" y="${y}" width="${watermarkWidth}" height="${watermarkHeight}" href="data:image/png;base64,${logoPngBase64}" opacity="${ARTICLE_WATERMARK_OPACITY}" preserveAspectRatio="xMidYMid meet" />`
+    : "";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${baseWidth}" height="${baseHeight}" viewBox="0 0 ${baseWidth} ${baseHeight}">
+    ${logoSvg}
+  </svg>`;
+
+  return Buffer.from(svg);
+}
+
 export async function renderWatermarkedPublicImage(
   sourceImageBuffer: Buffer,
   input: WatermarkLogoInput,
@@ -253,6 +276,47 @@ export async function renderWatermarkedPublicImage(
 
   return base
     .composite([{ input: overlay, gravity: "center" }])
+    .jpeg({ quality: 84, mozjpeg: true })
+    .toBuffer();
+}
+
+export async function renderCornerWatermarkedImage(
+  sourceImageBuffer: Buffer,
+  input: WatermarkLogoInput,
+): Promise<Buffer> {
+  const base = sharp(sourceImageBuffer, { failOn: "none" }).rotate();
+  const metadata = await base.metadata();
+  if (!metadata.width || !metadata.height) {
+    throw new Error("Não foi possível ler dimensões da imagem para marca d'água.");
+  }
+
+  const logoBuffer =
+    input.logoPngBuffer ??
+    (await renderCorretorOneLogoPng({
+      nickname: input.nickname,
+      theme: "white",
+    }));
+  let logoPngBase64: string | null = null;
+
+  if (logoBuffer) {
+    try {
+      const logoPng = await sharp(logoBuffer, { failOn: "none" })
+        .png()
+        .toBuffer();
+      logoPngBase64 = logoPng.toString("base64");
+    } catch {
+      logoPngBase64 = null;
+    }
+  }
+
+  const overlay = await buildCornerWatermarkOverlay(
+    metadata.width,
+    metadata.height,
+    logoPngBase64,
+  );
+
+  return base
+    .composite([{ input: overlay, gravity: "northwest" }])
     .jpeg({ quality: 84, mozjpeg: true })
     .toBuffer();
 }
