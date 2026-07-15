@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { useEffect, useState } from "react";
-import { SpinnerGap, X } from "@phosphor-icons/react";
+import { MagnifyingGlass, SpinnerGap, X } from "@phosphor-icons/react";
 
 import { apiFetchWithAuth } from "@/lib/client/auth-api";
 
@@ -121,7 +121,20 @@ export function ArticleLinkModal({
 
         {mode === "internal" ? (
           <div className="mt-4">
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar imóveis, empreendimentos ou artigos..." className="input-base" autoFocus />
+            <label className="relative block">
+              <span className="pointer-events-none absolute left-5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                <MagnifyingGlass size={18} />
+              </span>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Buscar imóveis, empreendimentos ou artigos..."
+                className="input-base"
+                style={{ paddingLeft: "5rem" }}
+                autoFocus
+              />
+            </label>
+            <p className="mt-2 text-xs text-slate-500">Apenas conteúdos publicados podem ser vinculados no artigo.</p>
             <div className="mt-3 max-h-72 overflow-y-auto rounded-2xl border border-slate-200">
               {loadingTargets ? (
                 <div className="flex items-center gap-2 p-4 text-sm text-slate-500">

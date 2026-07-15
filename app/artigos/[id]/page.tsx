@@ -13,6 +13,7 @@ import {
   CaretDown,
   CaretUp,
   ChatCircle,
+  Check,
   DotsSixVertical,
   Eye,
   FloppyDisk,
@@ -21,11 +22,13 @@ import {
   Info,
   LinkSimple,
   ListBullets,
+  MagnifyingGlass,
   MegaphoneSimple,
   NotePencil,
   Phone,
   Plus,
   Quotes,
+  SlidersHorizontal,
   SpinnerGap,
   TextB,
   TextH,
@@ -105,19 +108,32 @@ type BlockKind = ArtigoBlock["type"];
 type BlockGroup = "titulos" | "texto" | "midia" | "imoveis" | "cta";
 type LinkModalState = ArticleLinkSelection & { editorId: string };
 type ArtigosResponse = { config: { ordenacao_publica: ArtigosOrdenacao } };
+type PropertyOptionsResponse = { items: PropertyOption[] };
 type PropertyOption = {
   id: string;
   codigo?: string | null;
+  label?: string | null;
   titulo?: string | null;
   status?: string | null;
+  finalidade?: string | null;
+  tipo_negociacao?: string | null;
   tipo?: string | null;
+  subtipo?: string | null;
+  area_util?: number | null;
+  area_total?: number | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  bairro_comercial?: string | null;
   bairro?: string | null;
   cidade?: string | null;
+  estado?: string | null;
   dormitorios?: number | null;
   suites?: number | null;
+  banheiros?: number | null;
   vagas?: number | null;
   preco_venda?: number | null;
   preco_locacao?: number | null;
+  capa_url_publica_thumb_webp?: string | null;
 };
 type EnterpriseOption = {
   id: string;
@@ -136,6 +152,12 @@ type ArticleEditorOptions = {
   enterpriseOptions: EnterpriseOption[];
   propertyCharacteristics: CaracteristicaCatalogoOption[];
   enterpriseCharacteristics: CaracteristicaCatalogoOption[];
+};
+type PropertyCarouselMetaResponse = {
+  total: number;
+  cities: string[];
+  neighborhoods: string[];
+  enterprises: EnterpriseOption[];
 };
 
 const BLOCK_GROUPS: Array<{ value: BlockGroup; label: string }> = [
@@ -218,7 +240,7 @@ export default function ArtigoEditorPage() {
         apiFetchWithAuth<ArtigoRow>(`/api/artigos/${id}`),
         apiFetchWithAuth<ProfileData>("/api/profile"),
         apiFetchWithAuth<ArtigosResponse>("/api/artigos"),
-        apiFetchWithAuth<PropertyOption[]>("/api/imoveis"),
+        apiFetchWithAuth<PropertyOptionsResponse>("/api/artigos/property-options"),
         apiFetchWithAuth<EnterpriseOption[]>("/api/empreendimentos"),
         apiFetchWithAuth<CaracteristicaCatalogoOption[]>("/api/caracteristicas/catalogo?escopo=IMOVEL"),
         apiFetchWithAuth<CaracteristicaCatalogoOption[]>("/api/caracteristicas/catalogo?escopo=EMPREENDIMENTO"),
@@ -232,7 +254,7 @@ export default function ArtigoEditorPage() {
         setNickname(profileResult.data.nickname ?? null);
       }
       if (artigosResult.ok) setOrdenacaoPublica(artigosResult.data.config.ordenacao_publica);
-      if (propertiesResult.ok) setPropertyOptions(propertiesResult.data ?? []);
+      if (propertiesResult.ok) setPropertyOptions(propertiesResult.data.items ?? []);
       if (enterprisesResult.ok) setEnterpriseOptions(enterprisesResult.data ?? []);
       if (propertyCharacteristicsResult.ok) setPropertyCharacteristics(propertyCharacteristicsResult.data ?? []);
       if (enterpriseCharacteristicsResult.ok) setEnterpriseCharacteristics(enterpriseCharacteristicsResult.data ?? []);
@@ -884,27 +906,7 @@ function renderBlockFields(
   }
 
   if (block.type === "property_feature") {
-    return (
-      <div className="grid gap-3">
-        <Field label="Imóvel em destaque">
-          <select
-            value={block.data.propertyId ?? ""}
-            onChange={(event) => onChange({ ...block, data: { propertyId: event.target.value || null } })}
-            className="input-base"
-          >
-            <option value="">Selecione um imóvel</option>
-            {options.propertyOptions.map((property) => (
-              <option key={property.id} value={property.id}>
-                {formatPropertyOption(property)}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <p className="text-xs leading-5 text-slate-500">
-          No artigo público, o card só aparece se o imóvel estiver publicado.
-        </p>
-      </div>
-    );
+    return <PropertyFeatureBlockEditor block={block} onChange={onChange} options={options} />;
   }
 
   if (block.type === "property_carousel") {
@@ -913,6 +915,220 @@ function renderBlockFields(
 
   if (block.type === "button") return null;
   return null;
+}
+
+function PropertyFeatureBlockEditor({
+  block,
+  onChange,
+  options,
+}: {
+  block: Extract<ArtigoBlock, { type: "property_feature" }>;
+  onChange: (block: ArtigoBlock) => void;
+  options: ArticleEditorOptions;
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const selectedProperty = options.propertyOptions.find((property) => property.id === block.data.propertyId) ?? null;
+
+  function selectProperty(property: PropertyOption) {
+    onChange({ ...block, data: { propertyId: property.id } });
+    setPickerOpen(false);
+  }
+
+  return (
+    <div className="grid gap-3">
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-slate-950">Imóvel em destaque</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              No artigo público, o card só aparece se o imóvel estiver publicado.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 transition hover:border-stone-300 hover:text-stone-700"
+          >
+            <House size={16} />
+            {selectedProperty ? "Trocar imóvel" : "Selecionar imóvel"}
+          </button>
+        </div>
+
+        {selectedProperty ? (
+          <SelectedPropertySummary property={selectedProperty} />
+        ) : block.data.propertyId ? (
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Imóvel selecionado não foi encontrado na lista carregada. Clique em Trocar imóvel para escolher novamente.
+          </div>
+        ) : (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-5 text-sm text-slate-500">
+            Nenhum imóvel selecionado.
+          </div>
+        )}
+      </div>
+
+      {pickerOpen ? (
+        <PropertyPickerModal
+          properties={options.propertyOptions}
+          selectedId={block.data.propertyId}
+          onSelect={selectProperty}
+          onClose={() => setPickerOpen(false)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function SelectedPropertySummary({ property }: { property: PropertyOption }) {
+  return (
+    <div className="mt-4 flex gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+      <PropertyThumb property={property} className="h-20 w-24 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          {property.codigo ? (
+            <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-stone-700">
+              {property.codigo}
+            </span>
+          ) : null}
+          {property.status ? (
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+              {formatStatusLabel(property.status)}
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-2 truncate text-sm font-bold text-slate-950">{getPropertyTitle(property)}</p>
+        <p className="mt-1 truncate text-xs text-slate-500">{formatPropertyAddress(property)}</p>
+        <p className="mt-2 text-xs font-semibold text-slate-600">{formatPropertySpecs(property)}</p>
+      </div>
+    </div>
+  );
+}
+
+function PropertyPickerModal({
+  properties,
+  selectedId,
+  onSelect,
+  onClose,
+}: {
+  properties: PropertyOption[];
+  selectedId?: string | null;
+  onSelect: (property: PropertyOption) => void;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const filteredProperties = useMemo(() => {
+    const normalizedQuery = normalizeOptionSearch(query);
+    return properties
+      .filter((property) => propertyMatchesQuery(property, normalizedQuery))
+      .slice(0, 60);
+  }, [properties, query]);
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
+      <div className="w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+          <div>
+            <h3 className="text-3xl font-normal text-slate-950">Selecionar imóvel</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              Busque por código, nome, endereço, bairro ou cidade.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-800 transition hover:border-slate-300"
+            aria-label="Fechar seleção de imóvel"
+          >
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="border-b border-slate-200 p-6">
+          <label className="relative block">
+            <span className="pointer-events-none absolute left-5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+              <MagnifyingGlass size={18} />
+            </span>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              autoFocus
+              className="input-base"
+              style={{ paddingLeft: "5rem" }}
+              placeholder="Código, título ou endereço"
+            />
+          </label>
+        </div>
+
+        <div className="max-h-[58vh] overflow-y-auto p-4">
+          {filteredProperties.length ? (
+            <div className="grid gap-3">
+              {filteredProperties.map((property) => {
+                const selected = property.id === selectedId;
+                return (
+                  <button
+                    key={property.id}
+                    type="button"
+                    onClick={() => onSelect(property)}
+                    className={[
+                      "flex w-full gap-3 rounded-2xl border p-3 text-left transition",
+                      selected
+                        ? "border-stone-400 bg-stone-50 shadow-sm"
+                        : "border-slate-200 bg-white hover:border-stone-300 hover:bg-stone-50/40",
+                    ].join(" ")}
+                  >
+                    <PropertyThumb property={property} className="h-20 w-28 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {property.codigo ? (
+                          <span className="text-xs font-bold uppercase tracking-[0.12em] text-stone-700">
+                            {property.codigo}
+                          </span>
+                        ) : null}
+                        {property.status ? (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                            {formatStatusLabel(property.status)}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-sm font-bold text-slate-950">{getPropertyTitle(property)}</p>
+                      <p className="mt-1 truncate text-xs text-slate-500">{formatPropertyAddress(property)}</p>
+                      <p className="mt-2 text-xs font-semibold text-slate-600">{formatPropertySpecs(property)}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+              Nenhum imóvel encontrado.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PropertyThumb({ property, className }: { property: PropertyOption; className: string }) {
+  const src = property.capa_url_publica_thumb_webp;
+  return (
+    <div className={`${className} overflow-hidden rounded-xl bg-slate-100`}>
+      {src ? (
+        <Image
+          src={src}
+          alt={getPropertyTitle(property)}
+          width={160}
+          height={120}
+          className="h-full w-full object-cover"
+          unoptimized
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-slate-400">
+          <ImageSquare size={24} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 function PropertyCarouselBlockEditor({
@@ -925,17 +1141,9 @@ function PropertyCarouselBlockEditor({
   options: ArticleEditorOptions;
 }) {
   const filters = block.data.filters ?? {};
-
-  function updateFilters(nextFilters: Partial<ArtigoPropertyCarouselFilters>) {
-    onChange({ ...block, data: { ...block.data, filters: { ...filters, ...nextFilters } } });
-  }
-
-  function toggleCharacteristic(scope: "imovel" | "empreendimento", value: string) {
-    const key = scope === "imovel" ? "caracteristicasImovel" : "caracteristicasEmpreendimento";
-    const current = filters[key] ?? [];
-    const next = current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
-    updateFilters({ [key]: next } as Partial<ArtigoPropertyCarouselFilters>);
-  }
+  const [queryModalOpen, setQueryModalOpen] = useState(false);
+  const { meta, loading } = usePropertyCarouselMeta(filters);
+  const filterChips = getPropertyCarouselFilterChips(filters, options, meta);
 
   return (
     <div className="grid gap-4">
@@ -958,45 +1166,286 @@ function PropertyCarouselBlockEditor({
         </Field>
       </div>
 
-      <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Filtros combinados por AND</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          <Field label="Cidade">
-            <input value={filters.cidade ?? ""} onChange={(event) => updateFilters({ cidade: event.target.value })} className="input-base" placeholder="São Paulo" />
-          </Field>
-          <Field label="Bairro">
-            <input value={filters.bairro ?? ""} onChange={(event) => updateFilters({ bairro: event.target.value })} className="input-base" placeholder="Santana" />
-          </Field>
-          <Field label="Empreendimento">
-            <select value={filters.empreendimentoId ?? ""} onChange={(event) => updateFilters({ empreendimentoId: event.target.value || null })} className="input-base">
-              <option value="">Todos</option>
-              {options.enterpriseOptions.map((enterprise) => (
-                <option key={enterprise.id} value={enterprise.id}>
-                  {[enterprise.nome, enterprise.bairro, enterprise.cidade].filter(Boolean).join(" · ")}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Dormitórios mín."><input type="number" min={0} value={filters.dormitoriosMin ?? ""} onChange={(event) => updateFilters({ dormitoriosMin: numberOrNull(event.target.value) })} className="input-base" /></Field>
-          <Field label="Suítes mín."><input type="number" min={0} value={filters.suitesMin ?? ""} onChange={(event) => updateFilters({ suitesMin: numberOrNull(event.target.value) })} className="input-base" /></Field>
-          <Field label="Vagas mín."><input type="number" min={0} value={filters.vagasMin ?? ""} onChange={(event) => updateFilters({ vagasMin: numberOrNull(event.target.value) })} className="input-base" /></Field>
-          <Field label="Valor mín."><input type="number" min={0} value={filters.valorMin ?? ""} onChange={(event) => updateFilters({ valorMin: numberOrNull(event.target.value) })} className="input-base" /></Field>
-          <Field label="Valor máx."><input type="number" min={0} value={filters.valorMax ?? ""} onChange={(event) => updateFilters({ valorMax: numberOrNull(event.target.value) })} className="input-base" /></Field>
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Lista de imóveis</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {filterChips.length ? (
+                filterChips.map((chip) => (
+                  <span key={chip} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    {chip}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm text-slate-500">Todos os imóveis publicados do corretor, sem filtros adicionais.</span>
+              )}
+            </div>
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-stone-50 px-3 py-1.5 text-sm font-semibold text-slate-700">
+              {loading ? <SpinnerGap size={16} className="animate-spin text-[var(--grey-olive)]" /> : <Check size={16} className="text-[var(--grey-olive)]" />}
+              {loading ? "Atualizando contagem..." : formatCarouselCount(meta.total)}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setQueryModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-800 transition hover:border-[var(--grey-olive)] hover:text-[var(--grey-olive)]"
+          >
+            <SlidersHorizontal size={18} />
+            Configurar imóveis
+          </button>
         </div>
       </div>
 
-      <CharacteristicPicker
-        title="Características do imóvel"
-        values={filters.caracteristicasImovel ?? []}
-        options={options.propertyCharacteristics}
-        onToggle={(value) => toggleCharacteristic("imovel", value)}
-      />
-      <CharacteristicPicker
-        title="Características do empreendimento"
-        values={filters.caracteristicasEmpreendimento ?? []}
-        options={options.enterpriseCharacteristics}
-        onToggle={(value) => toggleCharacteristic("empreendimento", value)}
-      />
+      {queryModalOpen ? (
+        <PropertyCarouselQueryModal
+          initialFilters={filters}
+          options={options}
+          onClose={() => setQueryModalOpen(false)}
+          onApply={(nextFilters) => {
+            onChange({ ...block, data: { ...block.data, filters: nextFilters } });
+            setQueryModalOpen(false);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function PropertyCarouselQueryModal({
+  initialFilters,
+  options,
+  onClose,
+  onApply,
+}: {
+  initialFilters: ArtigoPropertyCarouselFilters;
+  options: ArticleEditorOptions;
+  onClose: () => void;
+  onApply: (filters: ArtigoPropertyCarouselFilters) => void;
+}) {
+  const [step, setStep] = useState(0);
+  const [draftFilters, setDraftFilters] = useState<ArtigoPropertyCarouselFilters>(initialFilters);
+  const { meta, loading } = usePropertyCarouselMeta(draftFilters);
+  const steps = ["Localização", "Perfil", "Valores", "Características"];
+  const cityOptions = mergeTextOptions(meta.cities, draftFilters.cidade);
+  const neighborhoodOptions = mergeTextOptions(meta.neighborhoods, draftFilters.bairro);
+  const enterpriseOptions = mergeEnterpriseOptions(meta.enterprises, draftFilters.empreendimentoId);
+
+  function updateDraft(nextFilters: Partial<ArtigoPropertyCarouselFilters>) {
+    setDraftFilters((current) => ({ ...current, ...nextFilters }));
+  }
+
+  function toggleCharacteristic(scope: "imovel" | "empreendimento", value: string) {
+    const key = scope === "imovel" ? "caracteristicasImovel" : "caracteristicasEmpreendimento";
+    const current = draftFilters[key] ?? [];
+    const next = current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
+    updateDraft({ [key]: next } as Partial<ArtigoPropertyCarouselFilters>);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Carrossel de imóveis</p>
+            <h3 className="mt-2 text-3xl font-light text-slate-950">Configurar imóveis</h3>
+            <p className="mt-1 text-sm text-slate-500">Combine filtros. O carrossel público só exibe imóveis publicados.</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-2xl border border-slate-200 p-3 text-slate-600 transition hover:bg-slate-50">
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="border-b border-slate-200 bg-slate-50 p-4 lg:border-b-0 lg:border-r">
+            <div className="grid gap-2">
+              {steps.map((label, index) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setStep(index)}
+                  className={`flex items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-bold transition ${
+                    step === index ? "bg-slate-950 text-white shadow-sm" : "text-slate-600 hover:bg-white"
+                  }`}
+                >
+                  <span>{label}</span>
+                  <span className={step === index ? "text-white/70" : "text-slate-400"}>{index + 1}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Prévia</p>
+              <div className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-slate-800">
+                {loading ? <SpinnerGap size={16} className="animate-spin text-[var(--grey-olive)]" /> : <Check size={16} className="text-[var(--grey-olive)]" />}
+                {loading ? "Calculando..." : formatCarouselCount(meta.total)}
+              </div>
+            </div>
+          </aside>
+
+          <div className="min-h-0 overflow-y-auto p-6">
+            {step === 0 ? (
+              <div className="grid gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Cidade">
+                    <select
+                      value={draftFilters.cidade ?? ""}
+                      onChange={(event) => updateDraft({ cidade: event.target.value || null, bairro: null, empreendimentoId: null })}
+                      className="input-base"
+                    >
+                      <option value="">Todas as cidades</option>
+                      {cityOptions.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Bairro">
+                    <select
+                      value={draftFilters.bairro ?? ""}
+                      onChange={(event) => updateDraft({ bairro: event.target.value || null, empreendimentoId: null })}
+                      className="input-base"
+                    >
+                      <option value="">Todos os bairros</option>
+                      {neighborhoodOptions.map((neighborhood) => (
+                        <option key={neighborhood} value={neighborhood}>
+                          {neighborhood}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+                <Field label="Empreendimento">
+                  <select value={draftFilters.empreendimentoId ?? ""} onChange={(event) => updateDraft({ empreendimentoId: event.target.value || null })} className="input-base">
+                    <option value="">Todos os empreendimentos</option>
+                    {enterpriseOptions.map((enterprise) => (
+                      <option key={enterprise.id} value={enterprise.id}>
+                        {[enterprise.nome, enterprise.bairro, enterprise.cidade].filter(Boolean).join(" · ")}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            ) : null}
+
+            {step === 1 ? (
+              <div className="grid gap-4">
+                <MinimumSegmentedField label="Dormitórios mínimos" value={draftFilters.dormitoriosMin ?? null} onChange={(value) => updateDraft({ dormitoriosMin: value })} />
+                <MinimumSegmentedField label="Suítes mínimas" value={draftFilters.suitesMin ?? null} onChange={(value) => updateDraft({ suitesMin: value })} />
+                <MinimumSegmentedField label="Vagas mínimas" value={draftFilters.vagasMin ?? null} onChange={(value) => updateDraft({ vagasMin: value })} />
+              </div>
+            ) : null}
+
+            {step === 2 ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Valor mínimo">
+                  <input
+                    type="number"
+                    min={0}
+                    value={draftFilters.valorMin ?? ""}
+                    onChange={(event) => updateDraft({ valorMin: numberOrNull(event.target.value) })}
+                    className="input-base"
+                    placeholder="Ex.: 800000"
+                  />
+                </Field>
+                <Field label="Valor máximo">
+                  <input
+                    type="number"
+                    min={0}
+                    value={draftFilters.valorMax ?? ""}
+                    onChange={(event) => updateDraft({ valorMax: numberOrNull(event.target.value) })}
+                    className="input-base"
+                    placeholder="Ex.: 1500000"
+                  />
+                </Field>
+              </div>
+            ) : null}
+
+            {step === 3 ? (
+              <div className="grid gap-4">
+                <CharacteristicPicker
+                  title="Características do imóvel"
+                  values={draftFilters.caracteristicasImovel ?? []}
+                  options={options.propertyCharacteristics}
+                  onToggle={(value) => toggleCharacteristic("imovel", value)}
+                />
+                <CharacteristicPicker
+                  title="Características do empreendimento"
+                  values={draftFilters.caracteristicasEmpreendimento ?? []}
+                  options={options.enterpriseCharacteristics}
+                  onToggle={(value) => toggleCharacteristic("empreendimento", value)}
+                />
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="inline-flex items-center gap-2 rounded-full bg-stone-50 px-4 py-2 text-sm font-bold text-slate-800">
+            {loading ? <SpinnerGap size={16} className="animate-spin text-[var(--grey-olive)]" /> : <Check size={16} className="text-[var(--grey-olive)]" />}
+            {loading ? "Atualizando imóveis..." : formatCarouselCount(meta.total)}
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={onClose} className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
+              Cancelar
+            </button>
+            {step > 0 ? (
+              <button type="button" onClick={() => setStep((current) => Math.max(current - 1, 0))} className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
+                Voltar
+              </button>
+            ) : null}
+            {step < steps.length - 1 ? (
+              <button type="button" onClick={() => setStep((current) => Math.min(current + 1, steps.length - 1))} className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-bold text-white transition hover:bg-slate-800">
+                Continuar
+              </button>
+            ) : (
+              <button type="button" onClick={() => onApply(cleanPropertyCarouselFilters(draftFilters))} className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-bold text-white transition hover:bg-slate-800">
+                Aplicar lista
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MinimumSegmentedField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 p-4">
+      <p className="text-sm font-bold text-slate-700">{label}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {[1, 2, 3, 4].map((option) => {
+          const active = value === option;
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onChange(active ? null : option)}
+              className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
+                active ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 text-slate-600 hover:border-[var(--grey-olive)] hover:text-[var(--grey-olive)]"
+              }`}
+            >
+              {option}+
+            </button>
+          );
+        })}
+        {value ? (
+          <button type="button" onClick={() => onChange(null)} className="rounded-full px-4 py-2 text-sm font-bold text-slate-400 transition hover:bg-slate-50 hover:text-slate-700">
+            Limpar
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -1354,6 +1803,114 @@ function ctaTitle(type: ArtigoCtaType) {
   return `CTA: ${config.buttonLabel}`;
 }
 
+function usePropertyCarouselMeta(filters: ArtigoPropertyCarouselFilters) {
+  const [meta, setMeta] = useState<PropertyCarouselMetaResponse>({ total: 0, cities: [], neighborhoods: [], enterprises: [] });
+  const [loading, setLoading] = useState(false);
+  const queryString = useMemo(() => buildPropertyCarouselParams(filters).toString(), [filters]);
+
+  useEffect(() => {
+    let active = true;
+    const timeout = window.setTimeout(() => {
+      setLoading(true);
+      const path = queryString ? `/api/artigos/property-carousel-meta?${queryString}` : "/api/artigos/property-carousel-meta";
+      apiFetchWithAuth<PropertyCarouselMetaResponse>(path)
+        .then((result) => {
+          if (active && result.ok) setMeta(result.data);
+          if (active && !result.ok) setMeta({ total: 0, cities: [], neighborhoods: [], enterprises: [] });
+        })
+        .catch(() => {
+          if (active) setMeta({ total: 0, cities: [], neighborhoods: [], enterprises: [] });
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [queryString]);
+
+  return { meta, loading };
+}
+
+function buildPropertyCarouselParams(filters: ArtigoPropertyCarouselFilters) {
+  const params = new URLSearchParams();
+  appendParam(params, "cidade", filters.cidade);
+  appendParam(params, "bairro", filters.bairro);
+  appendParam(params, "empreendimento_id", filters.empreendimentoId);
+  appendParam(params, "dormitorios_min", filters.dormitoriosMin);
+  appendParam(params, "suites_min", filters.suitesMin);
+  appendParam(params, "vagas_min", filters.vagasMin);
+  appendParam(params, "valor_min", filters.valorMin);
+  appendParam(params, "valor_max", filters.valorMax);
+  for (const item of filters.caracteristicasImovel ?? []) appendParam(params, "caracteristicas_imovel", item);
+  for (const item of filters.caracteristicasEmpreendimento ?? []) appendParam(params, "caracteristicas_empreendimento", item);
+  return params;
+}
+
+function appendParam(params: URLSearchParams, key: string, value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") return;
+  params.append(key, String(value));
+}
+
+function cleanPropertyCarouselFilters(filters: ArtigoPropertyCarouselFilters): ArtigoPropertyCarouselFilters {
+  return {
+    cidade: filters.cidade?.trim() || null,
+    bairro: filters.bairro?.trim() || null,
+    empreendimentoId: filters.empreendimentoId || null,
+    dormitoriosMin: filters.dormitoriosMin ?? null,
+    suitesMin: filters.suitesMin ?? null,
+    vagasMin: filters.vagasMin ?? null,
+    valorMin: filters.valorMin ?? null,
+    valorMax: filters.valorMax ?? null,
+    caracteristicasImovel: filters.caracteristicasImovel?.filter(Boolean) ?? [],
+    caracteristicasEmpreendimento: filters.caracteristicasEmpreendimento?.filter(Boolean) ?? [],
+  };
+}
+
+function getPropertyCarouselFilterChips(filters: ArtigoPropertyCarouselFilters, options: ArticleEditorOptions, meta?: PropertyCarouselMetaResponse) {
+  const chips: string[] = [];
+  const enterprise = [...(meta?.enterprises ?? []), ...options.enterpriseOptions].find((item) => item.id === filters.empreendimentoId);
+
+  if (filters.cidade) chips.push(`Cidade: ${filters.cidade}`);
+  if (filters.bairro) chips.push(`Bairro: ${filters.bairro}`);
+  if (enterprise?.nome) chips.push(`Empreendimento: ${enterprise.nome}`);
+  if (filters.dormitoriosMin) chips.push(`${filters.dormitoriosMin}+ dormitórios`);
+  if (filters.suitesMin) chips.push(`${filters.suitesMin}+ suítes`);
+  if (filters.vagasMin) chips.push(`${filters.vagasMin}+ vagas`);
+  if (filters.valorMin) chips.push(`A partir de ${formatCompactCurrency(filters.valorMin)}`);
+  if (filters.valorMax) chips.push(`Até ${formatCompactCurrency(filters.valorMax)}`);
+  if (filters.caracteristicasImovel?.length) chips.push(`${filters.caracteristicasImovel.length} ${filters.caracteristicasImovel.length === 1 ? "característica do imóvel" : "características do imóvel"}`);
+  if (filters.caracteristicasEmpreendimento?.length) chips.push(`${filters.caracteristicasEmpreendimento.length} ${filters.caracteristicasEmpreendimento.length === 1 ? "característica do empreendimento" : "características do empreendimento"}`);
+
+  return chips;
+}
+
+function formatCompactCurrency(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatCarouselCount(total: number) {
+  return `${total} ${total === 1 ? "imóvel encontrado" : "imóveis encontrados"}`;
+}
+
+function mergeTextOptions(values: string[], selected?: string | null) {
+  const current = new Set(values);
+  if (selected?.trim()) current.add(selected.trim());
+  return Array.from(current).sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+function mergeEnterpriseOptions(values: EnterpriseOption[], selectedId?: string | null) {
+  if (!selectedId || values.some((item) => item.id === selectedId)) return values;
+  return [...values, { id: selectedId, nome: "Empreendimento selecionado" }];
+}
+
 function statusLabel(status: ArtigoStatus) {
   if (status === "PUBLICADO") return "Publicado";
   if (status === "ARQUIVADO") return "Arquivado";
@@ -1379,12 +1936,70 @@ function numberOrNull(value: string) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function formatPropertyOption(property: PropertyOption) {
-  const location = [property.bairro, property.cidade].filter(Boolean).join(" - ");
-  const stats = [
-    property.dormitorios ? `${property.dormitorios} dorm.` : null,
-    property.suites ? `${property.suites} suíte(s)` : null,
-    property.vagas ? `${property.vagas} vaga(s)` : null,
+function getPropertyTitle(property: PropertyOption) {
+  return property.label?.trim() || property.titulo?.trim() || property.tipo?.trim() || "Imóvel sem título";
+}
+
+function formatPropertyAddress(property: PropertyOption) {
+  const street = [property.logradouro, property.numero].filter(Boolean).join(", ");
+  const cityLabel = [property.cidade, property.estado].filter(Boolean).join("/");
+  const neighborhood = property.bairro_comercial || property.bairro;
+  return [street, [neighborhood, cityLabel].filter(Boolean).join(" - ")].filter(Boolean).join(" • ") || "Endereço não informado";
+}
+
+function formatPropertySpecs(property: PropertyOption) {
+  const specs = [
+    property.area_util ? `${property.area_util} m²` : null,
+    property.dormitorios ? formatCount(property.dormitorios, "dormitório", "dormitórios") : null,
+    property.suites ? formatCount(property.suites, "suíte", "suítes") : null,
+    property.vagas ? formatCount(property.vagas, "vaga", "vagas") : null,
   ].filter(Boolean);
-  return [property.codigo, property.titulo || property.tipo || "Imóvel", location, stats.join(", ")].filter(Boolean).join(" · ");
+  return specs.length ? specs.join(" · ") : "Dados principais não informados";
+}
+
+function formatCount(value: number, singular: string, plural: string) {
+  return `${value} ${value === 1 ? singular : plural}`;
+}
+
+function formatStatusLabel(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized === "PUBLICADO") return "Publicado";
+  if (normalized === "RASCUNHO") return "Rascunho";
+  if (normalized === "PAUSADO") return "Pausado";
+  if (normalized === "VENDIDO") return "Vendido";
+  if (normalized === "ALUGADO") return "Alugado";
+  if (normalized === "INATIVO") return "Inativo";
+  return status;
+}
+
+function normalizeOptionSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function propertyMatchesQuery(property: PropertyOption, query: string) {
+  if (!query) return true;
+  return [
+    property.codigo,
+    property.label,
+    property.titulo,
+    property.tipo,
+    property.subtipo,
+    property.logradouro,
+    property.numero,
+    property.bairro_comercial,
+    property.bairro,
+    property.cidade,
+    property.estado,
+    formatPropertyAddress(property),
+  ].some((value) => normalizeOptionSearch(String(value ?? "")).includes(query));
+}
+
+function formatPropertyOption(property: PropertyOption) {
+  return [property.codigo, getPropertyTitle(property), formatPropertyAddress(property), formatPropertySpecs(property)]
+    .filter(Boolean)
+    .join(" · ");
 }
