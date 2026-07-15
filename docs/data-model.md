@@ -1276,6 +1276,7 @@ Regras:
 - Renderização pública interpreta `conteudo_blocos`; HTML/CSS/JS enviados pelo usuário não são aceitos.
 - Links externos publicados devem receber `rel="nofollow noopener noreferrer"` por padrão.
 - Blocos permitidos: paragraph, heading h2/h3, quote, list bullet/ordered, image, gallery, youtube, cta, button, property_feature e property_carousel.
+- Cada artigo pode ter no máximo 50 imagens nos blocos de conteúdo, somando imagens únicas e todas as galerias. A capa tem upload próprio e não consome esse limite.
 - CTAs editoriais são fechados pelo sistema: curadoria, WhatsApp, ligação protegida e estoque de imóveis.
 - Blocos de imóveis são fechados pelo sistema: `property_feature` destaca um imóvel publicado do corretor; `property_carousel` monta uma listagem por filtros AND (cidade, bairro, empreendimento, dormitórios, suítes, vagas, faixa de valor e características de imóvel/empreendimento), sempre limitada a imóveis publicados do próprio corretor.
 - Categoria `LOCAL` exige campos mínimos de local antes de publicar.

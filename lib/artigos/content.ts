@@ -13,6 +13,7 @@ export const ARTIGO_CATEGORIAS = [
 
 export const ARTIGO_STATUS = ["RASCUNHO", "PUBLICADO", "ARQUIVADO"] as const;
 export const ARTIGOS_ORDENACOES = ["PUBLICACAO_DESC", "ATUALIZACAO_DESC", "MANUAL"] as const;
+export const ARTIGO_MAX_IMAGES = 50;
 export const ARTIGO_CTA_CONFIGS = {
   curadoria: {
     id: "curadoria",

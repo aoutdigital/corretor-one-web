@@ -32,6 +32,7 @@ export type UploadMidiaInput = {
   caracteristica?: string | null;
   skip_optimization?: boolean;
   apply_watermark?: boolean;
+  filename_base?: string | null;
 };
 
 export type UploadMidiaResult = {
@@ -228,9 +229,25 @@ async function assertOwnImovel(
   return ok({ id: result.data.id as string });
 }
 
-function buildStoragePath(ownerId: string, fileName: string): string {
+function buildStoragePath(ownerId: string, fileName: string, filenameBase?: string | null): string {
   const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-  return `${ownerId}/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+  const extension = safeName.includes(".") ? safeName.split(".").pop()?.toLowerCase() : "";
+  const base = slugifyPathToken(filenameBase ?? "");
+  const semanticName = base
+    ? `${base}-${Date.now()}-${crypto.randomUUID()}${extension ? `.${extension}` : ""}`
+    : `${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+  return `${ownerId}/${semanticName}`;
+}
+
+function buildDerivedImagePath(ownerId: string, folder: string, filenameBase: string | null | undefined, suffix: string): string {
+  const base = slugifyPathToken(filenameBase ?? "");
+  const semanticPrefix = base ? `${base}-` : "";
+  return `${ownerId}/${folder}/${semanticPrefix}${Date.now()}-${crypto.randomUUID()}-${suffix}.jpg`;
+}
+
+function buildDerivedImageFileName(filenameBase: string | null | undefined, suffix: string): string {
+  const base = slugifyPathToken(filenameBase ?? "");
+  return `${base || "imagem"}-${suffix}.jpg`;
 }
 
 function slugifyPathToken(value: string): string {
@@ -1336,7 +1353,7 @@ export async function uploadMidia(
   const db = client as unknown as DynamicClient;
 
   const bucket = getBucketName();
-  const storagePath = buildStoragePath(user.id, input.file.name || "arquivo");
+  const storagePath = buildStoragePath(user.id, input.file.name || "arquivo", input.filename_base);
   const tipo = detectMidiaTipo(input.file.type || "application/pdf");
 
   let uploaded: { publicUrl: string; path: string; bucket: string; size: number | null };
@@ -1378,7 +1395,7 @@ export async function uploadMidia(
   // Provas sociais preservam a imagem original: não precisam de render/watermark do fluxo público de imóveis.
   const shouldOptimizeImage = tipo === "IMAGEM" && !input.skip_optimization && input.ref_tipo !== "PROVA_SOCIAL";
   if (shouldOptimizeImage) {
-    const optimized = await optimizeMidiaOwnedTo1920(accessToken, midiaId);
+    const optimized = await optimizeMidiaOwnedTo1920(accessToken, midiaId, input.filename_base);
     if (!optimized.ok) return optimized;
   }
 
@@ -1387,7 +1404,7 @@ export async function uploadMidia(
     input.apply_watermark === true &&
     input.ref_tipo === "ARTIGO";
   if (shouldApplyArticleWatermark) {
-    const watermarked = await applyArticleCornerWatermarkToMidia(accessToken, midiaId);
+    const watermarked = await applyArticleCornerWatermarkToMidia(accessToken, midiaId, input.filename_base);
     if (!watermarked.ok) return watermarked;
   }
 
@@ -2008,6 +2025,7 @@ export async function deleteMidiaOwned(
 export async function optimizeMidiaOwnedTo1920(
   accessToken: string,
   midiaId: string,
+  filenameBase?: string | null,
 ): Promise<ApiResult<{ id: string }>> {
   const auth = await authenticateByAccessToken(accessToken);
   if (!auth.ok) return auth;
@@ -2078,9 +2096,8 @@ export async function optimizeMidiaOwnedTo1920(
   }
 
   const mime = "image/jpeg";
-  const ext = "jpg";
-  const newPath = `${user.id}/optimized/${Date.now()}-${crypto.randomUUID()}-w1920.${ext}`;
-  const uploadFile = new File([bufferToArrayBuffer(renderedBuffer)], `w1920.${ext}`, { type: mime });
+  const newPath = buildDerivedImagePath(user.id, "optimized", filenameBase, "w1920");
+  const uploadFile = new File([bufferToArrayBuffer(renderedBuffer)], buildDerivedImageFileName(filenameBase, "w1920"), { type: mime });
 
   let uploaded: { publicUrl: string; path: string; bucket: string; size: number | null };
   try {
@@ -2130,6 +2147,7 @@ export async function optimizeMidiaOwnedTo1920(
 async function applyArticleCornerWatermarkToMidia(
   accessToken: string,
   midiaId: string,
+  filenameBase?: string | null,
 ): Promise<ApiResult<{ id: string }>> {
   const auth = await authenticateByAccessToken(accessToken);
   if (!auth.ok) return auth;
@@ -2223,8 +2241,8 @@ async function applyArticleCornerWatermarkToMidia(
   }
 
   const mime = "image/jpeg";
-  const newPath = `${user.id}/article-watermarked/${Date.now()}-${crypto.randomUUID()}-w1920.jpg`;
-  const uploadFile = new File([bufferToArrayBuffer(watermarkedBuffer)], `article-w1920.jpg`, { type: mime });
+  const newPath = buildDerivedImagePath(user.id, "article-watermarked", filenameBase, "article-w1920");
+  const uploadFile = new File([bufferToArrayBuffer(watermarkedBuffer)], buildDerivedImageFileName(filenameBase, "article-w1920"), { type: mime });
 
   let uploaded: { publicUrl: string; path: string; bucket: string; size: number | null };
   try {

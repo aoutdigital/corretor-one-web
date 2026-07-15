@@ -43,6 +43,7 @@ import {
 
 import {
   ARTICLE_LIMITS,
+  ARTIGO_MAX_IMAGES,
   ARTIGO_CTA_CONFIGS,
   ARTIGO_CATEGORIAS,
   extractYouTubeVideoId,
@@ -107,6 +108,7 @@ type UploadedMedia = { id: string; url: string };
 type BlockKind = ArtigoBlock["type"];
 type BlockGroup = "titulos" | "texto" | "midia" | "imoveis" | "cta";
 type LinkModalState = ArticleLinkSelection & { editorId: string };
+type ArticleUploadOptions = { consumesImageSlot?: boolean };
 type ArtigosResponse = { config: { ordenacao_publica: ArtigosOrdenacao } };
 type PropertyOptionsResponse = { items: PropertyOption[] };
 type PropertyOption = {
@@ -159,6 +161,15 @@ type PropertyCarouselMetaResponse = {
   neighborhoods: string[];
   enterprises: EnterpriseOption[];
 };
+
+function countArticleImages(article: ArtigoRow | null): number {
+  if (!article) return 0;
+  return article.conteudo_blocos.blocks.reduce((total, block) => {
+    if (block.type === "image") return total + (block.data.url ? 1 : 0);
+    if (block.type === "gallery") return total + block.data.images.filter((image) => image.url).length;
+    return total;
+  }, 0);
+}
 
 const BLOCK_GROUPS: Array<{ value: BlockGroup; label: string }> = [
   { value: "titulos", label: "Títulos" },
@@ -298,6 +309,8 @@ export default function ArtigoEditorPage() {
   const subtitleHasCaps = Boolean(article?.subtitulo && hasLongUppercaseSequence(article.subtitulo));
   const previewPath = nickname && article?.status === "PUBLICADO" ? `/${nickname}/artigos/${article.slug}` : null;
   const showManualOrder = ordenacaoPublica === "MANUAL";
+  const articleImageCount = countArticleImages(article);
+  const remainingArticleImages = Math.max(ARTIGO_MAX_IMAGES - articleImageCount, 0);
   const brokerName = [profileData?.primeiro_nome, profileData?.sobrenome].filter(Boolean).join(" ").trim() || "Corretor";
   const brokerCreci =
     profileData?.creci_uf && profileData?.creci_numero
@@ -358,8 +371,12 @@ export default function ArtigoEditorPage() {
     });
   }
 
-  async function uploadMedia(file: File, grupo: string, alt?: string): Promise<UploadedMedia | null> {
+  async function uploadMedia(file: File, grupo: string, alt?: string, options?: ArticleUploadOptions): Promise<UploadedMedia | null> {
     if (!article) return null;
+    if (options?.consumesImageSlot !== false && countArticleImages(article) >= ARTIGO_MAX_IMAGES) {
+      setError(`Este artigo já atingiu o limite de ${ARTIGO_MAX_IMAGES} imagens.`);
+      return null;
+    }
     setUploading(true);
     setError(null);
     const form = new FormData();
@@ -369,6 +386,7 @@ export default function ArtigoEditorPage() {
     form.append("grupo", grupo);
     form.append("alt", alt || article.titulo || file.name);
     form.append("apply_watermark", "true");
+    form.append("filename_base", `${article.slug || article.titulo || "artigo"}-${grupo}`);
     const result = await apiFetchWithAuth<UploadedMedia>("/api/midia/upload", { method: "POST", body: form }).finally(() => {
       setUploading(false);
     });
@@ -383,7 +401,9 @@ export default function ArtigoEditorPage() {
     if (!file) return;
     setCoverUploading(true);
     try {
-      const uploaded = await uploadMedia(file, "capa", article?.titulo ?? file.name);
+      const uploaded = await uploadMedia(file, "capa", article?.titulo ?? file.name, {
+        consumesImageSlot: false,
+      });
       if (uploaded) updateArticle("capa_url", uploaded.url);
     } finally {
       setCoverUploading(false);
@@ -424,6 +444,10 @@ export default function ArtigoEditorPage() {
 
   async function save(status?: ArtigoStatus) {
     if (!article) return;
+    if (countArticleImages(article) > ARTIGO_MAX_IMAGES) {
+      setError(`Este artigo tem mais de ${ARTIGO_MAX_IMAGES} imagens. Remova algumas imagens antes de salvar.`);
+      return;
+    }
     setSaving(true);
     setError(null);
     setSuccess(null);
@@ -601,9 +625,14 @@ export default function ArtigoEditorPage() {
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5">
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Blocos inseridos</p>
-              <h2 className="mt-2 text-3xl font-light">Construção do artigo</h2>
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Blocos inseridos</p>
+                <h2 className="mt-2 text-3xl font-light">Construção do artigo</h2>
+              </div>
+              <div className={`rounded-full px-4 py-2 text-sm font-bold ${remainingArticleImages <= 0 ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-600"}`}>
+                {articleImageCount}/{ARTIGO_MAX_IMAGES} imagens
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -628,6 +657,7 @@ export default function ArtigoEditorPage() {
                     onOpenLink={(selection) => setLinkModal({ editorId: block.id, ...selection })}
                     onUpload={uploadMedia}
                     options={editorOptions}
+                    remainingImageSlots={remainingArticleImages}
                   />
                 ))
               )}
@@ -772,6 +802,7 @@ function BlockEditor({
   onOpenLink,
   onUpload,
   options,
+  remainingImageSlots,
 }: {
   articleId: string;
   block: ArtigoBlock;
@@ -784,8 +815,9 @@ function BlockEditor({
   canMoveUp: boolean;
   canMoveDown: boolean;
   onOpenLink: (selection: ArticleLinkSelection) => void;
-  onUpload: (file: File, grupo: string, alt?: string) => Promise<UploadedMedia | null>;
+  onUpload: (file: File, grupo: string, alt?: string, options?: ArticleUploadOptions) => Promise<UploadedMedia | null>;
   options: ArticleEditorOptions;
+  remainingImageSlots: number;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -805,7 +837,7 @@ function BlockEditor({
           </button>
         </div>
       </div>
-      {renderBlockFields(block, editorRefs, onChange, onOpenLink, onUpload, options)}
+      {renderBlockFields(block, editorRefs, onChange, onOpenLink, onUpload, options, remainingImageSlots)}
     </div>
   );
 }
@@ -815,8 +847,9 @@ function renderBlockFields(
   editorRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>,
   onChange: (block: ArtigoBlock) => void,
   onOpenLink: (selection: ArticleLinkSelection) => void,
-  onUpload: (file: File, grupo: string, alt?: string) => Promise<UploadedMedia | null>,
+  onUpload: (file: File, grupo: string, alt?: string, options?: ArticleUploadOptions) => Promise<UploadedMedia | null>,
   options: ArticleEditorOptions,
+  remainingImageSlots: number,
 ) {
   if (block.type === "paragraph") {
     return (
@@ -861,22 +894,12 @@ function renderBlockFields(
 
   if (block.type === "image") {
     return (
-      <div className="grid gap-3 md:grid-cols-2">
-        <MediaPreview url={block.data.url} alt={block.data.alt} />
-        <div className="grid content-start gap-3">
-          <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
-            <ImageSquare size={16} /> Enviar imagem
-            <input type="file" accept="image/*" className="hidden" onChange={async (event) => {
-              const file = event.target.files?.[0];
-              if (!file) return;
-              const uploaded = await onUpload(file, "bloco_imagem", block.data.alt || file.name);
-              if (uploaded) onChange({ ...block, data: { ...block.data, url: uploaded.url, alt: block.data.alt || file.name } });
-            }} />
-          </label>
-          <Field label="Texto alternativo"><input value={block.data.alt} maxLength={ARTICLE_LIMITS.alt} onChange={(event) => onChange({ ...block, data: { ...block.data, alt: event.target.value } })} className="input-base" /></Field>
-          <Field label="Legenda"><input value={block.data.caption ?? ""} maxLength={ARTICLE_LIMITS.caption} onChange={(event) => onChange({ ...block, data: { ...block.data, caption: event.target.value } })} className="input-base" /></Field>
-        </div>
-      </div>
+      <ImageBlockEditor
+        block={block}
+        onChange={onChange}
+        onUpload={onUpload}
+        remainingImageSlots={remainingImageSlots}
+      />
     );
   }
 
@@ -886,6 +909,7 @@ function renderBlockFields(
         block={block}
         onChange={onChange}
         onUpload={onUpload}
+        remainingImageSlots={remainingImageSlots}
       />
     );
   }
@@ -1484,6 +1508,89 @@ function CharacteristicPicker({
   );
 }
 
+function ImageBlockEditor({
+  block,
+  onChange,
+  onUpload,
+  remainingImageSlots,
+}: {
+  block: Extract<ArtigoBlock, { type: "image" }>;
+  onChange: (block: ArtigoBlock) => void;
+  onUpload: (file: File, grupo: string, alt?: string, options?: ArticleUploadOptions) => Promise<UploadedMedia | null>;
+  remainingImageSlots: number;
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+  const hasImage = Boolean(block.data.url);
+  const canUpload = hasImage || remainingImageSlots > 0;
+
+  async function handleUpload(file: File | null) {
+    if (!file || !canUpload) return;
+    setIsUploading(true);
+    try {
+      const uploaded = await onUpload(file, "bloco_imagem", block.data.alt || file.name, {
+        consumesImageSlot: !hasImage,
+      });
+      if (uploaded) {
+        onChange({ ...block, data: { ...block.data, url: uploaded.url, alt: block.data.alt || file.name } });
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <div className="relative h-[220px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm md:h-[280px]">
+        {block.data.url ? (
+          <Image src={block.data.url} alt={block.data.alt || ""} fill sizes="(min-width: 1024px) 560px, 100vw" className="object-cover" unoptimized />
+        ) : (
+          <div className="flex h-full items-center justify-center text-slate-400">
+            <ImageSquare size={42} />
+          </div>
+        )}
+        {isUploading ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/80 text-sm font-bold text-slate-700 backdrop-blur-sm">
+            <SpinnerGap size={28} className="animate-spin text-[var(--grey-olive)]" />
+            Enviando e otimizando imagem...
+          </div>
+        ) : null}
+      </div>
+      <div className="grid content-start gap-3">
+        <label className={`inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 ${isUploading || !canUpload ? "pointer-events-none opacity-70" : "cursor-pointer hover:bg-slate-50"}`}>
+          {isUploading ? <SpinnerGap size={16} className="animate-spin" /> : <ImageSquare size={16} />}
+          {isUploading ? "Enviando imagem..." : hasImage ? "Trocar imagem" : "Enviar imagem"}
+          <input
+            type="file"
+            accept="image/*"
+            disabled={isUploading || !canUpload}
+            className="hidden"
+            onChange={(event) => void handleUpload(event.target.files?.[0] ?? null).finally(() => {
+              event.currentTarget.value = "";
+            })}
+          />
+        </label>
+        {!canUpload ? <p className="text-xs font-medium text-red-600">Limite de {ARTIGO_MAX_IMAGES} imagens atingido.</p> : null}
+        <Field label="Texto alternativo" help={`${block.data.alt.length}/${ARTICLE_LIMITS.alt}`}>
+          <input
+            value={block.data.alt}
+            maxLength={ARTICLE_LIMITS.alt}
+            onChange={(event) => onChange({ ...block, data: { ...block.data, alt: event.target.value } })}
+            className="input-base"
+          />
+        </Field>
+        <Field label="Legenda opcional" help={`${block.data.caption?.length ?? 0}/${ARTICLE_LIMITS.caption}`}>
+          <input
+            value={block.data.caption ?? ""}
+            maxLength={ARTICLE_LIMITS.caption}
+            onChange={(event) => onChange({ ...block, data: { ...block.data, caption: event.target.value } })}
+            className="input-base"
+          />
+        </Field>
+      </div>
+    </div>
+  );
+}
+
 function RichTextBlock({ block, editorRefs, onChange, onOpenLink }: { block: Extract<ArtigoBlock, { type: "paragraph" }>; editorRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>; onChange: (block: ArtigoBlock) => void; onOpenLink: (selection: ArticleLinkSelection) => void }) {
   useEffect(() => {
     const editor = editorRefs.current[block.id];
@@ -1543,13 +1650,18 @@ function GalleryBlockEditor({
   block,
   onChange,
   onUpload,
+  remainingImageSlots,
 }: {
   block: Extract<ArtigoBlock, { type: "gallery" }>;
   onChange: (block: ArtigoBlock) => void;
-  onUpload: (file: File, grupo: string, alt?: string) => Promise<UploadedMedia | null>;
+  onUpload: (file: File, grupo: string, alt?: string, options?: ArticleUploadOptions) => Promise<UploadedMedia | null>;
+  remainingImageSlots: number;
 }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const images = block.data.images.filter((image) => image.url);
+  const canAddImages = remainingImageSlots > 0 && !isUploading;
 
   function updateImages(nextImages: typeof images) {
     onChange({ ...block, data: { images: nextImages } });
@@ -1597,9 +1709,9 @@ function GalleryBlockEditor({
               onDragOver={(event) => event.preventDefault()}
               onDrop={() => dropImage(index)}
               onDragEnd={() => setDragIndex(null)}
-              className={`group overflow-hidden rounded-2xl border bg-white transition ${dragIndex === index ? "border-[var(--grey-olive)] opacity-60" : "border-slate-200"}`}
+              className={`group flex gap-3 rounded-2xl border bg-white p-2 transition ${dragIndex === index ? "border-[var(--grey-olive)] opacity-60" : "border-slate-200"}`}
             >
-              <div className="relative aspect-[4/3] bg-slate-100">
+              <div className="relative h-[120px] aspect-[4/3] shrink-0 overflow-hidden rounded-xl bg-slate-100">
                 <Image src={image.url} alt={image.alt || ""} fill sizes="(min-width: 768px) 360px, 100vw" className="object-cover" unoptimized />
                 <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-xs font-bold text-slate-700 shadow-sm backdrop-blur">
                   <DotsSixVertical size={14} />
@@ -1609,9 +1721,12 @@ function GalleryBlockEditor({
                   <Trash size={15} />
                 </button>
               </div>
-              <div className="flex items-center justify-between gap-2 p-2">
-                <span className="truncate text-xs text-slate-500">{image.alt || `Imagem ${index + 1}`}</span>
-                <div className="flex items-center gap-1">
+              <div className="flex min-w-0 flex-1 flex-col justify-between py-1">
+                <div className="min-w-0">
+                  <span className="block truncate text-xs font-semibold text-slate-500">{image.alt || `Imagem ${index + 1}`}</span>
+                  <span className="mt-1 block text-[10px] uppercase tracking-[0.2em] text-slate-300">Miniatura</span>
+                </div>
+                <div className="flex items-center justify-end gap-1">
                   <button type="button" onClick={() => moveImage(index, -1)} disabled={index === 0} title="Mover para esquerda" className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 disabled:opacity-35">
                     <CaretUp size={14} />
                   </button>
@@ -1628,19 +1743,53 @@ function GalleryBlockEditor({
           Nenhuma imagem adicionada na galeria.
         </div>
       )}
-      <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">
-        <ImageSquare size={16} /> Enviar imagens para galeria
-        <input type="file" accept="image/*" multiple className="hidden" onChange={async (event) => {
-          const files = Array.from(event.target.files ?? []);
-          const uploadedImages = [];
-          for (const file of files) {
-            const uploaded = await onUpload(file, "bloco_galeria", file.name);
-            if (uploaded) uploadedImages.push({ url: uploaded.url, alt: file.name, caption: "" });
-          }
-          if (uploadedImages.length) updateImages([...images, ...uploadedImages].slice(0, 12));
-          event.currentTarget.value = "";
-        }} />
+      <label className={`inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 ${canAddImages ? "cursor-pointer hover:bg-slate-50" : "pointer-events-none opacity-70"}`}>
+        {isUploading ? <SpinnerGap size={16} className="animate-spin" /> : <ImageSquare size={16} />}
+        {isUploading ? "Enviando imagens..." : "Enviar imagens para galeria"}
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          disabled={!canAddImages}
+          className="hidden"
+          onChange={async (event) => {
+            const files = Array.from(event.target.files ?? []);
+            if (!files.length) return;
+
+            setUploadNotice(null);
+            const allowedFiles = files.slice(0, remainingImageSlots);
+            if (!allowedFiles.length) {
+              setUploadNotice(`Limite de ${ARTIGO_MAX_IMAGES} imagens atingido.`);
+              event.currentTarget.value = "";
+              return;
+            }
+            if (allowedFiles.length < files.length) {
+              setUploadNotice(`Só foi possível adicionar ${allowedFiles.length} imagem(ns). O artigo aceita no máximo ${ARTIGO_MAX_IMAGES} imagens.`);
+            }
+
+            setIsUploading(true);
+            try {
+              const uploadedImages = [];
+              for (const file of allowedFiles) {
+                const uploaded = await onUpload(file, "bloco_galeria", file.name, { consumesImageSlot: true });
+                if (uploaded) uploadedImages.push({ url: uploaded.url, alt: file.name, caption: "" });
+              }
+              if (uploadedImages.length) updateImages([...images, ...uploadedImages]);
+            } finally {
+              setIsUploading(false);
+              event.currentTarget.value = "";
+            }
+          }}
+        />
       </label>
+      {isUploading ? (
+        <div className="inline-flex items-center gap-2 rounded-xl bg-stone-50 px-4 py-3 text-sm font-medium text-[var(--grey-olive)]">
+          <SpinnerGap size={16} className="animate-spin" />
+          Otimizando e salvando imagens da galeria...
+        </div>
+      ) : null}
+      {!canAddImages && !isUploading ? <p className="text-xs font-medium text-red-600">Limite de {ARTIGO_MAX_IMAGES} imagens atingido.</p> : null}
+      {uploadNotice ? <p className="text-xs font-medium text-red-600">{uploadNotice}</p> : null}
     </div>
   );
 }
@@ -1654,31 +1803,11 @@ function YouTubeBlockEditor({
 }) {
   const videoId = extractYouTubeVideoId(block.data.url) ?? block.data.videoId;
   return (
-    <div className="grid gap-3">
-      <Field label="URL do YouTube">
-        <input
-          value={block.data.url}
-          onChange={(event) => {
-            const url = event.target.value;
-            onChange({ ...block, data: { ...block.data, url, videoId: extractYouTubeVideoId(url) ?? "" } });
-          }}
-          className="input-base"
-          placeholder="https://www.youtube.com/watch?v=..."
-        />
-      </Field>
-      <Field label="Legenda opcional" help={`${block.data.caption?.length ?? 0}/${ARTICLE_LIMITS.caption}`}>
-        <input
-          value={block.data.caption ?? ""}
-          maxLength={ARTICLE_LIMITS.caption}
-          onChange={(event) => onChange({ ...block, data: { ...block.data, caption: event.target.value } })}
-          className="input-base"
-          placeholder="Contexto breve do vídeo"
-        />
-      </Field>
+    <div className="grid gap-3 md:grid-cols-2">
       {videoId ? (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-sm">
+        <div className="h-[220px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-sm md:h-[280px]">
           <iframe
-            className="aspect-video w-full"
+            className="h-full w-full"
             src={`https://www.youtube-nocookie.com/embed/${videoId}`}
             title="Prévia do vídeo do artigo"
             loading="lazy"
@@ -1687,10 +1816,32 @@ function YouTubeBlockEditor({
           />
         </div>
       ) : (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+        <div className="flex h-[220px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500 md:h-[280px]">
           Cole uma URL válida do YouTube para visualizar o vídeo.
         </div>
       )}
+      <div className="grid content-start gap-3">
+        <Field label="URL do YouTube">
+          <input
+            value={block.data.url}
+            onChange={(event) => {
+              const url = event.target.value;
+              onChange({ ...block, data: { ...block.data, url, videoId: extractYouTubeVideoId(url) ?? "" } });
+            }}
+            className="input-base"
+            placeholder="https://www.youtube.com/watch?v=..."
+          />
+        </Field>
+        <Field label="Legenda opcional" help={`${block.data.caption?.length ?? 0}/${ARTICLE_LIMITS.caption}`}>
+          <input
+            value={block.data.caption ?? ""}
+            maxLength={ARTICLE_LIMITS.caption}
+            onChange={(event) => onChange({ ...block, data: { ...block.data, caption: event.target.value } })}
+            className="input-base"
+            placeholder="Contexto breve do vídeo"
+          />
+        </Field>
+      </div>
     </div>
   );
 }
@@ -1746,7 +1897,7 @@ function PreviewModal({
 
 function MediaPreview({ url, alt, large = false }: { url: string; alt: string; large?: boolean }) {
   return (
-    <div className={`relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 ${large ? "aspect-[16/9]" : "aspect-[4/3]"}`}>
+    <div className={`relative h-[220px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 md:h-[280px] ${large ? "aspect-[16/9]" : ""}`}>
       {url ? <Image src={url} alt={alt || ""} fill sizes="(min-width: 768px) 420px, 100vw" className="object-cover" unoptimized /> : <div className="flex h-full items-center justify-center text-slate-400"><ImageSquare size={32} /></div>}
     </div>
   );
