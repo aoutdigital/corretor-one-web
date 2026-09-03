@@ -263,8 +263,9 @@ function normalizeArticleInput(
 ): ApiResult<Record<string, unknown>> {
   const current = options.current;
   const titulo = sanitizePlainText(input.titulo ?? current?.titulo, 120).trim();
-  if (titulo.length < 8) return fail("VALIDATION_ERROR", "O título precisa ter pelo menos 8 caracteres.");
-  if (hasLongUppercaseSequence(titulo)) {
+  const tituloNormalizado = titulo.toLocaleLowerCase("pt-BR");
+  const isPlaceholderTitle = ["sem título", "sem titulo", "novo artigo", "novo artigo do corretor"].includes(tituloNormalizado);
+  if (titulo && hasLongUppercaseSequence(titulo)) {
     return fail("VALIDATION_ERROR", "Evite palavras em caixa alta no título.");
   }
 
@@ -277,11 +278,16 @@ function normalizeArticleInput(
     ? input.categoria
     : current?.categoria ?? "MERCADO_IMOBILIARIO";
   const status = isArtigoStatus(input.status) ? input.status : current?.status ?? "RASCUNHO";
-  const slug = slugifyArticle(titulo);
+  const slugSource = titulo && !isPlaceholderTitle ? titulo : current?.slug ?? "artigo";
+  const slug = slugifyArticle(slugSource);
   if (!slug) return fail("VALIDATION_ERROR", "Não foi possível gerar o slug do artigo.");
 
   const conteudo = normalizeArticleBlocks(input.conteudo_blocos ?? current?.conteudo_blocos);
+  const capaUrl = normalizeInternalOrHttpUrl(input.capa_url) ?? current?.capa_url ?? null;
   if (status === "PUBLICADO") {
+    if (!titulo || titulo.length < 8 || isPlaceholderTitle) return fail("VALIDATION_ERROR", "Informe um título real antes de publicar.");
+    if (!subtitulo) return fail("VALIDATION_ERROR", "Informe um subtítulo antes de publicar.");
+    if (!capaUrl) return fail("VALIDATION_ERROR", "Envie uma imagem de capa antes de publicar.");
     if (conteudo.blocks.length === 0) return fail("VALIDATION_ERROR", "Adicione pelo menos um bloco antes de publicar.");
     if (categoria === "LOCAL") {
       const localNome = sanitizePlainText(input.local_nome ?? current?.local_nome, 120).trim();
@@ -293,7 +299,6 @@ function normalizeArticleInput(
     }
   }
 
-  const capaUrl = normalizeInternalOrHttpUrl(input.capa_url) ?? current?.capa_url ?? null;
   const canonicalUrl = normalizeInternalOrHttpUrl(input.canonical_url) ?? null;
   const requestedPublishedAt = normalizePastOrPresentDate(input.publicado_em ?? current?.publicado_em);
   if (input.publicado_em && !requestedPublishedAt) {

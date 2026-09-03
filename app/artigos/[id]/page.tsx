@@ -4,9 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
+  ArrowClockwise,
+  ArrowCounterClockwise,
   ArrowSquareOut,
   Buildings,
   CalendarBlank,
@@ -50,7 +52,6 @@ import {
   getArticleCategoryLabel,
   getReadableTextFromHtml,
   hasLongUppercaseSequence,
-  slugifyArticle,
   type ArtigoBlock,
   type ArtigoCtaType,
   type ArtigoPropertyCarouselFilters,
@@ -162,6 +163,23 @@ type PropertyCarouselMetaResponse = {
   enterprises: EnterpriseOption[];
 };
 
+const DRAFT_TITLE_PLACEHOLDERS = new Set(["sem título", "sem titulo", "novo artigo", "novo artigo do corretor"]);
+
+type PublishRequirement = {
+  label: string;
+  description: string;
+  done: boolean;
+};
+
+function isDraftTitlePlaceholder(value?: string | null) {
+  return DRAFT_TITLE_PLACEHOLDERS.has((value ?? "").trim().toLocaleLowerCase("pt-BR"));
+}
+
+function getEditableArticleTitle(article?: ArtigoRow | null) {
+  if (!article?.titulo || isDraftTitlePlaceholder(article.titulo)) return "";
+  return article.titulo;
+}
+
 function countArticleImages(article: ArtigoRow | null): number {
   if (!article) return 0;
   return article.conteudo_blocos.blocks.reduce((total, block) => {
@@ -169,6 +187,72 @@ function countArticleImages(article: ArtigoRow | null): number {
     if (block.type === "gallery") return total + block.data.images.filter((image) => image.url).length;
     return total;
   }, 0);
+}
+
+function getPublishRequirements(article: ArtigoRow | null, imageCount: number): PublishRequirement[] {
+  if (!article) return [];
+  const title = getEditableArticleTitle(article).trim();
+  const subtitle = article.subtitulo?.trim() ?? "";
+  const requirements: PublishRequirement[] = [
+    {
+      label: "Título do artigo",
+      description: "Informe um título real com pelo menos 8 caracteres.",
+      done: title.length >= 8 && !hasLongUppercaseSequence(title),
+    },
+    {
+      label: "Subtítulo",
+      description: "Adicione uma frase curta para complementar o título.",
+      done: subtitle.length > 0 && !hasLongUppercaseSequence(subtitle),
+    },
+    {
+      label: "Imagem de capa",
+      description: "Envie uma imagem principal para representar o artigo.",
+      done: Boolean(article.capa_url),
+    },
+    {
+      label: "Conteúdo",
+      description: "Insira pelo menos um bloco no corpo do artigo.",
+      done: article.conteudo_blocos.blocks.length > 0,
+    },
+    {
+      label: "Limite de imagens",
+      description: `Use no máximo ${ARTIGO_MAX_IMAGES} imagens nos blocos do artigo.`,
+      done: imageCount <= ARTIGO_MAX_IMAGES,
+    },
+  ];
+
+  if (article.categoria === "LOCAL") {
+    requirements.push(
+      {
+        label: "Nome do local",
+        description: "Informe o nome do local citado no artigo.",
+        done: Boolean(article.local_nome?.trim()),
+      },
+      {
+        label: "Categoria do local",
+        description: "Informe a categoria do local para organizar o conteúdo.",
+        done: Boolean(article.local_categoria?.trim()),
+      },
+      {
+        label: "Localização do local",
+        description: "Informe bairro, cidade ou endereço de referência.",
+        done: Boolean(article.localizacao_texto?.trim()),
+      },
+    );
+  }
+
+  return requirements;
+}
+
+function cloneArticleSnapshot(article: ArtigoRow): ArtigoRow {
+  return {
+    ...article,
+    tags: [...article.tags],
+    conteudo_blocos: {
+      version: article.conteudo_blocos.version,
+      blocks: article.conteudo_blocos.blocks.map((block) => structuredClone(block)),
+    },
+  };
 }
 
 const BLOCK_GROUPS: Array<{ value: BlockGroup; label: string }> = [
@@ -205,6 +289,8 @@ const BLOCK_LIBRARY: Array<{
   { group: "cta", type: "cta", variant: "advertise", title: "Anuncie seu imóvel", description: ARTIGO_CTA_CONFIGS.advertise.buttonLabel, icon: MegaphoneSimple },
 ];
 
+type BlockLibraryItem = (typeof BLOCK_LIBRARY)[number];
+
 export default function ArtigoEditorPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -217,10 +303,16 @@ export default function ArtigoEditorPage() {
   const [coverUploading, setCoverUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [historyPast, setHistoryPast] = useState<ArtigoRow[]>([]);
+  const [historyFuture, setHistoryFuture] = useState<ArtigoRow[]>([]);
   const [activeGroup, setActiveGroup] = useState<BlockGroup>("titulos");
+  const [insertMenuIndex, setInsertMenuIndex] = useState<number | null>(null);
+  const [draggedBlockItem, setDraggedBlockItem] = useState<BlockLibraryItem | null>(null);
+  const [dragOverInsertIndex, setDragOverInsertIndex] = useState<number | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [linkModal, setLinkModal] = useState<LinkModalState | null>(null);
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const [publishChecklistOpen, setPublishChecklistOpen] = useState(false);
   const [ordenacaoPublica, setOrdenacaoPublica] = useState<ArtigosOrdenacao>("PUBLICACAO_DESC");
   const [propertyOptions, setPropertyOptions] = useState<PropertyOption[]>([]);
   const [enterpriseOptions, setEnterpriseOptions] = useState<EnterpriseOption[]>([]);
@@ -257,7 +349,11 @@ export default function ArtigoEditorPage() {
         apiFetchWithAuth<CaracteristicaCatalogoOption[]>("/api/caracteristicas/catalogo?escopo=EMPREENDIMENTO"),
       ]);
 
-      if (articleResult.ok) setArticle({ ...articleResult.data, conteudo_blocos: normalizeClientContent(articleResult.data.conteudo_blocos) });
+      if (articleResult.ok) {
+        setArticle({ ...articleResult.data, conteudo_blocos: normalizeClientContent(articleResult.data.conteudo_blocos) });
+        setHistoryPast([]);
+        setHistoryFuture([]);
+      }
       else setError(articleResult.error);
 
       if (profileResult.ok) {
@@ -304,13 +400,47 @@ export default function ArtigoEditorPage() {
     };
   }, []);
 
-  const generatedSlug = useMemo(() => slugifyArticle(article?.titulo ?? ""), [article?.titulo]);
-  const titleHasCaps = Boolean(article?.titulo && hasLongUppercaseSequence(article.titulo));
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const isTyping =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable;
+
+      if (isTyping || (!event.metaKey && !event.ctrlKey)) return;
+
+      const key = event.key.toLowerCase();
+      if (key === "z" && event.shiftKey) {
+        event.preventDefault();
+        redoArticleChange();
+        return;
+      }
+      if (key === "z") {
+        event.preventDefault();
+        undoArticleChange();
+        return;
+      }
+      if (key === "y") {
+        event.preventDefault();
+        redoArticleChange();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [article, historyPast, historyFuture]);
+
+  const editableTitle = getEditableArticleTitle(article);
+  const titleHasCaps = Boolean(editableTitle && hasLongUppercaseSequence(editableTitle));
   const subtitleHasCaps = Boolean(article?.subtitulo && hasLongUppercaseSequence(article.subtitulo));
   const previewPath = nickname && article?.status === "PUBLICADO" ? `/${nickname}/artigos/${article.slug}` : null;
   const showManualOrder = ordenacaoPublica === "MANUAL";
   const articleImageCount = countArticleImages(article);
   const remainingArticleImages = Math.max(ARTIGO_MAX_IMAGES - articleImageCount, 0);
+  const publishRequirements = getPublishRequirements(article, articleImageCount);
+  const publishPendencies = publishRequirements.filter((requirement) => !requirement.done);
+  const canPublish = publishPendencies.length === 0;
   const brokerName = [profileData?.primeiro_nome, profileData?.sobrenome].filter(Boolean).join(" ").trim() || "Corretor";
   const brokerCreci =
     profileData?.creci_uf && profileData?.creci_numero
@@ -322,45 +452,71 @@ export default function ArtigoEditorPage() {
     propertyCharacteristics,
     enterpriseCharacteristics,
   };
+  const canUndo = historyPast.length > 0;
+  const canRedo = historyFuture.length > 0;
+
+  function commitArticleChange(updater: (current: ArtigoRow) => ArtigoRow) {
+    if (!article) return;
+    const nextArticle = updater(article);
+    if (nextArticle === article) return;
+    setHistoryPast((current) => [...current.slice(-49), cloneArticleSnapshot(article)]);
+    setHistoryFuture([]);
+    setArticle(nextArticle);
+  }
+
+  function undoArticleChange() {
+    const previousArticle = historyPast.at(-1);
+    if (!article || !previousArticle) return;
+    setHistoryPast((current) => current.slice(0, -1));
+    setHistoryFuture((current) => [cloneArticleSnapshot(article), ...current.slice(0, 49)]);
+    setArticle(cloneArticleSnapshot(previousArticle));
+    setInsertMenuIndex(null);
+    setDragOverInsertIndex(null);
+  }
+
+  function redoArticleChange() {
+    const nextArticle = historyFuture[0];
+    if (!article || !nextArticle) return;
+    setHistoryFuture((current) => current.slice(1));
+    setHistoryPast((current) => [...current.slice(-49), cloneArticleSnapshot(article)]);
+    setArticle(cloneArticleSnapshot(nextArticle));
+    setInsertMenuIndex(null);
+    setDragOverInsertIndex(null);
+  }
 
   function updateArticle<K extends keyof ArtigoRow>(key: K, value: ArtigoRow[K]) {
-    setArticle((current) => (current ? { ...current, [key]: value } : current));
+    commitArticleChange((current) => ({ ...current, [key]: value }));
   }
 
   function updateBlock(index: number, block: ArtigoBlock) {
-    setArticle((current) => {
-      if (!current) return current;
+    commitArticleChange((current) => {
       const blocks = [...current.conteudo_blocos.blocks];
       blocks[index] = block;
       return { ...current, conteudo_blocos: { version: 1, blocks } };
     });
   }
 
-  function addBlock(item: (typeof BLOCK_LIBRARY)[number]) {
-    setArticle((current) =>
-      current
-        ? {
-            ...current,
-            conteudo_blocos: { version: 1, blocks: [...current.conteudo_blocos.blocks, createBlock(item)] },
-          }
-        : current,
-    );
+  function addBlock(item: BlockLibraryItem, insertIndex?: number) {
+    commitArticleChange((current) => {
+      const blocks = [...current.conteudo_blocos.blocks];
+      const nextIndex = typeof insertIndex === "number" ? Math.min(Math.max(insertIndex, 0), blocks.length) : blocks.length;
+      blocks.splice(nextIndex, 0, createBlock(item));
+      return { ...current, conteudo_blocos: { version: 1, blocks } };
+    });
+    setInsertMenuIndex(null);
+    setDragOverInsertIndex(null);
+    setDraggedBlockItem(null);
   }
 
   function removeBlock(index: number) {
-    setArticle((current) =>
-      current
-        ? {
-            ...current,
-            conteudo_blocos: { version: 1, blocks: current.conteudo_blocos.blocks.filter((_, currentIndex) => currentIndex !== index) },
-          }
-        : current,
-    );
+    commitArticleChange((current) => ({
+      ...current,
+      conteudo_blocos: { version: 1, blocks: current.conteudo_blocos.blocks.filter((_, currentIndex) => currentIndex !== index) },
+    }));
   }
 
   function moveBlock(index: number, direction: -1 | 1) {
-    setArticle((current) => {
-      if (!current) return current;
+    commitArticleChange((current) => {
       const nextIndex = index + direction;
       if (nextIndex < 0 || nextIndex >= current.conteudo_blocos.blocks.length) return current;
       const blocks = [...current.conteudo_blocos.blocks];
@@ -369,6 +525,30 @@ export default function ArtigoEditorPage() {
       blocks.splice(nextIndex, 0, block);
       return { ...current, conteudo_blocos: { version: 1, blocks } };
     });
+  }
+
+  function handleBlockLibraryDragStart(event: React.DragEvent<HTMLButtonElement>, item: BlockLibraryItem) {
+    setDraggedBlockItem(item);
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData("text/plain", `${item.type}:${item.variant ?? item.title}`);
+  }
+
+  function handleBlockLibraryDragEnd() {
+    setDraggedBlockItem(null);
+    setDragOverInsertIndex(null);
+  }
+
+  function handleInsertDragOver(index: number, event: React.DragEvent<HTMLDivElement>) {
+    if (!draggedBlockItem) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setDragOverInsertIndex(index);
+  }
+
+  function handleInsertDrop(index: number, event: React.DragEvent<HTMLDivElement>) {
+    if (!draggedBlockItem) return;
+    event.preventDefault();
+    addBlock(draggedBlockItem, index);
   }
 
   async function uploadMedia(file: File, grupo: string, alt?: string, options?: ArticleUploadOptions): Promise<UploadedMedia | null> {
@@ -413,8 +593,7 @@ export default function ArtigoEditorPage() {
   function syncParagraphEditor(editorId: string) {
     const editor = editorRefs.current[editorId];
     if (!editor) return;
-    setArticle((current) => {
-      if (!current) return current;
+    commitArticleChange((current) => {
       return {
         ...current,
         conteudo_blocos: {
@@ -442,26 +621,30 @@ export default function ArtigoEditorPage() {
     });
   }
 
-  async function save(status?: ArtigoStatus) {
-    if (!article) return;
+  async function save(status?: ArtigoStatus): Promise<boolean> {
+    if (!article) return false;
     if (countArticleImages(article) > ARTIGO_MAX_IMAGES) {
       setError(`Este artigo tem mais de ${ARTIGO_MAX_IMAGES} imagens. Remova algumas imagens antes de salvar.`);
-      return;
+      return false;
     }
+    const requestedStatus = status ?? article.status;
+    const titleForSave = getEditableArticleTitle(article).trim();
     setSaving(true);
     setError(null);
     setSuccess(null);
     const result = await apiFetchWithAuth<ArtigoRow>(`/api/artigos/${article.id}`, {
       method: "PATCH",
-      body: JSON.stringify({ ...article, status: status ?? article.status, slug: undefined }),
+      body: JSON.stringify({ ...article, titulo: titleForSave, status: requestedStatus, slug: undefined }),
     });
     setSaving(false);
 
     if (result.ok) {
       setArticle({ ...result.data, conteudo_blocos: normalizeClientContent(result.data.conteudo_blocos) });
       setSuccess(status === "PUBLICADO" ? "Artigo publicado." : "Artigo salvo.");
+      return true;
     } else {
       setError(result.error);
+      return false;
     }
   }
 
@@ -483,7 +666,7 @@ export default function ArtigoEditorPage() {
             </Link>
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Editor de artigo</p>
-              <h1 className="max-w-[52vw] overflow-x-auto whitespace-nowrap text-xl font-light text-slate-950 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{article.titulo || "Novo artigo"}</h1>
+              <h1 className="max-w-[52vw] overflow-x-auto whitespace-nowrap text-xl font-light text-slate-950 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{editableTitle || "Artigo sem título"}</h1>
             </div>
           </div>
           <div className="flex shrink-0 items-end justify-end gap-2">
@@ -513,6 +696,26 @@ export default function ArtigoEditorPage() {
                 <ArrowSquareOut size={19} />
               </Link>
             ) : null}
+            <button
+              type="button"
+              onClick={undoArticleChange}
+              disabled={!canUndo}
+              title="Desfazer"
+              aria-label="Desfazer"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              <ArrowCounterClockwise size={19} />
+            </button>
+            <button
+              type="button"
+              onClick={redoArticleChange}
+              disabled={!canRedo}
+              title="Refazer"
+              aria-label="Refazer"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              <ArrowClockwise size={19} />
+            </button>
             <button type="button" onClick={() => setPreviewOpen(true)} title="Visualização rápida" aria-label="Visualização rápida" className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700">
               <Eye size={19} />
             </button>
@@ -538,6 +741,10 @@ export default function ArtigoEditorPage() {
                       type="button"
                       onClick={() => {
                         setStatusMenuOpen(false);
+                        if (status === "PUBLICADO") {
+                          setPublishChecklistOpen(true);
+                          return;
+                        }
                         void save(status);
                       }}
                       className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-bold transition hover:bg-slate-50 ${article.status === status ? "text-[var(--grey-olive)]" : "text-slate-700"}`}
@@ -559,39 +766,55 @@ export default function ArtigoEditorPage() {
           {success ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div> : null}
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Field label="Categoria do artigo">
-                <select value={article.categoria} onChange={(event) => updateArticle("categoria", event.target.value as ArtigoCategoria)} className="input-base">
-                  {ARTIGO_CATEGORIAS.map((category) => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="URL automática">
-                <div className="input-base bg-slate-50 text-slate-500">{generatedSlug || "gerada pelo título"}</div>
-              </Field>
-              <Field label="Título" help={`${article.titulo.length}/${ARTICLE_LIMITS.title}`}>
-                <input value={article.titulo} maxLength={ARTICLE_LIMITS.title} onChange={(event) => updateArticle("titulo", event.target.value)} className={`input-base ${titleHasCaps ? "border-red-300" : ""}`} />
-                {titleHasCaps ? <p className="mt-1 text-xs text-red-600">Evite palavras em caixa alta.</p> : null}
-              </Field>
-              <Field label="Subtítulo" help={`${article.subtitulo?.length ?? 0}/${ARTICLE_LIMITS.subtitle}`}>
-                <input value={article.subtitulo ?? ""} maxLength={ARTICLE_LIMITS.subtitle} onChange={(event) => updateArticle("subtitulo", event.target.value)} className={`input-base ${subtitleHasCaps ? "border-red-300" : ""}`} />
-                {subtitleHasCaps ? <p className="mt-1 text-xs text-red-600">Evite palavras em caixa alta.</p> : null}
-              </Field>
-            </div>
-
-            <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-              <div>
+            <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_420px]">
+              <div className="space-y-4">
+                <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+                  <Field label="Categoria do artigo">
+                    <div className="relative">
+                      <select
+                        value={article.categoria}
+                        onChange={(event) => updateArticle("categoria", event.target.value as ArtigoCategoria)}
+                        className="input-base appearance-none pr-12"
+                      >
+                        {ARTIGO_CATEGORIAS.map((category) => (
+                          <option key={category.value} value={category.value}>
+                            {category.label}
+                          </option>
+                        ))}
+                      </select>
+                      <CaretDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} weight="bold" />
+                    </div>
+                  </Field>
+                  <Field label="Título" help={`${editableTitle.length}/${ARTICLE_LIMITS.title}`}>
+                    <input
+                      value={editableTitle}
+                      placeholder="Digite o título do artigo"
+                      maxLength={ARTICLE_LIMITS.title}
+                      onChange={(event) => updateArticle("titulo", event.target.value)}
+                      className={`input-base ${titleHasCaps ? "border-red-300" : ""}`}
+                    />
+                    {titleHasCaps ? <p className="mt-1 text-xs text-red-600">Evite palavras em caixa alta.</p> : null}
+                  </Field>
+                </div>
+                <Field label="Subtítulo" help={`${article.subtitulo?.length ?? 0}/${ARTICLE_LIMITS.subtitle}`}>
+                  <input
+                    value={article.subtitulo ?? ""}
+                    placeholder="Uma frase curta que complemente o título"
+                    maxLength={ARTICLE_LIMITS.subtitle}
+                    onChange={(event) => updateArticle("subtitulo", event.target.value)}
+                    className={`input-base ${subtitleHasCaps ? "border-red-300" : ""}`}
+                  />
+                  {subtitleHasCaps ? <p className="mt-1 text-xs text-red-600">Evite palavras em caixa alta.</p> : null}
+                </Field>
                 <Field label="Imagem de capa">
                   <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                    <div className="relative aspect-[16/7]">
+                    <div className="relative h-[260px] overflow-hidden md:h-[320px] 2xl:h-[360px]">
                       {article.capa_url ? (
                         <Image src={article.capa_url} alt={article.titulo} fill sizes="(min-width: 1024px) 760px, 100vw" className="object-cover" unoptimized />
                       ) : (
-                        <div className="flex h-full items-center justify-center text-slate-400">
+                        <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-400">
                           <ImageSquare size={42} />
+                          <span className="text-sm font-medium">Nenhuma capa enviada</span>
                         </div>
                       )}
                     </div>
@@ -611,14 +834,20 @@ export default function ArtigoEditorPage() {
                   </div>
                 </Field>
               </div>
-              <div className="grid gap-4">
+              <aside className="self-start rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <div className="mb-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">SEO</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">Campos opcionais para melhorar a prévia em buscadores e compartilhamentos.</p>
+                </div>
+                <div className="grid gap-4">
                 <Field label={<span className="inline-flex items-center gap-1">Meta title <Help text="Título exibido em buscadores e compartilhamentos. Ideal: até 60 caracteres." /></span>}>
-                  <input value={article.meta_title ?? ""} maxLength={70} onChange={(event) => updateArticle("meta_title", event.target.value)} className="input-base" />
+                  <input value={article.meta_title ?? ""} maxLength={70} onChange={(event) => updateArticle("meta_title", event.target.value)} className="input-base bg-white" />
                 </Field>
                 <Field label={<span className="inline-flex items-center gap-1">Meta description <Help text="Resumo usado por buscadores. Ajuda a aumentar o clique quando descreve bem o conteúdo." /></span>}>
-                  <textarea value={article.meta_description ?? ""} maxLength={180} onChange={(event) => updateArticle("meta_description", event.target.value)} className="min-h-24 input-base" />
+                  <textarea value={article.meta_description ?? ""} maxLength={180} onChange={(event) => updateArticle("meta_description", event.target.value)} className="min-h-[180px] input-base bg-white" />
                 </Field>
-              </div>
+                </div>
+              </aside>
             </div>
 
             {article.categoria === "LOCAL" ? <LocalFields article={article} updateArticle={updateArticle} /> : null}
@@ -635,31 +864,66 @@ export default function ArtigoEditorPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-2">
               {article.conteudo_blocos.blocks.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-10 text-center text-slate-500">
-                  Escolha um bloco na coluna direita para começar.
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-6 py-10 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[var(--grey-olive)] shadow-sm">
+                    <Plus size={22} weight="bold" />
+                  </div>
+                  <h3 className="mt-4 text-2xl font-light text-slate-950">Insira o primeiro bloco do artigo</h3>
+                  <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
+                    Comece com um título, um parágrafo, uma imagem, um imóvel ou uma chamada pronta do Corretor.one.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setInsertMenuIndex(0)}
+                    className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-800"
+                  >
+                    Adicionar primeiro bloco
+                    <Plus size={16} weight="bold" />
+                  </button>
                 </div>
               ) : (
-                article.conteudo_blocos.blocks.map((block, index) => (
-                  <BlockEditor
-                    key={block.id}
-                    articleId={article.id}
-                    block={block}
-                    index={index}
-                    editorRefs={editorRefs}
-                    onChange={(next) => updateBlock(index, next)}
-                    onRemove={() => removeBlock(index)}
-                    onMoveUp={() => moveBlock(index, -1)}
-                    onMoveDown={() => moveBlock(index, 1)}
-                    canMoveUp={index > 0}
-                    canMoveDown={index < article.conteudo_blocos.blocks.length - 1}
-                    onOpenLink={(selection) => setLinkModal({ editorId: block.id, ...selection })}
-                    onUpload={uploadMedia}
-                    options={editorOptions}
-                    remainingImageSlots={remainingArticleImages}
+                <>
+                  <BlockInsertPoint
+                    index={0}
+                    active={insertMenuIndex === 0}
+                    isDragTarget={dragOverInsertIndex === 0}
+                    onOpen={() => setInsertMenuIndex(0)}
+                    onDragOver={handleInsertDragOver}
+                    onDragLeave={() => setDragOverInsertIndex(null)}
+                    onDrop={handleInsertDrop}
                   />
-                ))
+                  {article.conteudo_blocos.blocks.map((block, index) => (
+                    <Fragment key={block.id}>
+                      <BlockEditor
+                        articleId={article.id}
+                        block={block}
+                        index={index}
+                        editorRefs={editorRefs}
+                        onChange={(next) => updateBlock(index, next)}
+                        onRemove={() => removeBlock(index)}
+                        onMoveUp={() => moveBlock(index, -1)}
+                        onMoveDown={() => moveBlock(index, 1)}
+                        canMoveUp={index > 0}
+                        canMoveDown={index < article.conteudo_blocos.blocks.length - 1}
+                        onOpenLink={(selection) => setLinkModal({ editorId: block.id, ...selection })}
+                        onUpload={uploadMedia}
+                        options={editorOptions}
+                        remainingImageSlots={remainingArticleImages}
+                      />
+                      <BlockInsertPoint
+                        index={index + 1}
+                        active={insertMenuIndex === index + 1}
+                        isDragTarget={dragOverInsertIndex === index + 1}
+                        onOpen={() => setInsertMenuIndex(index + 1)}
+                        onDragOver={handleInsertDragOver}
+                        onDragLeave={() => setDragOverInsertIndex(null)}
+                        onDrop={handleInsertDrop}
+                      />
+                    </Fragment>
+                  ))}
+                </>
               )}
             </div>
           </section>
@@ -705,8 +969,11 @@ export default function ArtigoEditorPage() {
                           <button
                             key={`${item.type}-${item.variant ?? item.title}`}
                             type="button"
+                            draggable
+                            onDragStart={(event) => handleBlockLibraryDragStart(event, item)}
+                            onDragEnd={handleBlockLibraryDragEnd}
                             onClick={() => addBlock(item)}
-                            className="group rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[color:rgba(145,139,118,0.55)] hover:shadow-md"
+                            className="group cursor-grab rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[color:rgba(145,139,118,0.55)] hover:shadow-md active:cursor-grabbing"
                           >
                             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-stone-50 text-[var(--grey-olive)]">
                               <Icon size={22} />
@@ -725,6 +992,13 @@ export default function ArtigoEditorPage() {
         </aside>
       </main>
 
+      {insertMenuIndex !== null ? (
+        <BlockInsertModal
+          insertIndex={insertMenuIndex}
+          onClose={() => setInsertMenuIndex(null)}
+          onInsert={(item) => addBlock(item, insertMenuIndex)}
+        />
+      ) : null}
       {previewOpen ? (
         <PreviewModal
           article={article}
@@ -746,6 +1020,110 @@ export default function ArtigoEditorPage() {
           }}
         />
       ) : null}
+      {publishChecklistOpen ? (
+        <PublishChecklistModal
+          requirements={publishRequirements}
+          canPublish={canPublish}
+          saving={saving}
+          uploading={uploading || coverUploading}
+          onClose={() => setPublishChecklistOpen(false)}
+          onPublish={async () => {
+            if (!canPublish || saving || uploading || coverUploading) return;
+            const published = await save("PUBLICADO");
+            if (published) setPublishChecklistOpen(false);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function PublishChecklistModal({
+  requirements,
+  canPublish,
+  saving,
+  uploading,
+  onClose,
+  onPublish,
+}: {
+  requirements: PublishRequirement[];
+  canPublish: boolean;
+  saving: boolean;
+  uploading: boolean;
+  onClose: () => void;
+  onPublish: () => void;
+}) {
+  const pendingCount = requirements.filter((requirement) => !requirement.done).length;
+
+  return (
+    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Publicação</p>
+            <h2 className="mt-2 text-3xl font-light leading-tight text-slate-950">
+              {canPublish ? "Tudo pronto para publicar" : "Revise as pendências do artigo"}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              {canPublish
+                ? "O artigo atende aos requisitos básicos e já pode ir para o perfil público."
+                : `${pendingCount} ${pendingCount === 1 ? "item precisa" : "itens precisam"} de ajuste antes da publicação.`}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
+            aria-label="Fechar pendências de publicação"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="grid gap-3 p-6">
+          {requirements.map((requirement) => (
+            <div
+              key={requirement.label}
+              className={`flex items-start gap-3 rounded-2xl border p-4 ${
+                requirement.done ? "border-emerald-200 bg-emerald-50/70" : "border-amber-200 bg-amber-50/70"
+              }`}
+            >
+              <span
+                className={`mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                  requirement.done ? "bg-emerald-600 text-white" : "bg-white text-[var(--grey-olive)] shadow-sm"
+                }`}
+              >
+                {requirement.done ? <Check size={15} weight="bold" /> : <span className="h-2 w-2 rounded-full bg-current" />}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-slate-950">{requirement.label}</span>
+                <span className="mt-1 block text-sm leading-5 text-slate-500">{requirement.description}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+          >
+            Voltar ao editor
+          </button>
+          <button
+            type="button"
+            onClick={onPublish}
+            disabled={!canPublish || saving || uploading}
+            className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-55 ${
+              canPublish ? "bg-emerald-600 hover:bg-emerald-700" : "bg-slate-400"
+            }`}
+          >
+            {saving ? <SpinnerGap size={16} className="animate-spin" /> : <Check size={16} weight="bold" />}
+            {saving ? "Publicando..." : "Publicar artigo"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -784,6 +1162,135 @@ function LocalFields({ article, updateArticle }: { article: ArtigoRow; updateArt
         <Field label="Horário de funcionamento"><input value={article.local_horario_funcionamento ?? ""} onChange={(event) => updateArticle("local_horario_funcionamento", event.target.value)} className="input-base" /></Field>
         <Field label="Website"><input value={article.local_website_url ?? ""} onChange={(event) => updateArticle("local_website_url", event.target.value)} className="input-base" /></Field>
         <Field label="WhatsApp / telefone"><div className="grid gap-2 sm:grid-cols-2"><input value={article.local_whatsapp ?? ""} onChange={(event) => updateArticle("local_whatsapp", event.target.value)} className="input-base" placeholder="WhatsApp" /><input value={article.local_telefone ?? ""} onChange={(event) => updateArticle("local_telefone", event.target.value)} className="input-base" placeholder="Telefone" /></div></Field>
+      </div>
+    </div>
+  );
+}
+
+function BlockInsertPoint({
+  index,
+  active,
+  isDragTarget,
+  onOpen,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: {
+  index: number;
+  active: boolean;
+  isDragTarget: boolean;
+  onOpen: () => void;
+  onDragOver: (index: number, event: React.DragEvent<HTMLDivElement>) => void;
+  onDragLeave: () => void;
+  onDrop: (index: number, event: React.DragEvent<HTMLDivElement>) => void;
+}) {
+  return (
+    <div
+      className={`group relative py-2 transition ${isDragTarget ? "py-4" : ""}`}
+      onDragOver={(event) => onDragOver(index, event)}
+      onDragLeave={onDragLeave}
+      onDrop={(event) => onDrop(index, event)}
+    >
+      <div
+        className={`h-px transition ${
+          active || isDragTarget ? "bg-[color:rgba(145,139,118,0.55)]" : "bg-slate-100 group-hover:bg-slate-200"
+        }`}
+      />
+      <button
+        type="button"
+        onClick={onOpen}
+        className={`absolute left-1/2 top-1/2 inline-flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-white text-slate-500 shadow-sm transition hover:border-[var(--grey-olive)] hover:text-[var(--grey-olive)] ${
+          active || isDragTarget ? "border-[var(--grey-olive)] text-[var(--grey-olive)] opacity-100" : "border-slate-200 opacity-0 group-hover:opacity-100"
+        }`}
+        aria-label="Inserir bloco aqui"
+        title="Inserir bloco aqui"
+      >
+        <Plus size={16} weight="bold" />
+      </button>
+    </div>
+  );
+}
+
+function BlockInsertModal({
+  insertIndex,
+  onClose,
+  onInsert,
+}: {
+  insertIndex: number;
+  onClose: () => void;
+  onInsert: (item: BlockLibraryItem) => void;
+}) {
+  const [selectedGroup, setSelectedGroup] = useState<BlockGroup>("titulos");
+  const visibleItems = BLOCK_LIBRARY.filter((item) => item.group === selectedGroup);
+  const positionLabel = insertIndex === 0 ? "no início do artigo" : `após o bloco ${insertIndex}`;
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true">
+      <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Inserir bloco</p>
+            <h2 className="mt-2 text-4xl font-light text-slate-950">Escolha o próximo bloco</h2>
+            <p className="mt-2 text-sm text-slate-500">O bloco será inserido {positionLabel}.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
+            aria-label="Fechar"
+          >
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {BLOCK_GROUPS.map((group) => (
+              <button
+                key={group.value}
+                type="button"
+                onClick={() => setSelectedGroup(group.value)}
+                className={`shrink-0 rounded-full px-5 py-2.5 text-sm font-bold transition ${
+                  selectedGroup === group.value
+                    ? "bg-slate-950 text-white ring-2 ring-[var(--primary-blue)] ring-offset-1"
+                    : "bg-white text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {group.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="min-h-0 overflow-y-auto p-6">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {visibleItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={`${item.group}-${item.type}-${item.variant ?? item.title}`}
+                  type="button"
+                  onClick={() => onInsert(item)}
+                  className="group flex min-h-32 items-start gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:-translate-y-0.5 hover:border-[color:rgba(145,139,118,0.58)] hover:shadow-md"
+                >
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-stone-50 text-[var(--grey-olive)] transition group-hover:bg-stone-100">
+                    <Icon size={23} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xl font-light text-slate-950">{item.title}</span>
+                    <span className="mt-1 block text-sm leading-6 text-slate-500">{item.description}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex justify-end border-t border-slate-200 px-6 py-4">
+          <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
+            Cancelar
+          </button>
+        </div>
       </div>
     </div>
   );

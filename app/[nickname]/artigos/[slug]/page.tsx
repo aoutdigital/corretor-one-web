@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarBlank, Clock } from "@phosphor-icons/react/dist/ssr";
 
 import { ArticleContentRenderer } from "@/app/[nickname]/_components/article-content-renderer";
+import { ArticleShareBar, ArticleShareFooter } from "@/app/[nickname]/_components/article-share-bar";
 import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
 import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
 import { getArticleCategoryLabel, normalizeArticleBlocks, type ArtigoConteudo } from "@/lib/artigos/content";
@@ -156,13 +157,19 @@ export default async function PublicArticleDetailPage({ params }: PageProps) {
           {article.categoria === "LOCAL" ? <LocalArticleContext article={article} /> : null}
 
           <section className="px-5 py-14 md:py-20">
-            <ArticleContentRenderer
-              content={article.conteudo_blocos}
-              nickname={publicNickname}
-              brokerName={brokerName}
-              avatarUrl={avatarUrl}
-              creci={creci}
-            />
+            <div className="mx-auto grid max-w-7xl gap-8 xl:grid-cols-[4rem_minmax(0,1fr)] xl:items-start">
+              <ArticleShareBar title={article.titulo} sharePath={`/${publicNickname}/artigos/${article.slug}`} />
+              <div className="min-w-0">
+                <ArticleContentRenderer
+                  content={article.conteudo_blocos}
+                  nickname={publicNickname}
+                  brokerName={brokerName}
+                  avatarUrl={avatarUrl}
+                  creci={creci}
+                />
+              </div>
+            </div>
+            <ArticleShareFooter title={article.titulo} sharePath={`/${publicNickname}/artigos/${article.slug}`} />
           </section>
         </article>
       </main>

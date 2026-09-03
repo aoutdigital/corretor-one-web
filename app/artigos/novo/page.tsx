@@ -17,8 +17,7 @@ export default function NovoArtigoPage() {
       const result = await apiFetchWithAuth<ArtigoRow>("/api/artigos", {
         method: "POST",
         body: JSON.stringify({
-          titulo: "Novo artigo do corretor",
-          slug: `novo-artigo-${Date.now()}`,
+          titulo: "",
           categoria: "MERCADO_IMOBILIARIO",
           status: "RASCUNHO",
           conteudo_blocos: { version: 1, blocks: [] },
