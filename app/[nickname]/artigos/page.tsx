@@ -6,7 +6,7 @@ import { NotePencil } from "@phosphor-icons/react/dist/ssr";
 
 import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
 import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
-import { getArticleCategoryLabel } from "@/lib/artigos/content";
+import { getArticleCategoryLabel, type ArtigosOrdenacao } from "@/lib/artigos/content";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -44,16 +44,40 @@ type ArtigoPublicRow = {
   leitura_minutos: number;
   publicado_em: string | null;
   updated_at: string;
+  ordem_manual: number | null;
+};
+
+type ArticlesConfigRow = {
+  ordenacao_publica: string | null;
+};
+
+type DynamicQueryResult<T> = {
+  data: T[] | null;
+  error: { message: string } | null;
+};
+
+type DynamicSingleResult<T> = {
+  data: T | null;
+  error: { message: string } | null;
+};
+
+type DynamicQuery<T> = PromiseLike<DynamicQueryResult<T>> & {
+  select: (columns: string) => DynamicQuery<T>;
+  eq: (column: string, value: unknown) => DynamicQuery<T>;
+  order: (column: string, options: { ascending: boolean }) => DynamicQuery<T>;
+  maybeSingle: () => PromiseLike<DynamicSingleResult<T>>;
 };
 
 type AnyDb = {
-  from: (table: string) => any;
+  from: <T>(table: string) => DynamicQuery<T>;
 };
 
 const PROFILE_SELECT =
   "id,nickname,primeiro_nome,sobrenome,email,telefone,whatsapp,avatar_url,imagem_capa_url,logo_nickname_url,logo_nickname_white_url,creci_uf,creci_numero,creci_sufixo,status";
 
 const ARTICLE_SELECT = "id,categoria,titulo,subtitulo,resumo,slug,capa_url,leitura_minutos,publicado_em,updated_at,ordem_manual";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { nickname } = await params;
@@ -170,22 +194,22 @@ async function getProfile(nickname: string) {
   return result.data as ProfileRow | null;
 }
 
-async function getArticlesConfig(ownerId: string) {
+async function getArticlesConfig(ownerId: string): Promise<{ ordenacao_publica: ArtigosOrdenacao }> {
   const supabase = createSupabaseServerClient() as unknown as AnyDb;
   const result = await supabase
-    .from("profile_artigos_config")
+    .from<ArticlesConfigRow>("profile_artigos_config")
     .select("ordenacao_publica")
     .eq("owner_id", ownerId)
     .maybeSingle();
 
   if (result.error) throw new Error(`Erro ao carregar configuracao de artigos: ${result.error.message}`);
-  return { ordenacao_publica: result.data?.ordenacao_publica ?? "PUBLICACAO_DESC" };
+  return { ordenacao_publica: (result.data?.ordenacao_publica ?? "PUBLICACAO_DESC") as ArtigosOrdenacao };
 }
 
-async function getPublishedArticles(ownerId: string, order: string) {
+async function getPublishedArticles(ownerId: string, order: ArtigosOrdenacao) {
   const supabase = createSupabaseServerClient() as unknown as AnyDb;
   let query = supabase
-    .from("artigos")
+    .from<ArtigoPublicRow>("artigos")
     .select(ARTICLE_SELECT)
     .eq("owner_id", ownerId)
     .eq("status", "PUBLICADO")
@@ -197,7 +221,37 @@ async function getPublishedArticles(ownerId: string, order: string) {
 
   const result = await query;
   if (result.error) throw new Error(`Erro ao carregar artigos publicos: ${result.error.message}`);
-  return (result.data ?? []) as ArtigoPublicRow[];
+  return sortPublishedArticles((result.data ?? []) as ArtigoPublicRow[], order);
+}
+
+function sortPublishedArticles(articles: ArtigoPublicRow[], order: ArtigosOrdenacao) {
+  return [...articles].sort((a, b) => {
+    if (order === "MANUAL") {
+      const manualDiff = getManualOrderValue(a) - getManualOrderValue(b);
+      if (manualDiff !== 0) return manualDiff;
+      return compareByRecentPublication(a, b);
+    }
+
+    if (order === "ATUALIZACAO_DESC") {
+      return dateValue(b.updated_at) - dateValue(a.updated_at);
+    }
+
+    return compareByRecentPublication(a, b);
+  });
+}
+
+function getManualOrderValue(article: ArtigoPublicRow) {
+  return typeof article.ordem_manual === "number" && Number.isFinite(article.ordem_manual) && article.ordem_manual > 0
+    ? article.ordem_manual
+    : Number.MAX_SAFE_INTEGER;
+}
+
+function compareByRecentPublication(a: ArtigoPublicRow, b: ArtigoPublicRow) {
+  return dateValue(b.publicado_em ?? b.updated_at) - dateValue(a.publicado_em ?? a.updated_at);
+}
+
+function dateValue(value: string | null) {
+  return value ? new Date(value).getTime() : 0;
 }
 
 function getProfileName(profile: ProfileRow) {

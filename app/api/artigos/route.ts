@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { statusFromErrorCode } from "@/lib/api/result";
-import { createArtigo, listArtigos, updateArtigosConfig } from "@/lib/db/artigos";
+import { createArtigo, listArtigos, updateArtigosConfig, updateArtigosManualOrder } from "@/lib/db/artigos";
 import { getBearerTokenFromRequest } from "@/lib/http/auth";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 function unauthorizedResponse() {
   return NextResponse.json(
@@ -53,7 +57,10 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const result = await updateArtigosConfig(accessToken, body as Parameters<typeof updateArtigosConfig>[1]);
+  const result =
+    isRecord(body) && body.action === "REORDER"
+      ? await updateArtigosManualOrder(accessToken, body)
+      : await updateArtigosConfig(accessToken, body as Parameters<typeof updateArtigosConfig>[1]);
   if (!result.ok) return NextResponse.json(result, { status: statusFromErrorCode(result.error.code) });
   return NextResponse.json(result);
 }

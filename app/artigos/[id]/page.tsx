@@ -726,12 +726,19 @@ export default function ArtigoEditorPage() {
             <div className="relative z-[70]">
               <button
                 type="button"
-                onClick={() => setStatusMenuOpen((current) => !current)}
+                onClick={() => {
+                  if (article.status === "PUBLICADO") {
+                    setStatusMenuOpen((current) => !current);
+                    return;
+                  }
+                  setStatusMenuOpen(false);
+                  setPublishChecklistOpen(true);
+                }}
                 disabled={saving || uploading}
                 className={`inline-flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-60 ${article.status === "PUBLICADO" ? "bg-emerald-600" : "bg-[var(--primary-scarlet)]"}`}
               >
                 {article.status === "PUBLICADO" ? "Publicado" : "Publicar"}
-                <CaretDown size={15} />
+                {article.status === "PUBLICADO" ? <CaretDown size={15} /> : null}
               </button>
               {statusMenuOpen ? (
                 <div className="absolute right-0 top-full z-[80] mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-xl">

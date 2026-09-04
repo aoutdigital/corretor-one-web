@@ -1289,6 +1289,10 @@ Regras:
 - ordenacao_publica (text, enum ARTIGOS_ORDENACAO_PUBLICA, default PUBLICACAO_DESC)
 - updated_at (timestamptz)
 
+Regras:
+- CRUD no app apenas pelo dono do perfil.
+- Leitura pública permitida para aplicar a ordenação da listagem pública de artigos do corretor.
+
 ---
 
 ### artigo_categoria_sugestoes

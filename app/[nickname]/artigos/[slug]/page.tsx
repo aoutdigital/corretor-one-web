@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarBlank, Clock } from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeft, CalendarBlank, Clock, NotePencil } from "@phosphor-icons/react/dist/ssr";
 
 import { ArticleContentRenderer } from "@/app/[nickname]/_components/article-content-renderer";
 import { ArticleShareBar, ArticleShareFooter } from "@/app/[nickname]/_components/article-share-bar";
@@ -50,6 +50,7 @@ type ArticleRow = {
   indexar: boolean;
   leitura_minutos: number;
   publicado_em: string | null;
+  created_at: string;
   updated_at: string;
   local_nome: string | null;
   local_categoria: string | null;
@@ -60,15 +61,37 @@ type ArticleRow = {
   localizacao_texto: string | null;
 };
 
-type AnyDb = {
-  from: (table: string) => any;
+type RelatedArticleRow = Pick<
+  ArticleRow,
+  "id" | "categoria" | "titulo" | "subtitulo" | "resumo" | "slug" | "capa_url" | "leitura_minutos" | "publicado_em" | "created_at" | "updated_at"
+>;
+
+type SupabaseQueryResult = {
+  data: unknown;
+  error: { message: string } | null;
+};
+
+type SupabaseArticleQuery = {
+  select(columns: string): SupabaseArticleQuery;
+  eq(column: string, value: string | boolean): SupabaseArticleQuery;
+  neq(column: string, value: string | boolean): SupabaseArticleQuery;
+  order(column: string, options: { ascending: boolean }): SupabaseArticleQuery;
+  limit(count: number): Promise<SupabaseQueryResult>;
+  maybeSingle(): Promise<SupabaseQueryResult>;
+};
+
+type SupabaseUntypedClient = {
+  from(table: string): SupabaseArticleQuery;
 };
 
 const PROFILE_SELECT =
   "id,nickname,primeiro_nome,sobrenome,email,telefone,whatsapp,avatar_url,imagem_capa_url,logo_nickname_url,logo_nickname_white_url,creci_uf,creci_numero,creci_sufixo,status";
 
 const ARTICLE_SELECT =
-  "id,categoria,titulo,subtitulo,resumo,slug,capa_url,conteudo_blocos,meta_title,meta_description,canonical_url,indexar,leitura_minutos,publicado_em,updated_at,local_nome,local_categoria,local_horario_funcionamento,local_website_url,local_whatsapp,local_telefone,localizacao_texto";
+  "id,categoria,titulo,subtitulo,resumo,slug,capa_url,conteudo_blocos,meta_title,meta_description,canonical_url,indexar,leitura_minutos,publicado_em,created_at,updated_at,local_nome,local_categoria,local_horario_funcionamento,local_website_url,local_whatsapp,local_telefone,localizacao_texto";
+
+const RELATED_ARTICLE_SELECT =
+  "id,categoria,titulo,subtitulo,resumo,slug,capa_url,leitura_minutos,publicado_em,created_at,updated_at";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { nickname, slug } = await params;
@@ -100,7 +123,7 @@ export default async function PublicArticleDetailPage({ params }: PageProps) {
   const data = await getPublicArticleData(nickname, slug);
   if (!data) notFound();
 
-  const { profile, article } = data;
+  const { profile, article, relatedArticles } = data;
   const brokerName = getProfileName(profile);
   const publicNickname = profile.nickname ?? nickname;
   const logoUrl = getPublicImageUrl(profile.logo_nickname_url || profile.logo_nickname_white_url);
@@ -167,6 +190,7 @@ export default async function PublicArticleDetailPage({ params }: PageProps) {
                   avatarUrl={avatarUrl}
                   creci={creci}
                 />
+                <RelatedArticlesSection articles={relatedArticles} nickname={publicNickname} />
               </div>
             </div>
             <ArticleShareFooter title={article.titulo} sharePath={`/${publicNickname}/artigos/${article.slug}`} />
@@ -176,6 +200,65 @@ export default async function PublicArticleDetailPage({ params }: PageProps) {
 
       <BrokerPublicFooter nickname={publicNickname} brokerName={brokerName} creci={creci} avatarUrl={avatarUrl} />
     </div>
+  );
+}
+
+function RelatedArticlesSection({ articles, nickname }: { articles: RelatedArticleRow[]; nickname: string }) {
+  if (!articles.length) return null;
+
+  return (
+    <section className="mt-16 border-t border-stone-200 pt-10">
+      <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Continue lendo</p>
+      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-3xl font-light leading-tight text-slate-950 md:text-4xl">Veja outros artigos que publiquei</h2>
+          <p className="mt-3 max-w-2xl text-base font-light leading-7 text-slate-500">
+            Mais leituras para ajudar você a decidir com calma e contexto.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-7 grid gap-4">
+        {articles.map((article) => (
+          <Link
+            key={article.id}
+            href={`/${nickname}/artigos/${article.slug}`}
+            className="group grid gap-4 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-[color:rgba(145,139,118,0.55)] hover:shadow-md sm:grid-cols-[180px_minmax(0,1fr)_auto] sm:items-center"
+          >
+            <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-stone-100 sm:h-[120px] sm:w-[180px] sm:aspect-auto">
+              {article.capa_url ? (
+                <Image
+                  src={article.capa_url}
+                  alt={article.titulo}
+                  fill
+                  sizes="(min-width: 640px) 180px, 100vw"
+                  className="object-cover transition duration-500 group-hover:scale-[1.03]"
+                  unoptimized
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-[var(--grey-olive)]">
+                  <NotePencil size={34} weight="light" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 px-1 py-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--grey-olive)]">
+                {getArticleCategoryLabel(article.categoria)}
+              </p>
+              <h3 className="mt-2 line-clamp-2 text-xl font-light leading-snug text-slate-950 transition group-hover:text-[var(--grey-olive)]">
+                {article.titulo}
+              </h3>
+              <p className="mt-2 line-clamp-2 text-sm font-light leading-6 text-slate-500">
+                {article.resumo || article.subtitulo || "Leia o artigo completo."}
+              </p>
+            </div>
+            <span className="inline-flex h-11 items-center justify-center rounded-xl border border-[color:rgba(145,139,118,0.45)] px-4 text-sm font-bold text-[var(--grey-olive)] transition group-hover:bg-stone-50">
+              Ler artigo
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -227,7 +310,8 @@ async function getPublicArticleData(nickname: string, slug: string) {
   if (!profile) return null;
   const article = await getArticle(profile.id, slug);
   if (!article) return null;
-  return { profile, article };
+  const relatedArticles = await getRelatedArticles(profile.id, article.id, article.categoria);
+  return { profile, article, relatedArticles };
 }
 
 async function getProfile(nickname: string) {
@@ -244,7 +328,7 @@ async function getProfile(nickname: string) {
 }
 
 async function getArticle(ownerId: string, slug: string) {
-  const supabase = createSupabaseServerClient() as unknown as AnyDb;
+  const supabase = createSupabaseServerClient() as unknown as SupabaseUntypedClient;
   const result = await supabase
     .from("artigos")
     .select(ARTICLE_SELECT)
@@ -257,6 +341,44 @@ async function getArticle(ownerId: string, slug: string) {
   if (!result.data) return null;
   const article = result.data as ArticleRow;
   return { ...article, conteudo_blocos: normalizeArticleBlocks(article.conteudo_blocos) };
+}
+
+async function getRelatedArticles(ownerId: string, currentArticleId: string, category: string) {
+  const supabase = createSupabaseServerClient() as unknown as SupabaseUntypedClient;
+  const sameCategoryResult = await supabase
+    .from("artigos")
+    .select(RELATED_ARTICLE_SELECT)
+    .eq("owner_id", ownerId)
+    .eq("status", "PUBLICADO")
+    .eq("indexar", true)
+    .neq("id", currentArticleId)
+    .eq("categoria", category)
+    .order("created_at", { ascending: false })
+    .limit(4);
+
+  if (sameCategoryResult.error) {
+    throw new Error(`Erro ao carregar artigos relacionados: ${sameCategoryResult.error.message}`);
+  }
+
+  const sameCategory = (sameCategoryResult.data ?? []) as RelatedArticleRow[];
+  if (sameCategory.length > 0) return sameCategory;
+
+  const otherArticlesResult = await supabase
+    .from("artigos")
+    .select(RELATED_ARTICLE_SELECT)
+    .eq("owner_id", ownerId)
+    .eq("status", "PUBLICADO")
+    .eq("indexar", true)
+    .neq("id", currentArticleId)
+    .neq("categoria", category)
+    .order("created_at", { ascending: false })
+    .limit(4);
+
+  if (otherArticlesResult.error) {
+    throw new Error(`Erro ao carregar outros artigos relacionados: ${otherArticlesResult.error.message}`);
+  }
+
+  return (otherArticlesResult.data ?? []) as RelatedArticleRow[];
 }
 
 function getProfileName(profile: ProfileRow) {

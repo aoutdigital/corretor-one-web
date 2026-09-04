@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowSquareOut, NotePencil, Plus, Trash } from "@phosphor-icons/react";
+import { ArrowSquareOut, DotsSixVertical, ImageSquare, NotePencil, Plus, Trash } from "@phosphor-icons/react";
 
 import { AppShell } from "@/app/_components/app-shell";
 import { ARTIGO_CATEGORIAS, type ArtigosOrdenacao } from "@/lib/artigos/content";
@@ -14,6 +14,7 @@ type ArtigoRow = {
   categoria: string;
   titulo: string;
   slug: string;
+  capa_url: string | null;
   resumo: string | null;
   leitura_minutos: number;
   ordem_manual: number;
@@ -36,19 +37,38 @@ export default function ArtigosPage() {
   const [ordenacao, setOrdenacao] = useState<ArtigosOrdenacao>("PUBLICACAO_DESC");
   const [loading, setLoading] = useState(true);
   const [savingConfig, setSavingConfig] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void load();
+    let active = true;
+
+    async function loadInitial() {
+      const [artigosResult, profileResult] = await fetchArtigosPageData();
+      if (!active) return;
+
+      if (artigosResult.ok) {
+        setItems(artigosResult.data.items);
+        setOrdenacao(artigosResult.data.config.ordenacao_publica);
+      } else {
+        setError(artigosResult.error);
+      }
+      if (profileResult.ok) setNickname(profileResult.data.nickname ?? null);
+      setLoading(false);
+    }
+
+    void loadInitial();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   async function load() {
     setLoading(true);
-    const [artigosResult, profileResult] = await Promise.all([
-      apiFetchWithAuth<ArtigosResponse>("/api/artigos"),
-      apiFetchWithAuth<ProfileData>("/api/profile"),
-    ]);
+    const [artigosResult, profileResult] = await fetchArtigosPageData();
 
     if (artigosResult.ok) {
       setItems(artigosResult.data.items);
@@ -93,6 +113,37 @@ export default function ArtigosPage() {
     setCreating(false);
   }
 
+  async function persistManualOrder(orderedItems: ArtigoRow[]) {
+    setSavingOrder(true);
+    const result = await apiFetchWithAuth<{ ordered_ids: string[] }>("/api/artigos", {
+      method: "PATCH",
+      body: JSON.stringify({ action: "REORDER", ordered_ids: orderedItems.map((item) => item.id) }),
+    });
+    if (!result.ok) {
+      setError(result.error);
+      void load();
+    }
+    setSavingOrder(false);
+  }
+
+  function handleDrop(targetId: string) {
+    if (!draggedId || draggedId === targetId || ordenacao !== "MANUAL") return;
+
+    const orderedItems = orderItemsForDisplay(items, ordenacao);
+    const fromIndex = orderedItems.findIndex((item) => item.id === draggedId);
+    const toIndex = orderedItems.findIndex((item) => item.id === targetId);
+    if (fromIndex < 0 || toIndex < 0) return;
+
+    const nextItems = [...orderedItems];
+    const [movedItem] = nextItems.splice(fromIndex, 1);
+    nextItems.splice(toIndex, 0, movedItem);
+
+    const reindexedItems = nextItems.map((item, index) => ({ ...item, ordem_manual: index + 1 }));
+    setItems(reindexedItems);
+    setDraggedId(null);
+    void persistManualOrder(reindexedItems);
+  }
+
   async function handleDelete(item: ArtigoRow) {
     const confirmed = window.confirm(`Remover o artigo "${item.titulo}"?`);
     if (!confirmed) return;
@@ -109,6 +160,8 @@ export default function ArtigosPage() {
     () => Object.fromEntries(ARTIGO_CATEGORIAS.map((category) => [category.value, category.label])),
     [],
   );
+  const orderedItems = useMemo(() => orderItemsForDisplay(items, ordenacao), [items, ordenacao]);
+  const isManualOrder = ordenacao === "MANUAL";
 
   return (
     <AppShell
@@ -149,6 +202,9 @@ export default function ArtigosPage() {
                 <option value="MANUAL">Ordem manual</option>
               </select>
               {savingConfig ? <span className="text-xs text-slate-400">Salvando preferência...</span> : null}
+              {isManualOrder ? (
+                <span className="text-xs text-slate-400">Arraste os cards abaixo para ajustar a ordem pública.</span>
+              ) : null}
             </label>
           </div>
         </section>
@@ -165,23 +221,74 @@ export default function ArtigosPage() {
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
-              {items.map((item) => (
-                <article key={item.id} className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center">
+            <div className="space-y-3 p-4">
+              <div className="flex items-center justify-between gap-3 px-1 text-xs font-medium text-slate-400">
+                <span>{orderedItems.length} artigo(s)</span>
+                {savingOrder ? <span>Salvando ordem...</span> : null}
+              </div>
+              {orderedItems.map((item) => (
+                <article
+                  key={item.id}
+                  draggable={isManualOrder}
+                  onDragStart={(event) => {
+                    if (!isManualOrder) return;
+                    event.dataTransfer.effectAllowed = "move";
+                    setDraggedId(item.id);
+                  }}
+                  onDragEnd={() => setDraggedId(null)}
+                  onDragOver={(event) => {
+                    if (!isManualOrder) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    handleDrop(item.id);
+                  }}
+                  className={`grid gap-4 rounded-2xl border bg-white p-3 shadow-sm transition ${
+                    isManualOrder ? "md:grid-cols-[auto_168px_minmax(0,1fr)_auto]" : "md:grid-cols-[168px_minmax(0,1fr)_auto]"
+                  } md:items-center ${
+                    draggedId === item.id
+                      ? "cursor-grabbing border-[var(--grey-olive)] opacity-60"
+                      : `${isManualOrder ? "cursor-move" : ""} border-slate-200 hover:border-slate-300`
+                  }`}
+                >
+                  {isManualOrder ? (
+                    <button
+                      type="button"
+                      title="Mover artigo"
+                      className="hidden h-11 w-11 cursor-move items-center justify-center rounded-xl border border-slate-200 text-slate-400 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-600 active:cursor-grabbing md:inline-flex"
+                      aria-label={`Arrastar ${item.titulo}`}
+                    >
+                      <DotsSixVertical size={22} weight="bold" />
+                    </button>
+                  ) : null}
+
+                  <div
+                    className="flex aspect-[4/3] min-h-[132px] items-center justify-center overflow-hidden rounded-xl bg-slate-100 bg-cover bg-center text-slate-300 md:h-[112px] md:min-h-0"
+                    style={item.capa_url ? { backgroundImage: `url(${item.capa_url})` } : undefined}
+                    aria-label={item.capa_url ? `Capa de ${item.titulo}` : undefined}
+                    role={item.capa_url ? "img" : undefined}
+                  >
+                    {!item.capa_url ? <ImageSquare size={34} /> : null}
+                  </div>
+
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--grey-olive)]">
                         {categoryMap[item.categoria] ?? item.categoria}
                       </span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
-                        {item.status}
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] ${statusBadgeClass(item.status)}`}>
+                        {statusLabel(item.status)}
                       </span>
                       <span className="text-xs text-slate-400">{item.leitura_minutos} min de leitura</span>
+                      {isManualOrder ? <span className="text-xs text-slate-400">Ordem {item.ordem_manual || "-"}</span> : null}
                     </div>
-                    <h3 className="mt-3 truncate text-xl font-light text-slate-950">{item.titulo}</h3>
+                    <h3 className="mt-3 line-clamp-2 text-xl font-light text-slate-950">{item.titulo || "Artigo sem título"}</h3>
                     {item.resumo ? <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{item.resumo}</p> : null}
                   </div>
-                  <div className="flex flex-wrap gap-2">
+
+                  <div className="flex flex-wrap gap-2 md:justify-end">
                     {nickname && item.status === "PUBLICADO" ? (
                       <Link
                         href={`/${nickname}/artigos/${item.slug}`}
@@ -216,4 +323,39 @@ export default function ArtigosPage() {
       </div>
     </AppShell>
   );
+}
+
+function orderItemsForDisplay(items: ArtigoRow[], ordenacao: ArtigosOrdenacao) {
+  return [...items].sort((a, b) => {
+    if (ordenacao === "MANUAL") {
+      return (a.ordem_manual ?? 0) - (b.ordem_manual ?? 0) || a.titulo.localeCompare(b.titulo);
+    }
+    if (ordenacao === "PUBLICACAO_DESC") {
+      return dateValue(b.publicado_em ?? b.updated_at) - dateValue(a.publicado_em ?? a.updated_at);
+    }
+    return dateValue(b.updated_at) - dateValue(a.updated_at);
+  });
+}
+
+function fetchArtigosPageData() {
+  return Promise.all([
+    apiFetchWithAuth<ArtigosResponse>("/api/artigos"),
+    apiFetchWithAuth<ProfileData>("/api/profile"),
+  ]);
+}
+
+function dateValue(value: string | null) {
+  return value ? new Date(value).getTime() : 0;
+}
+
+function statusLabel(status: ArtigoRow["status"]) {
+  if (status === "PUBLICADO") return "Publicado";
+  if (status === "ARQUIVADO") return "Arquivado";
+  return "Rascunho";
+}
+
+function statusBadgeClass(status: ArtigoRow["status"]) {
+  if (status === "PUBLICADO") return "border border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "ARQUIVADO") return "border border-amber-200 bg-amber-50 text-amber-700";
+  return "border border-slate-200 bg-slate-100 text-slate-500";
 }

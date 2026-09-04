@@ -6,6 +6,8 @@ type ResultMutate = Promise<{ data?: unknown; error: DbErrorLike | null }>;
 
 export type DynamicSelect = ResultMany & {
   eq: (column: string, value: unknown) => DynamicSelect;
+  in: (column: string, values: unknown[]) => DynamicSelect;
+  like: (column: string, pattern: string) => DynamicSelect;
   or: (filters: string) => DynamicSelect;
   order: (column: string, options: { ascending: boolean }) => DynamicSelect;
   limit: (count: number) => DynamicSelect;
@@ -24,6 +26,10 @@ export type DynamicMutate = ResultMutate & {
 export type DynamicTable = {
   select: (columns: string) => DynamicSelect;
   insert: (value: unknown) => { select: (columns: string) => { single: () => ResultOne } };
+  upsert: (
+    value: unknown,
+    options?: { onConflict?: string },
+  ) => { select: (columns: string) => { single: () => ResultOne; maybeSingle: () => ResultOne } };
   update: (value: unknown) => DynamicMutate;
   delete: () => DynamicMutate;
 };

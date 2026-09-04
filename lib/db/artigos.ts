@@ -15,11 +15,8 @@ import {
   type ArtigoStatus,
 } from "@/lib/artigos/content";
 import { authenticateByAccessToken } from "@/lib/db/_auth";
+import type { DynamicClient } from "@/lib/db/_dynamic-client";
 import { mapDbError } from "@/lib/db/_errors";
-
-type AnyDb = {
-  from: (table: string) => any;
-};
 
 export type ArtigoRow = {
   id: string;
@@ -116,9 +113,9 @@ export async function listArtigos(accessToken: string): Promise<ApiResult<{ item
   const auth = await authenticateByAccessToken(accessToken);
   if (!auth.ok) return auth;
 
-  const db = auth.data.client as unknown as AnyDb;
+  const db = auth.data.client as unknown as DynamicClient;
   const [itemsResult, configResult] = await Promise.all([
-    db.from("artigos").select(ARTICLE_SELECT).order("updated_at", { ascending: false }),
+    db.from("artigos").select(ARTICLE_SELECT).eq("owner_id", auth.data.user.id).order("updated_at", { ascending: false }),
     db.from("profile_artigos_config").select("ordenacao_publica").eq("owner_id", auth.data.user.id).maybeSingle(),
   ]);
 
@@ -138,7 +135,7 @@ export async function createArtigo(accessToken: string, input: ArtigoInput): Pro
   const normalized = normalizeArticleInput(input, { create: true });
   if (!normalized.ok) return normalized;
 
-  const db = auth.data.client as unknown as AnyDb;
+  const db = auth.data.client as unknown as DynamicClient;
   const uniqueSlug = await ensureUniqueArticleSlug(db, auth.data.user.id, String(normalized.data.slug));
   if (!uniqueSlug.ok) return uniqueSlug;
 
@@ -160,7 +157,7 @@ export async function getArtigo(accessToken: string, id: string): Promise<ApiRes
   const auth = await authenticateByAccessToken(accessToken);
   if (!auth.ok) return auth;
 
-  const db = auth.data.client as unknown as AnyDb;
+  const db = auth.data.client as unknown as DynamicClient;
   const result = await db
     .from("artigos")
     .select(ARTICLE_SELECT)
@@ -183,7 +180,7 @@ export async function updateArtigo(accessToken: string, id: string, input: Artig
   const normalized = normalizeArticleInput(input, { create: false, current: currentResult.data });
   if (!normalized.ok) return normalized;
 
-  const db = auth.data.client as unknown as AnyDb;
+  const db = auth.data.client as unknown as DynamicClient;
   const uniqueSlug = await ensureUniqueArticleSlug(db, auth.data.user.id, String(normalized.data.slug), id);
   if (!uniqueSlug.ok) return uniqueSlug;
 
@@ -203,7 +200,7 @@ export async function deleteArtigo(accessToken: string, id: string): Promise<Api
   const auth = await authenticateByAccessToken(accessToken);
   if (!auth.ok) return auth;
 
-  const db = auth.data.client as unknown as AnyDb;
+  const db = auth.data.client as unknown as DynamicClient;
   const result = await db.from("artigos").delete().eq("id", id).eq("owner_id", auth.data.user.id);
   if (result.error) return mapDbError(result.error);
   return ok({ id });
@@ -221,7 +218,7 @@ export async function updateArtigosConfig(
       ? (input.ordenacao_publica as ArtigosOrdenacao)
       : "PUBLICACAO_DESC";
 
-  const db = auth.data.client as unknown as AnyDb;
+  const db = auth.data.client as unknown as DynamicClient;
   const result = await db
     .from("profile_artigos_config")
     .upsert({ owner_id: auth.data.user.id, ordenacao_publica: value }, { onConflict: "owner_id" })
@@ -230,6 +227,37 @@ export async function updateArtigosConfig(
 
   if (result.error) return mapDbError(result.error);
   return ok({ ordenacao_publica: result.data.ordenacao_publica as ArtigosOrdenacao });
+}
+
+export async function updateArtigosManualOrder(
+  accessToken: string,
+  input: { ordered_ids?: unknown },
+): Promise<ApiResult<{ ordered_ids: string[] }>> {
+  const auth = await authenticateByAccessToken(accessToken);
+  if (!auth.ok) return auth;
+
+  const orderedIds = Array.isArray(input.ordered_ids)
+    ? Array.from(new Set(input.ordered_ids.filter((id): id is string => typeof id === "string" && id.trim().length > 0)))
+    : [];
+
+  if (orderedIds.length === 0) return fail("VALIDATION_ERROR", "Informe a ordem dos artigos.");
+
+  const db = auth.data.client as unknown as DynamicClient;
+  const ownershipResult = await db.from("artigos").select("id").eq("owner_id", auth.data.user.id).in("id", orderedIds);
+  if (ownershipResult.error) return mapDbError(ownershipResult.error);
+
+  const ownedIds = new Set((ownershipResult.data ?? []).map((row: { id: string }) => row.id));
+  if (ownedIds.size !== orderedIds.length) return fail("VALIDATION_ERROR", "A ordem contém artigos inválidos.");
+
+  const updateResults = await Promise.all(
+    orderedIds.map((id, index) =>
+      db.from("artigos").update({ ordem_manual: index + 1 }).eq("id", id).eq("owner_id", auth.data.user.id),
+    ),
+  );
+  const failedResult = updateResults.find((result) => result.error);
+  if (failedResult?.error) return mapDbError(failedResult.error);
+
+  return ok({ ordered_ids: orderedIds });
 }
 
 export async function suggestArtigoCategoria(
@@ -242,7 +270,7 @@ export async function suggestArtigoCategoria(
   const nome = sanitizePlainText(input.nome, 60).trim();
   if (nome.length < 3) return fail("VALIDATION_ERROR", "Informe uma sugestão com pelo menos 3 caracteres.");
 
-  const db = auth.data.client as unknown as AnyDb;
+  const db = auth.data.client as unknown as DynamicClient;
   const result = await db
     .from("artigo_categoria_sugestoes")
     .insert({
@@ -357,7 +385,7 @@ function normalizeTags(value: unknown) {
 }
 
 async function ensureUniqueArticleSlug(
-  db: AnyDb,
+  db: DynamicClient,
   ownerId: string,
   baseSlug: string,
   ignoreId?: string,
