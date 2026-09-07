@@ -25,11 +25,14 @@ type ArtigoRow = {
 type ArtigosResponse = {
   items: ArtigoRow[];
   config: { ordenacao_publica: ArtigosOrdenacao };
+  pagination: { page: number; page_size: number; total: number; total_pages: number };
 };
 
 type ProfileData = {
   nickname?: string | null;
 };
+
+const PAGE_SIZE_OPTIONS = [20, 30, 40, 50, 100] as const;
 
 export default function ArtigosPage() {
   const [items, setItems] = useState<ArtigoRow[]>([]);
@@ -41,17 +44,29 @@ export default function ArtigosPage() {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(20);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  function applyPagination(data: ArtigosResponse) {
+    setCurrentPage(data.pagination.page);
+    setPageSize(data.pagination.page_size as (typeof PAGE_SIZE_OPTIONS)[number]);
+    setTotalItems(data.pagination.total);
+    setTotalPages(data.pagination.total_pages);
+  }
 
   useEffect(() => {
     let active = true;
 
     async function loadInitial() {
-      const [artigosResult, profileResult] = await fetchArtigosPageData();
+      const [artigosResult, profileResult] = await fetchArtigosPageData(1, 20);
       if (!active) return;
 
       if (artigosResult.ok) {
         setItems(artigosResult.data.items);
         setOrdenacao(artigosResult.data.config.ordenacao_publica);
+        applyPagination(artigosResult.data);
       } else {
         setError(artigosResult.error);
       }
@@ -66,13 +81,14 @@ export default function ArtigosPage() {
     };
   }, []);
 
-  async function load() {
+  async function load(page = currentPage, size = pageSize) {
     setLoading(true);
-    const [artigosResult, profileResult] = await fetchArtigosPageData();
+    const [artigosResult, profileResult] = await fetchArtigosPageData(page, size);
 
     if (artigosResult.ok) {
       setItems(artigosResult.data.items);
       setOrdenacao(artigosResult.data.config.ordenacao_publica);
+      applyPagination(artigosResult.data);
     } else {
       setError(artigosResult.error);
     }
@@ -88,6 +104,7 @@ export default function ArtigosPage() {
       body: JSON.stringify({ ordenacao_publica: value }),
     });
     if (!result.ok) setError(result.error);
+    else await load(1, pageSize);
     setSavingConfig(false);
   }
 
@@ -117,11 +134,15 @@ export default function ArtigosPage() {
     setSavingOrder(true);
     const result = await apiFetchWithAuth<{ ordered_ids: string[] }>("/api/artigos", {
       method: "PATCH",
-      body: JSON.stringify({ action: "REORDER", ordered_ids: orderedItems.map((item) => item.id) }),
+      body: JSON.stringify({
+        action: "REORDER",
+        ordered_ids: orderedItems.map((item) => item.id),
+        start_position: (currentPage - 1) * pageSize + 1,
+      }),
     });
     if (!result.ok) {
       setError(result.error);
-      void load();
+      void load(currentPage, pageSize);
     }
     setSavingOrder(false);
   }
@@ -138,7 +159,8 @@ export default function ArtigosPage() {
     const [movedItem] = nextItems.splice(fromIndex, 1);
     nextItems.splice(toIndex, 0, movedItem);
 
-    const reindexedItems = nextItems.map((item, index) => ({ ...item, ordem_manual: index + 1 }));
+    const pageStartPosition = (currentPage - 1) * pageSize + 1;
+    const reindexedItems = nextItems.map((item, index) => ({ ...item, ordem_manual: pageStartPosition + index }));
     setItems(reindexedItems);
     setDraggedId(null);
     void persistManualOrder(reindexedItems);
@@ -153,7 +175,8 @@ export default function ArtigosPage() {
       setError(result.error);
       return;
     }
-    setItems((current) => current.filter((row) => row.id !== item.id));
+    const targetPage = items.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage;
+    await load(targetPage, pageSize);
   }
 
   const categoryMap = useMemo(
@@ -223,7 +246,7 @@ export default function ArtigosPage() {
           ) : (
             <div className="space-y-3 p-4">
               <div className="flex items-center justify-between gap-3 px-1 text-xs font-medium text-slate-400">
-                <span>{orderedItems.length} artigo(s)</span>
+                <span>{totalItems} artigo(s)</span>
                 {savingOrder ? <span>Salvando ordem...</span> : null}
               </div>
               {orderedItems.map((item) => (
@@ -317,6 +340,30 @@ export default function ArtigosPage() {
                   </div>
                 </article>
               ))}
+              <div className="flex flex-col gap-3 border-t border-slate-100 px-1 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex items-center gap-2 text-sm text-slate-500">
+                  Exibir
+                  <select
+                    value={pageSize}
+                    onChange={(event) => {
+                      const nextSize = Number(event.target.value) as (typeof PAGE_SIZE_OPTIONS)[number];
+                      setPageSize(nextSize);
+                      void load(1, nextSize);
+                    }}
+                    className="min-w-20 rounded-lg border border-slate-200 bg-white py-1.5 pl-3 pr-8 text-slate-700 outline-none focus:border-slate-400"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                  por página
+                </label>
+                <nav aria-label="Paginação de artigos" className="flex items-center gap-2">
+                  <button type="button" disabled={loading || currentPage <= 1} onClick={() => void load(currentPage - 1, pageSize)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">Anterior</button>
+                  <span className="min-w-28 text-center text-sm text-slate-500">Página {currentPage} de {totalPages}</span>
+                  <button type="button" disabled={loading || currentPage >= totalPages} onClick={() => void load(currentPage + 1, pageSize)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">Próxima</button>
+                </nav>
+              </div>
             </div>
           )}
         </section>
@@ -337,9 +384,9 @@ function orderItemsForDisplay(items: ArtigoRow[], ordenacao: ArtigosOrdenacao) {
   });
 }
 
-function fetchArtigosPageData() {
+function fetchArtigosPageData(page: number, pageSize: number) {
   return Promise.all([
-    apiFetchWithAuth<ArtigosResponse>("/api/artigos"),
+    apiFetchWithAuth<ArtigosResponse>(`/api/artigos?page=${page}&page_size=${pageSize}`),
     apiFetchWithAuth<ProfileData>("/api/profile"),
   ]);
 }

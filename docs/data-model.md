@@ -1232,7 +1232,7 @@ Observação de produto: categoria/modelo representam a intenção comercial da 
 Publicação:
 - status (text, enum ARTIGO_STATUS, default RASCUNHO)
 - categoria (text, enum ARTIGO_CATEGORIA)
-- ordem_manual (int, default 0)
+- ordem_manual (int, default 1, maior que 0)
 - publicado_em (timestamptz, nullable)
 - arquivado_em (timestamptz, nullable)
 
@@ -1292,6 +1292,91 @@ Regras:
 Regras:
 - CRUD no app apenas pelo dono do perfil.
 - Leitura pública permitida para aplicar a ordenação da listagem pública de artigos do corretor.
+- A listagem pública usa páginas de 30 artigos e preserva `ordenacao_publica`; a listagem autenticada usa paginação com 20 itens por padrão.
+
+---
+
+### landing_pages
+- id (uuid, PK)
+- owner_id (uuid, FK profiles.id)
+- status (text, enum LANDING_PAGE_STATUS, default RASCUNHO)
+- tipo (text, enum LANDING_PAGE_TIPO)
+- nome_interno (text)
+- titulo (text)
+- subtitulo (text, nullable)
+- slug (text)
+- conteudo_blocos (jsonb versionado)
+- tema_config (jsonb)
+- imovel_id (uuid, FK imoveis.id, nullable)
+- empreendimento_id (uuid, FK empreendimentos.id, nullable)
+- meta_title (text, nullable, max 70)
+- meta_description (text, nullable, max 180)
+- og_image_url (text, nullable)
+- indexar (boolean, default false)
+- publicado_em (timestamptz, nullable)
+- encerramento_em (timestamptz, nullable)
+- created_at (timestamptz)
+- updated_at (timestamptz)
+
+Índices: (owner_id, status, updated_at desc), (owner_id, tipo), (owner_id, slug unique)
+
+Regras:
+- CRUD autenticado apenas pelo dono; leitura pública somente quando `status = PUBLICADO` e o corretor está ativo.
+- O slug ocupa o namespace direto `/{nickname}/{slug}` e deve existir em `profile_public_paths`.
+- Slugs de rotas do perfil são reservados e não podem ser usados.
+- Publicação exige nome/título real, slug válido, ao menos um bloco `hero` e um bloco `lead_form`.
+- Conteúdo usa blocos controlados e sanitizados; HTML, CSS e JavaScript arbitrários não são aceitos.
+- `indexar` inicia desativado; somente páginas publicadas e indexáveis entram no sitemap.
+- Blocos V1: hero, split_media, paragraph, heading, quote, list, image, gallery, youtube, button, benefits, lead_form, property_feature, property_carousel, development_feature, development_carousel, social_proof, faq, location, countdown, broker_profile e cta.
+- O bloco `hero` (Seção Full) aceita somente imagem de fundo opcional, mantém o conteúdo centralizado e usa fundo branco quando não houver imagem; não oferece gradiente ou cor sólida.
+- O bloco `split_media` usa o editor rich text do módulo Artigos e exige escolha explícita entre imagem enviada ou vídeo por URL válida do YouTube.
+
+---
+
+### profile_public_paths
+- id (uuid, PK)
+- owner_id (uuid, FK profiles.id)
+- slug (text)
+- resource_type (text, enum PUBLIC_PATH_RESOURCE)
+- resource_id (uuid)
+- created_at (timestamptz)
+- updated_at (timestamptz)
+
+Constraints: unique(owner_id, slug), unique(resource_type, resource_id)
+
+Regras:
+- Registro técnico sincronizado por trigger para empreendimentos e páginas de captura.
+- Resolve colisões entre recursos que compartilham `/{nickname}/{slug}`.
+
+---
+
+### landing_page_events
+- id (uuid, PK)
+- landing_page_id (uuid, FK landing_pages.id)
+- owner_id (uuid, FK profiles.id)
+- event_type (text, enum LANDING_PAGE_EVENT_TYPE)
+- visitor_id (text, nullable)
+- page_url (text, nullable)
+- referrer (text, nullable)
+- utm (jsonb, nullable)
+- metadata (jsonb, default `{}`)
+- created_at (timestamptz)
+
+Índices: (landing_page_id, event_type, created_at desc), (owner_id, created_at desc)
+
+Regras: gravação pública somente por endpoint controlado; leitura apenas pelo dono.
+
+---
+
+### lead_empreendimentos
+- id (uuid, PK)
+- owner_id (uuid, FK profiles.id)
+- lead_id (uuid, FK leads.id)
+- empreendimento_id (uuid, FK empreendimentos.id)
+- created_at (timestamptz)
+- updated_at (timestamptz)
+
+Constraints: unique(lead_id, empreendimento_id)
 
 ---
 

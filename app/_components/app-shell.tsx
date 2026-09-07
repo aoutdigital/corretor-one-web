@@ -55,7 +55,7 @@ const MAIN_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/empreendimentos", label: "Empreendimentos", icon: Buildings },
   { href: "/imoveis", label: "Imóveis", icon: House },
-  { href: "/captura", label: "Páginas de Captura", icon: FunnelSimple, disabled: true },
+  { href: "/paginas-captura", label: "Páginas de Captura", icon: FunnelSimple },
   { href: "/artigos", label: "Artigos", icon: NotePencil },
 ];
 

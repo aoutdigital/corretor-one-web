@@ -12,6 +12,7 @@ import type { Database } from "@/lib/supabase/database.types";
 
 type PageProps = {
   params: Promise<{ nickname: string }>;
+  searchParams: Promise<{ pagina?: string | string[] }>;
 };
 
 type ProfileRow = Pick<
@@ -54,6 +55,7 @@ type ArticlesConfigRow = {
 type DynamicQueryResult<T> = {
   data: T[] | null;
   error: { message: string } | null;
+  count?: number | null;
 };
 
 type DynamicSingleResult<T> = {
@@ -62,9 +64,10 @@ type DynamicSingleResult<T> = {
 };
 
 type DynamicQuery<T> = PromiseLike<DynamicQueryResult<T>> & {
-  select: (columns: string) => DynamicQuery<T>;
+  select: (columns: string, options?: { count?: "exact" }) => DynamicQuery<T>;
   eq: (column: string, value: unknown) => DynamicQuery<T>;
   order: (column: string, options: { ascending: boolean }) => DynamicQuery<T>;
+  range: (from: number, to: number) => DynamicQuery<T>;
   maybeSingle: () => PromiseLike<DynamicSingleResult<T>>;
 };
 
@@ -76,27 +79,33 @@ const PROFILE_SELECT =
   "id,nickname,primeiro_nome,sobrenome,email,telefone,whatsapp,avatar_url,imagem_capa_url,logo_nickname_url,logo_nickname_white_url,creci_uf,creci_numero,creci_sufixo,status";
 
 const ARTICLE_SELECT = "id,categoria,titulo,subtitulo,resumo,slug,capa_url,leitura_minutos,publicado_em,updated_at,ordem_manual";
+const PUBLIC_ARTICLES_PAGE_SIZE = 30;
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
   const { nickname } = await params;
+  const page = parsePage((await searchParams).pagina);
   const profile = await getProfile(nickname);
   if (!profile) return { title: "Artigos | Corretor.one" };
   const brokerName = getProfileName(profile);
   return {
-    title: `Artigos | ${brokerName}`,
+    title: `${page > 1 ? `Artigos — Página ${page}` : "Artigos"} | ${brokerName}`,
     description: `Conteúdos publicados por ${brokerName} sobre imóveis, bairros, mercado e oportunidades.`,
+    alternates: { canonical: `/${profile.nickname ?? nickname}/artigos${page > 1 ? `?pagina=${page}` : ""}` },
   };
 }
 
-export default async function PublicBrokerArticlesPage({ params }: PageProps) {
+export default async function PublicBrokerArticlesPage({ params, searchParams }: PageProps) {
   const { nickname } = await params;
+  const page = parsePage((await searchParams).pagina);
   const profile = await getProfile(nickname);
   if (!profile) notFound();
 
   const config = await getArticlesConfig(profile.id);
-  const articles = await getPublishedArticles(profile.id, config.ordenacao_publica);
+  const articlesResult = await getPublishedArticles(profile.id, config.ordenacao_publica, page);
+  if (articlesResult.total > 0 && page > articlesResult.totalPages) notFound();
+  const articles = articlesResult.items;
   const brokerName = getProfileName(profile);
   const logoUrl = getPublicImageUrl(profile.logo_nickname_url || profile.logo_nickname_white_url);
   const avatarUrl = getPublicImageUrl(profile.avatar_url);
@@ -168,6 +177,21 @@ export default async function PublicBrokerArticlesPage({ params }: PageProps) {
               <p className="mt-4 text-2xl font-light text-slate-950">Nenhum artigo publicado no momento.</p>
             </div>
           )}
+          {articlesResult.totalPages > 1 ? (
+            <nav aria-label="Paginação dos artigos" className="mt-10 flex items-center justify-center gap-3">
+              {page > 1 ? (
+                <Link href={articlesPageHref(profile.nickname ?? nickname, page - 1)} className="rounded-lg border border-stone-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:border-[var(--grey-olive)] hover:text-slate-950">Anterior</Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-lg border border-stone-100 px-4 py-2.5 text-sm text-slate-300">Anterior</span>
+              )}
+              <span className="min-w-32 text-center text-sm text-slate-500">Página {page} de {articlesResult.totalPages}</span>
+              {page < articlesResult.totalPages ? (
+                <Link href={articlesPageHref(profile.nickname ?? nickname, page + 1)} className="rounded-lg border border-stone-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:border-[var(--grey-olive)] hover:text-slate-950">Próxima</Link>
+              ) : (
+                <span className="cursor-not-allowed rounded-lg border border-stone-100 px-4 py-2.5 text-sm text-slate-300">Próxima</span>
+              )}
+            </nav>
+          ) : null}
         </section>
       </main>
 
@@ -206,11 +230,11 @@ async function getArticlesConfig(ownerId: string): Promise<{ ordenacao_publica: 
   return { ordenacao_publica: (result.data?.ordenacao_publica ?? "PUBLICACAO_DESC") as ArtigosOrdenacao };
 }
 
-async function getPublishedArticles(ownerId: string, order: ArtigosOrdenacao) {
+async function getPublishedArticles(ownerId: string, order: ArtigosOrdenacao, page: number) {
   const supabase = createSupabaseServerClient() as unknown as AnyDb;
   let query = supabase
     .from<ArtigoPublicRow>("artigos")
-    .select(ARTICLE_SELECT)
+    .select(ARTICLE_SELECT, { count: "exact" })
     .eq("owner_id", ownerId)
     .eq("status", "PUBLICADO")
     .eq("indexar", true);
@@ -219,9 +243,26 @@ async function getPublishedArticles(ownerId: string, order: ArtigosOrdenacao) {
   else if (order === "ATUALIZACAO_DESC") query = query.order("updated_at", { ascending: false });
   else query = query.order("publicado_em", { ascending: false });
 
-  const result = await query;
+  const from = (page - 1) * PUBLIC_ARTICLES_PAGE_SIZE;
+  const result = await query.range(from, from + PUBLIC_ARTICLES_PAGE_SIZE - 1);
   if (result.error) throw new Error(`Erro ao carregar artigos publicos: ${result.error.message}`);
-  return sortPublishedArticles((result.data ?? []) as ArtigoPublicRow[], order);
+  const total = result.count ?? 0;
+  return {
+    items: sortPublishedArticles((result.data ?? []) as ArtigoPublicRow[], order),
+    total,
+    totalPages: Math.max(1, Math.ceil(total / PUBLIC_ARTICLES_PAGE_SIZE)),
+  };
+}
+
+function parsePage(value: string | string[] | undefined) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw || !/^\d+$/.test(raw)) return 1;
+  const parsed = Number(raw);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function articlesPageHref(nickname: string, page: number) {
+  return `/${nickname}/artigos${page > 1 ? `?pagina=${page}` : ""}`;
 }
 
 function sortPublishedArticles(articles: ArtigoPublicRow[], order: ArtigosOrdenacao) {

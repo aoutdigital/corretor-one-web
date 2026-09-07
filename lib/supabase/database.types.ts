@@ -989,6 +989,35 @@ export type Database = {
           },
         ]
       }
+      landing_page_events: {
+        Row: { created_at: string; event_type: Database["public"]["Enums"]["landing_page_event_type"]; id: string; landing_page_id: string; metadata: Json; owner_id: string; page_url: string | null; referrer: string | null; utm: Json | null; visitor_id: string | null }
+        Insert: { created_at?: string; event_type: Database["public"]["Enums"]["landing_page_event_type"]; id?: string; landing_page_id: string; metadata?: Json; owner_id: string; page_url?: string | null; referrer?: string | null; utm?: Json | null; visitor_id?: string | null }
+        Update: { created_at?: string; event_type?: Database["public"]["Enums"]["landing_page_event_type"]; id?: string; landing_page_id?: string; metadata?: Json; owner_id?: string; page_url?: string | null; referrer?: string | null; utm?: Json | null; visitor_id?: string | null }
+        Relationships: [
+          { foreignKeyName: "landing_page_events_landing_page_id_fkey"; columns: ["landing_page_id"]; isOneToOne: false; referencedRelation: "landing_pages"; referencedColumns: ["id"] },
+          { foreignKeyName: "landing_page_events_owner_id_fkey"; columns: ["owner_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
+      landing_pages: {
+        Row: { conteudo_blocos: Json; created_at: string; empreendimento_id: string | null; encerramento_em: string | null; id: string; imovel_id: string | null; indexar: boolean; meta_description: string | null; meta_title: string | null; nome_interno: string; og_image_url: string | null; owner_id: string; publicado_em: string | null; slug: string; status: Database["public"]["Enums"]["landing_page_status"]; subtitulo: string | null; tema_config: Json; tipo: Database["public"]["Enums"]["landing_page_tipo"]; titulo: string; updated_at: string }
+        Insert: { conteudo_blocos?: Json; created_at?: string; empreendimento_id?: string | null; encerramento_em?: string | null; id?: string; imovel_id?: string | null; indexar?: boolean; meta_description?: string | null; meta_title?: string | null; nome_interno: string; og_image_url?: string | null; owner_id: string; publicado_em?: string | null; slug: string; status?: Database["public"]["Enums"]["landing_page_status"]; subtitulo?: string | null; tema_config?: Json; tipo?: Database["public"]["Enums"]["landing_page_tipo"]; titulo: string; updated_at?: string }
+        Update: { conteudo_blocos?: Json; created_at?: string; empreendimento_id?: string | null; encerramento_em?: string | null; id?: string; imovel_id?: string | null; indexar?: boolean; meta_description?: string | null; meta_title?: string | null; nome_interno?: string; og_image_url?: string | null; owner_id?: string; publicado_em?: string | null; slug?: string; status?: Database["public"]["Enums"]["landing_page_status"]; subtitulo?: string | null; tema_config?: Json; tipo?: Database["public"]["Enums"]["landing_page_tipo"]; titulo?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "landing_pages_empreendimento_id_fkey"; columns: ["empreendimento_id"]; isOneToOne: false; referencedRelation: "empreendimentos"; referencedColumns: ["id"] },
+          { foreignKeyName: "landing_pages_imovel_id_fkey"; columns: ["imovel_id"]; isOneToOne: false; referencedRelation: "imoveis"; referencedColumns: ["id"] },
+          { foreignKeyName: "landing_pages_owner_id_fkey"; columns: ["owner_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
+      lead_empreendimentos: {
+        Row: { created_at: string; empreendimento_id: string; id: string; lead_id: string; owner_id: string; updated_at: string }
+        Insert: { created_at?: string; empreendimento_id: string; id?: string; lead_id: string; owner_id: string; updated_at?: string }
+        Update: { created_at?: string; empreendimento_id?: string; id?: string; lead_id?: string; owner_id?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "lead_empreendimentos_empreendimento_id_fkey"; columns: ["empreendimento_id"]; isOneToOne: false; referencedRelation: "empreendimentos"; referencedColumns: ["id"] },
+          { foreignKeyName: "lead_empreendimentos_lead_id_fkey"; columns: ["lead_id"]; isOneToOne: false; referencedRelation: "leads"; referencedColumns: ["id"] },
+          { foreignKeyName: "lead_empreendimentos_owner_id_fkey"; columns: ["owner_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
       lead_imoveis: {
         Row: {
           created_at: string
@@ -1931,6 +1960,12 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_public_paths: {
+        Row: { created_at: string; id: string; owner_id: string; resource_id: string; resource_type: Database["public"]["Enums"]["public_path_resource"]; slug: string; updated_at: string }
+        Insert: { created_at?: string; id?: string; owner_id: string; resource_id: string; resource_type: Database["public"]["Enums"]["public_path_resource"]; slug: string; updated_at?: string }
+        Update: { created_at?: string; id?: string; owner_id?: string; resource_id?: string; resource_type?: Database["public"]["Enums"]["public_path_resource"]; slug?: string; updated_at?: string }
+        Relationships: [{ foreignKeyName: "profile_public_paths_owner_id_fkey"; columns: ["owner_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -2657,6 +2692,10 @@ export type Database = {
     }
     Enums: {
       alt_origem: "MANUAL" | "AYKA"
+      landing_page_event_type: "VIEW" | "FORM_START" | "FORM_SUBMIT" | "CTA_CLICK"
+      landing_page_status: "RASCUNHO" | "PUBLICADO" | "ARQUIVADO"
+      landing_page_tipo: "PRE_LANCAMENTO" | "LANCAMENTO" | "LISTA_ESPERA" | "IMOVEL_DESTAQUE" | "EMPREENDIMENTO" | "CAPTACAO_IMOVEL" | "CURADORIA" | "EVENTO" | "CAMPANHA_GENERICA"
+      public_path_resource: "EMPREENDIMENTO" | "LANDING_PAGE"
       canal_contato: "EMAIL" | "WHATSAPP"
       profile_authority_number_type:
         | "VGV_NEGOCIADO"

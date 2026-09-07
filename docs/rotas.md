@@ -57,8 +57,8 @@
 - **/[nickname]/aluguel/[slugImovel]/** — Imóvel para locação
 
 ### Landing Pages e Conteúdo
-- **/[nickname]/lp/[slug]/** — Landing page do corretor
-- **/[nickname]/artigos/** — Artigos do corretor (listagem)
+- **/[nickname]/[slug]/** — Resolvedor público compartilhado: empreendimento ou página de captura publicada
+- **/[nickname]/artigos/** — Artigos do corretor (listagem paginada em blocos de 30 via `?pagina=N`)
 - **/[nickname]/artigos/[slug]/** — Artigo do corretor (item)
 
 ---
@@ -114,6 +114,11 @@
 - **/posts** — Histórico de criativos gerados
 - **/posts/[id]** — Preview, download e compartilhamento
 
+#### Páginas de Captura
+- **/paginas-captura** — Listagem e métricas essenciais
+- **/paginas-captura/nova** — Criação a partir de um tipo/preset
+- **/paginas-captura/[id]** — Editor por blocos, SEO, publicação e preview
+
 #### Email Marketing
 - **/campanhas/email** — Lista de campanhas
 - **/campanhas/email/nova** — Criar campanha (fluxo guiado)
@@ -158,7 +163,7 @@
 - **/templates/[id]**
 
 ### Admin — Conteúdo Portal
-- **/artigos**
+- **/artigos** — Listagem paginada; 20 itens por padrão, com opções de 20, 30, 40, 50 ou 100
 - **/artigos/novo**
 - **/artigos/[id]**
 - **/lps**

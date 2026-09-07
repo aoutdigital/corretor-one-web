@@ -53,6 +53,13 @@ export type ArtigoConfig = {
   ordenacao_publica: ArtigosOrdenacao;
 };
 
+export type ArtigosPagination = {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+};
+
 export type ArtigoInput = {
   status?: unknown;
   categoria?: unknown;
@@ -109,22 +116,42 @@ const ARTICLE_SELECT = [
   "updated_at",
 ].join(",");
 
-export async function listArtigos(accessToken: string): Promise<ApiResult<{ items: ArtigoRow[]; config: ArtigoConfig }>> {
+export async function listArtigos(
+  accessToken: string,
+  pagination: { page: number; pageSize: number },
+): Promise<ApiResult<{ items: ArtigoRow[]; config: ArtigoConfig; pagination: ArtigosPagination }>> {
   const auth = await authenticateByAccessToken(accessToken);
   if (!auth.ok) return auth;
 
   const db = auth.data.client as unknown as DynamicClient;
-  const [itemsResult, configResult] = await Promise.all([
-    db.from("artigos").select(ARTICLE_SELECT).eq("owner_id", auth.data.user.id).order("updated_at", { ascending: false }),
-    db.from("profile_artigos_config").select("ordenacao_publica").eq("owner_id", auth.data.user.id).maybeSingle(),
-  ]);
-
-  if (itemsResult.error) return mapDbError(itemsResult.error);
+  const configResult = await db
+    .from("profile_artigos_config")
+    .select("ordenacao_publica")
+    .eq("owner_id", auth.data.user.id)
+    .maybeSingle();
   if (configResult.error) return mapDbError(configResult.error);
 
+  const order = (configResult.data?.ordenacao_publica ?? "PUBLICACAO_DESC") as ArtigosOrdenacao;
+  const from = (pagination.page - 1) * pagination.pageSize;
+  const to = from + pagination.pageSize - 1;
+  let query = db.from("artigos").select(ARTICLE_SELECT, { count: "exact" }).eq("owner_id", auth.data.user.id);
+  if (order === "MANUAL") query = query.order("ordem_manual", { ascending: true }).order("updated_at", { ascending: false });
+  else if (order === "PUBLICACAO_DESC") query = query.order("publicado_em", { ascending: false }).order("updated_at", { ascending: false });
+  else query = query.order("updated_at", { ascending: false });
+
+  const itemsResult = await query.range(from, to);
+  if (itemsResult.error) return mapDbError(itemsResult.error);
+
+  const total = itemsResult.count ?? 0;
   return ok({
     items: (itemsResult.data ?? []) as ArtigoRow[],
-    config: { ordenacao_publica: (configResult.data?.ordenacao_publica ?? "PUBLICACAO_DESC") as ArtigosOrdenacao },
+    config: { ordenacao_publica: order },
+    pagination: {
+      page: pagination.page,
+      page_size: pagination.pageSize,
+      total,
+      total_pages: Math.max(1, Math.ceil(total / pagination.pageSize)),
+    },
   });
 }
 
@@ -136,8 +163,13 @@ export async function createArtigo(accessToken: string, input: ArtigoInput): Pro
   if (!normalized.ok) return normalized;
 
   const db = auth.data.client as unknown as DynamicClient;
-  const uniqueSlug = await ensureUniqueArticleSlug(db, auth.data.user.id, String(normalized.data.slug));
+  const [uniqueSlug, lastOrderResult] = await Promise.all([
+    ensureUniqueArticleSlug(db, auth.data.user.id, String(normalized.data.slug)),
+    db.from("artigos").select("ordem_manual").eq("owner_id", auth.data.user.id).order("ordem_manual", { ascending: false }).limit(1),
+  ]);
   if (!uniqueSlug.ok) return uniqueSlug;
+  if (lastOrderResult.error) return mapDbError(lastOrderResult.error);
+  const lastOrder = Number(lastOrderResult.data?.[0]?.ordem_manual ?? 0);
 
   const insertResult = await db
     .from("artigos")
@@ -145,6 +177,7 @@ export async function createArtigo(accessToken: string, input: ArtigoInput): Pro
       ...normalized.data,
       slug: uniqueSlug.data,
       owner_id: auth.data.user.id,
+      ordem_manual: Number.isFinite(lastOrder) && lastOrder > 0 ? lastOrder + 1 : 1,
     })
     .select(ARTICLE_SELECT)
     .single();
@@ -226,12 +259,13 @@ export async function updateArtigosConfig(
     .single();
 
   if (result.error) return mapDbError(result.error);
+  if (!result.data) return fail("DATABASE_ERROR", "Não foi possível salvar a configuração dos artigos.");
   return ok({ ordenacao_publica: result.data.ordenacao_publica as ArtigosOrdenacao });
 }
 
 export async function updateArtigosManualOrder(
   accessToken: string,
-  input: { ordered_ids?: unknown },
+  input: { ordered_ids?: unknown; start_position?: unknown },
 ): Promise<ApiResult<{ ordered_ids: string[] }>> {
   const auth = await authenticateByAccessToken(accessToken);
   if (!auth.ok) return auth;
@@ -241,17 +275,21 @@ export async function updateArtigosManualOrder(
     : [];
 
   if (orderedIds.length === 0) return fail("VALIDATION_ERROR", "Informe a ordem dos artigos.");
+  const startPosition =
+    typeof input.start_position === "number" && Number.isInteger(input.start_position) && input.start_position > 0
+      ? input.start_position
+      : 1;
 
   const db = auth.data.client as unknown as DynamicClient;
   const ownershipResult = await db.from("artigos").select("id").eq("owner_id", auth.data.user.id).in("id", orderedIds);
   if (ownershipResult.error) return mapDbError(ownershipResult.error);
 
-  const ownedIds = new Set((ownershipResult.data ?? []).map((row: { id: string }) => row.id));
+  const ownedIds = new Set((ownershipResult.data ?? []).map((row) => String(row.id)));
   if (ownedIds.size !== orderedIds.length) return fail("VALIDATION_ERROR", "A ordem contém artigos inválidos.");
 
   const updateResults = await Promise.all(
     orderedIds.map((id, index) =>
-      db.from("artigos").update({ ordem_manual: index + 1 }).eq("id", id).eq("owner_id", auth.data.user.id),
+      db.from("artigos").update({ ordem_manual: startPosition + index }).eq("id", id).eq("owner_id", auth.data.user.id),
     ),
   );
   const failedResult = updateResults.find((result) => result.error);
@@ -282,6 +320,7 @@ export async function suggestArtigoCategoria(
     .single();
 
   if (result.error) return mapDbError(result.error);
+  if (!result.data) return fail("DATABASE_ERROR", "Não foi possível registrar a sugestão.");
   return ok({ id: result.data.id as string });
 }
 

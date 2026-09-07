@@ -105,14 +105,14 @@ type ProfileData = {
   creci_numero?: string | null;
   creci_sufixo?: string | null;
 };
-type UploadedMedia = { id: string; url: string };
+export type UploadedMedia = { id: string; url: string };
 type BlockKind = ArtigoBlock["type"];
 type BlockGroup = "titulos" | "texto" | "midia" | "imoveis" | "cta";
 type LinkModalState = ArticleLinkSelection & { editorId: string };
-type ArticleUploadOptions = { consumesImageSlot?: boolean };
+export type ArticleUploadOptions = { consumesImageSlot?: boolean };
 type ArtigosResponse = { config: { ordenacao_publica: ArtigosOrdenacao } };
 type PropertyOptionsResponse = { items: PropertyOption[] };
-type PropertyOption = {
+export type PropertyOption = {
   id: string;
   codigo?: string | null;
   label?: string | null;
@@ -138,19 +138,19 @@ type PropertyOption = {
   preco_locacao?: number | null;
   capa_url_publica_thumb_webp?: string | null;
 };
-type EnterpriseOption = {
+export type EnterpriseOption = {
   id: string;
   nome?: string | null;
   status?: string | null;
   bairro?: string | null;
   cidade?: string | null;
 };
-type CaracteristicaCatalogoOption = {
+export type CaracteristicaCatalogoOption = {
   chave: string;
   label_pt: string;
   ativo?: boolean | null;
 };
-type ArticleEditorOptions = {
+export type ArticleEditorOptions = {
   propertyOptions: PropertyOption[];
   enterpriseOptions: EnterpriseOption[];
   propertyCharacteristics: CaracteristicaCatalogoOption[];
@@ -500,7 +500,7 @@ export default function ArtigoEditorPage() {
     commitArticleChange((current) => {
       const blocks = [...current.conteudo_blocos.blocks];
       const nextIndex = typeof insertIndex === "number" ? Math.min(Math.max(insertIndex, 0), blocks.length) : blocks.length;
-      blocks.splice(nextIndex, 0, createBlock(item));
+      blocks.splice(nextIndex, 0, createArticleBlock(item));
       return { ...current, conteudo_blocos: { version: 1, blocks } };
     });
     setInsertMenuIndex(null);
@@ -903,7 +903,7 @@ export default function ArtigoEditorPage() {
                   />
                   {article.conteudo_blocos.blocks.map((block, index) => (
                     <Fragment key={block.id}>
-                      <BlockEditor
+                      <ArticleBlockEditor
                         articleId={article.id}
                         block={block}
                         index={index}
@@ -1303,7 +1303,7 @@ function BlockInsertModal({
   );
 }
 
-function BlockEditor({
+export function ArticleBlockEditor({
   block,
   index,
   editorRefs,
@@ -1367,7 +1367,7 @@ function renderBlockFields(
 ) {
   if (block.type === "paragraph") {
     return (
-      <RichTextBlock
+      <ArticleRichTextEditor
         block={block}
         editorRefs={editorRefs}
         onChange={onChange}
@@ -2078,9 +2078,12 @@ function ImageBlockEditor({
             accept="image/*"
             disabled={isUploading || !canUpload}
             className="hidden"
-            onChange={(event) => void handleUpload(event.target.files?.[0] ?? null).finally(() => {
-              event.currentTarget.value = "";
-            })}
+            onChange={(event) => {
+              const input = event.currentTarget;
+              void handleUpload(input.files?.[0] ?? null).finally(() => {
+                input.value = "";
+              });
+            }}
           />
         </label>
         {!canUpload ? <p className="text-xs font-medium text-red-600">Limite de {ARTIGO_MAX_IMAGES} imagens atingido.</p> : null}
@@ -2105,7 +2108,7 @@ function ImageBlockEditor({
   );
 }
 
-function RichTextBlock({ block, editorRefs, onChange, onOpenLink }: { block: Extract<ArtigoBlock, { type: "paragraph" }>; editorRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>; onChange: (block: ArtigoBlock) => void; onOpenLink: (selection: ArticleLinkSelection) => void }) {
+export function ArticleRichTextEditor({ block, editorRefs, onChange, onOpenLink }: { block: Extract<ArtigoBlock, { type: "paragraph" }>; editorRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>; onChange: (block: ArtigoBlock) => void; onOpenLink: (selection: ArticleLinkSelection) => void }) {
   useEffect(() => {
     const editor = editorRefs.current[block.id];
     if (editor && editor.innerHTML !== block.data.content) editor.innerHTML = block.data.content;
@@ -2267,14 +2270,15 @@ function GalleryBlockEditor({
           disabled={!canAddImages}
           className="hidden"
           onChange={async (event) => {
-            const files = Array.from(event.target.files ?? []);
+            const input = event.currentTarget;
+            const files = Array.from(input.files ?? []);
             if (!files.length) return;
 
             setUploadNotice(null);
             const allowedFiles = files.slice(0, remainingImageSlots);
             if (!allowedFiles.length) {
               setUploadNotice(`Limite de ${ARTIGO_MAX_IMAGES} imagens atingido.`);
-              event.currentTarget.value = "";
+              input.value = "";
               return;
             }
             if (allowedFiles.length < files.length) {
@@ -2291,7 +2295,7 @@ function GalleryBlockEditor({
               if (uploadedImages.length) updateImages([...images, ...uploadedImages]);
             } finally {
               setIsUploading(false);
-              event.currentTarget.value = "";
+              input.value = "";
             }
           }}
         />
@@ -2417,7 +2421,7 @@ function MediaPreview({ url, alt, large = false }: { url: string; alt: string; l
   );
 }
 
-function createBlock(item: (typeof BLOCK_LIBRARY)[number]): ArtigoBlock {
+export function createArticleBlock(item: (typeof BLOCK_LIBRARY)[number]): ArtigoBlock {
   const id = crypto.randomUUID();
   if (item.type === "paragraph") return { id, type: "paragraph", data: { content: "<p></p>" } };
   if (item.type === "heading") return { id, type: "heading", data: { level: item.variant === "h3" ? 3 : 2, content: "" } };

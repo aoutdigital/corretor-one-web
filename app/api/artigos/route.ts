@@ -19,9 +19,19 @@ export async function GET(request: Request) {
   const accessToken = getBearerTokenFromRequest(request);
   if (!accessToken) return unauthorizedResponse();
 
-  const result = await listArtigos(accessToken);
+  const { searchParams } = new URL(request.url);
+  const page = parsePositiveInteger(searchParams.get("page"), 1);
+  const requestedPageSize = parsePositiveInteger(searchParams.get("page_size"), 20);
+  const pageSize = [20, 30, 40, 50, 100].includes(requestedPageSize) ? requestedPageSize : 20;
+  const result = await listArtigos(accessToken, { page, pageSize });
   if (!result.ok) return NextResponse.json(result, { status: statusFromErrorCode(result.error.code) });
   return NextResponse.json(result);
+}
+
+function parsePositiveInteger(value: string | null, fallback: number) {
+  if (!value || !/^\d+$/.test(value)) return fallback;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 export async function POST(request: Request) {

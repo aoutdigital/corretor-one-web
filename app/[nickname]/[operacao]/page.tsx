@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import {
   ArrowRight,
   Buildings,
@@ -17,7 +17,9 @@ import {
 import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
 import { PropertyGallery } from "@/app/[nickname]/_components/property-gallery";
 import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
+import { LandingPagePublic } from "@/app/[nickname]/_components/landing-page-public";
 import { PublicPropertyCard, type PublicPropertyCardImovel } from "@/app/[nickname]/_components/public-property-card";
+import type { LandingPageContent } from "@/lib/landing-pages/content";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
@@ -95,6 +97,10 @@ type CaracteristicaCatalogoPublicRow = {
   label_pt: string;
   ativo: boolean;
 };
+type PublicLandingRow = { id:string; owner_id:string; titulo:string; subtitulo:string|null; slug:string; conteudo_blocos:LandingPageContent; meta_title:string|null; meta_description:string|null; og_image_url:string|null; indexar:boolean; encerramento_em:string|null };
+type LandingQueryResult<T>={data:T|null;error:{message:string}|null};
+type LandingQuery<T>=PromiseLike<LandingQueryResult<T>>&{select:(columns:string)=>LandingQuery<T>;eq:(column:string,value:unknown)=>LandingQuery<T>;maybeSingle:()=>PromiseLike<LandingQueryResult<T>>};
+type LandingDb={from:<T>(table:string)=>LandingQuery<T>};
 
 const PROFILE_SELECT =
   "id,nickname,primeiro_nome,sobrenome,email,telefone,whatsapp,avatar_url,logo_nickname_url,logo_nickname_white_url,creci_uf,creci_numero,creci_sufixo,status";
@@ -174,6 +180,11 @@ const OBJECT_PUBLIC_SEGMENT = "/storage/v1/object/public/";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { nickname, operacao } = await params;
+  const landing = await getPublicLandingPageData(nickname, operacao);
+  if (landing) {
+    const title=landing.page.meta_title||landing.page.titulo; const description=landing.page.meta_description||landing.page.subtitulo||`Fale com ${landing.brokerName} e receba mais informações.`;
+    return {title,description,robots:landing.page.indexar?undefined:{index:false,follow:true},alternates:{canonical:`/${landing.profile.nickname}/${landing.page.slug}`},openGraph:{title,description,type:"website",url:`/${landing.profile.nickname}/${landing.page.slug}`,images:landing.page.og_image_url?[landing.page.og_image_url]:undefined}};
+  }
   const data = await getEmpreendimentoPageData(nickname, operacao);
   if (!data) return {};
 
@@ -200,6 +211,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function PublicEmpreendimentoDetailPage({ params }: PageProps) {
   const { nickname, operacao } = await params;
+  const landing = await getPublicLandingPageData(nickname, operacao);
+  if (landing) return <><LandingPagePublic pageId={landing.page.id} nickname={landing.profile.nickname ?? nickname} brokerName={landing.brokerName} avatarUrl={getPublicImageUrl(landing.profile.avatar_url)} creci={formatCreci(landing.profile)} content={landing.page.conteudo_blocos}/><footer className="border-t border-stone-200 bg-white px-5 py-8 text-center text-xs text-slate-500"><p>{landing.brokerName} · {formatCreci(landing.profile)}</p><p className="mt-2"><Link href="/privacidade" className="underline">Política de privacidade</Link> · Página criada com Corretor.one</p></footer></>;
   const data = await getEmpreendimentoPageData(nickname, operacao);
   if (!data) notFound();
 
@@ -214,7 +227,6 @@ export default async function PublicEmpreendimentoDetailPage({ params }: PagePro
     avatarUrl,
     initials,
     whatsappHref,
-    phoneHref,
     addressLine,
     facts,
     features,
@@ -403,6 +415,16 @@ export default async function PublicEmpreendimentoDetailPage({ params }: PagePro
     </div>
   );
 }
+
+const getPublicLandingPageData=cache(async function getPublicLandingPageData(rawNickname:string,rawSlug:string){
+  const nickname=rawNickname.trim().toLowerCase();const slug=rawSlug.trim().toLowerCase();
+  if(!/^[a-z0-9]{1,35}$/.test(nickname)||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))return null;
+  const supabase=createSupabaseServerClient();const profileResult=await supabase.from("profiles").select(PROFILE_SELECT).eq("nickname",nickname).eq("status","ATIVO").maybeSingle();
+  if(profileResult.error||!profileResult.data)return null;
+  const db=supabase as unknown as LandingDb;const pageResult=await db.from<PublicLandingRow>("landing_pages").select("id,owner_id,titulo,subtitulo,slug,conteudo_blocos,meta_title,meta_description,og_image_url,indexar,encerramento_em").eq("owner_id",profileResult.data.id).eq("slug",slug).eq("status","PUBLICADO").maybeSingle();
+  if(pageResult.error||!pageResult.data)return null;
+  const profile=profileResult.data as ProfileRow;return{page:pageResult.data,profile,brokerName:getProfileName(profile)};
+});
 
 async function getEmpreendimentoPageData(rawNickname: string, rawSlug: string) {
   const nickname = rawNickname.trim().toLowerCase();
