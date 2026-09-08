@@ -20,6 +20,7 @@ import { LeadCuradoriaButton } from "@/app/[nickname]/_components/lead-curadoria
 import { LeadVisitScheduleButton } from "@/app/[nickname]/_components/lead-visit-schedule-button";
 import { LeadWhatsAppButton } from "@/app/[nickname]/_components/lead-whatsapp-button";
 import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
+import { PublicAnalytics } from "@/app/[nickname]/_components/public-analytics";
 import { PropertyInsights, type PropertyInsightsData } from "@/app/[nickname]/_components/property-insights";
 import { PropertyLeadCard } from "@/app/[nickname]/_components/property-lead-card";
 import { SocialProofCarousel, type SocialProofItem } from "@/app/[nickname]/_components/social-proof-carousel";
@@ -353,6 +354,7 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
 
   return (
     <>
+      <PublicAnalytics resourceType="PROPERTY" resourceId={imovel.id} />
       <PublicBrokerHeader
         nickname={headerNickname}
         brokerName={brokerName}

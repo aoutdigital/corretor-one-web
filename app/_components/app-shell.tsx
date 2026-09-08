@@ -6,6 +6,7 @@ import {
   CaretDoubleRight,
   CaretUp,
   ChartBar,
+  ChartLineUp,
   Chats,
   EnvelopeSimple,
   FileText,
@@ -51,12 +52,13 @@ type UserMiniProfile = {
   avatar_url: string | null;
 };
 
-const MAIN_ITEMS: NavItem[] = [
+const DASHBOARD_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
-  { href: "/empreendimentos", label: "Empreendimentos", icon: Buildings },
+];
+
+const PORTFOLIO_ITEMS: NavItem[] = [
   { href: "/imoveis", label: "Imóveis", icon: House },
-  { href: "/paginas-captura", label: "Páginas de Captura", icon: FunnelSimple },
-  { href: "/artigos", label: "Artigos", icon: NotePencil },
+  { href: "/empreendimentos", label: "Empreendimentos", icon: Buildings },
 ];
 
 const BUSINESS_ITEMS: NavItem[] = [
@@ -67,8 +69,12 @@ const BUSINESS_ITEMS: NavItem[] = [
 ];
 
 const MARKETING_ITEMS: NavItem[] = [
+  { href: "/perfil", label: "Meu Perfil", icon: UserCircle },
+  { href: "/artigos", label: "Artigos", icon: NotePencil },
+  { href: "/paginas-captura", label: "Páginas de Captura", icon: FunnelSimple },
+  { href: "/relatorios", label: "Relatórios", icon: ChartLineUp },
   { href: "/campanhas", label: "Campanhas", icon: Megaphone, disabled: true },
-  { href: "/criativos", label: "Central de Criativos", icon: Sparkle, disabled: true },
+  { href: "/criativos", label: "Central de Criativos", icon: Sparkle },
   { href: "/integracoes", label: "Integração Portais", icon: Stack, disabled: true },
 ];
 
@@ -185,7 +191,12 @@ export function AppShell({ title, subtitle, children, rightSlot, mainClassName }
             </div>
 
             <div className="flex-1 space-y-4 overflow-y-auto px-2 py-3">
-              <nav className="space-y-1">{renderNav(MAIN_ITEMS)}</nav>
+              <nav className="space-y-1">{renderNav(DASHBOARD_ITEMS)}</nav>
+
+              <hr className="border-slate-200" />
+
+              {!collapsed ? <p className="px-3 text-xs uppercase tracking-widest text-slate-400">Propriedades e empreendimentos</p> : null}
+              <nav className="space-y-1">{renderNav(PORTFOLIO_ITEMS)}</nav>
 
               <hr className="border-slate-200" />
 
@@ -235,10 +246,6 @@ export function AppShell({ title, subtitle, children, rightSlot, mainClassName }
                   <Link href="/configuracoes" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100">
                     <Waveform size={16} />
                     Minha Assinatura
-                  </Link>
-                  <Link href="/perfil" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100">
-                    <UserCircle size={16} />
-                    Meu Perfil
                   </Link>
                   <a href="https://webmail.corretor.one" target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100">
                     <EnvelopeSimple size={16} />

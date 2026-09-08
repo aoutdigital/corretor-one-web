@@ -18,6 +18,7 @@ import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-f
 import { PropertyGallery } from "@/app/[nickname]/_components/property-gallery";
 import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
 import { LandingPagePublic } from "@/app/[nickname]/_components/landing-page-public";
+import { PublicAnalytics } from "@/app/[nickname]/_components/public-analytics";
 import { PublicPropertyCard, type PublicPropertyCardImovel } from "@/app/[nickname]/_components/public-property-card";
 import type { LandingPageContent } from "@/lib/landing-pages/content";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -97,7 +98,7 @@ type CaracteristicaCatalogoPublicRow = {
   label_pt: string;
   ativo: boolean;
 };
-type PublicLandingRow = { id:string; owner_id:string; titulo:string; subtitulo:string|null; slug:string; conteudo_blocos:LandingPageContent; meta_title:string|null; meta_description:string|null; og_image_url:string|null; indexar:boolean; encerramento_em:string|null };
+type PublicLandingRow = { id:string; owner_id:string; titulo:string; subtitulo:string|null; slug:string; conteudo_blocos:LandingPageContent; meta_title:string|null; meta_description:string|null; og_image_url:string|null; indexar:boolean; publicado_em:string|null; encerramento_em:string|null };
 type LandingQueryResult<T>={data:T|null;error:{message:string}|null};
 type LandingQuery<T>=PromiseLike<LandingQueryResult<T>>&{select:(columns:string)=>LandingQuery<T>;eq:(column:string,value:unknown)=>LandingQuery<T>;maybeSingle:()=>PromiseLike<LandingQueryResult<T>>};
 type LandingDb={from:<T>(table:string)=>LandingQuery<T>};
@@ -239,6 +240,7 @@ export default async function PublicEmpreendimentoDetailPage({ params }: PagePro
 
   return (
     <div className="min-h-screen bg-white text-slate-950">
+      <PublicAnalytics resourceType="DEVELOPMENT" resourceId={empreendimento.id} />
       <PublicBrokerHeader
         nickname={profile.nickname ?? nickname}
         brokerName={brokerName}
@@ -421,8 +423,9 @@ const getPublicLandingPageData=cache(async function getPublicLandingPageData(raw
   if(!/^[a-z0-9]{1,35}$/.test(nickname)||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))return null;
   const supabase=createSupabaseServerClient();const profileResult=await supabase.from("profiles").select(PROFILE_SELECT).eq("nickname",nickname).eq("status","ATIVO").maybeSingle();
   if(profileResult.error||!profileResult.data)return null;
-  const db=supabase as unknown as LandingDb;const pageResult=await db.from<PublicLandingRow>("landing_pages").select("id,owner_id,titulo,subtitulo,slug,conteudo_blocos,meta_title,meta_description,og_image_url,indexar,encerramento_em").eq("owner_id",profileResult.data.id).eq("slug",slug).eq("status","PUBLICADO").maybeSingle();
+  const db=supabase as unknown as LandingDb;const pageResult=await db.from<PublicLandingRow>("landing_pages").select("id,owner_id,titulo,subtitulo,slug,conteudo_blocos,meta_title,meta_description,og_image_url,indexar,publicado_em,encerramento_em").eq("owner_id",profileResult.data.id).eq("slug",slug).eq("status","PUBLICADO").maybeSingle();
   if(pageResult.error||!pageResult.data)return null;
+  const now=Date.now();if(pageResult.data.publicado_em&&new Date(pageResult.data.publicado_em).getTime()>now)return null;if(pageResult.data.encerramento_em&&new Date(pageResult.data.encerramento_em).getTime()<=now)return null;
   const profile=profileResult.data as ProfileRow;return{page:pageResult.data,profile,brokerName:getProfileName(profile)};
 });
 

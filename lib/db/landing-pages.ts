@@ -32,11 +32,11 @@ export async function listLandingPages(accessToken: string): Promise<ApiResult<{
   const db = auth.data.client as unknown as DynamicClient;
   const [result,eventsResult] = await Promise.all([
     db.from("landing_pages").select(SELECT).eq("owner_id", auth.data.user.id).order("updated_at", { ascending: false }),
-    db.from("landing_page_events").select("landing_page_id,event_type,visitor_id").eq("owner_id", auth.data.user.id),
+    db.from("public_events").select("resource_id,event_type,visitor_id").eq("owner_id", auth.data.user.id).eq("resource_type", "LANDING_PAGE"),
   ]);
   if (result.error) return mapDbError(result.error); if(eventsResult.error)return mapDbError(eventsResult.error);
   const events=eventsResult.data??[];
-  const items=((result.data??[]) as unknown as LandingPageRow[]).map((item)=>{const own=events.filter((event)=>event.landing_page_id===item.id);const views=own.filter((event)=>event.event_type==="VIEW").length;const visitors=new Set(own.filter((event)=>event.event_type==="VIEW"&&event.visitor_id).map((event)=>String(event.visitor_id))).size;const submissions=own.filter((event)=>event.event_type==="FORM_SUBMIT").length;return{...item,metrics:{views,visitors,submissions,conversion_rate:views?Math.round((submissions/views)*1000)/10:0}};});
+  const items=((result.data??[]) as unknown as LandingPageRow[]).map((item)=>{const own=events.filter((event)=>event.resource_id===item.id);const views=own.filter((event)=>event.event_type==="VIEW").length;const visitors=new Set(own.filter((event)=>event.event_type==="VIEW"&&event.visitor_id).map((event)=>String(event.visitor_id))).size;const submissions=own.filter((event)=>event.event_type==="FORM_SUBMIT").length;return{...item,metrics:{views,visitors,submissions,conversion_rate:views?Math.round((submissions/views)*1000)/10:0}};});
   return ok({ items });
 }
 
@@ -107,6 +107,12 @@ function normalizeInput(input: LandingPageInput, current: LandingPageRow): ApiRe
   if (status === "PUBLICADO" && (!content.blocks.some((block) => block.type === "hero") || !content.blocks.some((block) => block.type === "lead_form"))) {
     return fail("VALIDATION_ERROR", "Para publicar, inclua uma seção principal e um formulário de captação.");
   }
+  const requestedPublishedAt = normalizeDate(input.publicado_em ?? current.publicado_em);
+  const publishedAt = status === "PUBLICADO" ? requestedPublishedAt ?? new Date().toISOString() : requestedPublishedAt;
+  const endingAt = normalizeDate(input.encerramento_em ?? current.encerramento_em);
+  if (publishedAt && endingAt && new Date(endingAt).getTime() <= new Date(publishedAt).getTime()) {
+    return fail("VALIDATION_ERROR", "A data de encerramento precisa ser posterior à data de publicação.");
+  }
   return ok({
     status, tipo: type, nome_interno: internalName, titulo: title,
     subtitulo: normalizeOptionalText(input.subtitulo ?? current.subtitulo, 240), slug, conteudo_blocos: content,
@@ -115,8 +121,8 @@ function normalizeInput(input: LandingPageInput, current: LandingPageRow): ApiRe
     meta_title: normalizeOptionalText(input.meta_title ?? current.meta_title, 70),
     meta_description: normalizeOptionalText(input.meta_description ?? current.meta_description, 180),
     og_image_url: normalizeOptionalText(input.og_image_url ?? current.og_image_url, 500), indexar: input.indexar === true,
-    encerramento_em: normalizeDate(input.encerramento_em ?? current.encerramento_em),
-    publicado_em: status === "PUBLICADO" ? current.publicado_em ?? new Date().toISOString() : current.publicado_em,
+    encerramento_em: endingAt,
+    publicado_em: publishedAt,
   });
 }
 

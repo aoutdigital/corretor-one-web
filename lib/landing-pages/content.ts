@@ -51,7 +51,7 @@ export type LandingPageBlock = ArtigoBlock | {
 } | {
   id: string;
   type: "lead_form";
-  data: { title: string; subtitle?: string | null; buttonLabel: string; fields: LandingPageFormField[]; requiredFields: LandingPageFormField[]; successMessage: string };
+  data: { title: string; subtitle?: string | null; buttonLabel: string; emailOptional: boolean; successMessage: string };
 } | {
   id: string;
   type: "benefits";
@@ -129,12 +129,12 @@ export function normalizeLandingPageContent(value: unknown): LandingPageContent 
       continue;
     }
     if (type === "lead_form") {
-      const fields = normalizeFields(data.fields, ["nome", "telefone", "email", "mensagem"]);
-      const requiredFields = normalizeFields(data.requiredFields, ["nome"]).filter((field) => fields.includes(field));
+      const legacyRequiredFields = normalizeFields(data.requiredFields, []);
+      const emailOptional = data.emailOptional === true || (Array.isArray(data.requiredFields) && !legacyRequiredFields.includes("email"));
       blocks.push({ id, type, data: {
         title: sanitizePlainText(data.title, 100).trim() || "Receba mais informações",
         subtitle: normalizeOptionalText(data.subtitle, 180), buttonLabel: sanitizePlainText(data.buttonLabel, 48).trim() || "Enviar",
-        fields, requiredFields, successMessage: sanitizePlainText(data.successMessage, 180).trim() || "Obrigado! Em breve entrarei em contato.",
+        emailOptional, successMessage: sanitizePlainText(data.successMessage, 180).trim() || "Obrigado! Em breve entrarei em contato.",
       }});
       continue;
     }
@@ -159,7 +159,7 @@ export function createLandingPagePreset(type: LandingPageType, title: string): L
   return normalizeLandingPageContent({ version: 1, blocks: [
     { id: crypto.randomUUID(), type: "hero", data: { title: safeTitle, subtitle: "Descubra todos os detalhes e fale diretamente com um corretor especialista.", buttonLabel: "Quero saber mais", imageUrl: "", overlay: 45, height: "large", parallax: false } },
     { id: crypto.randomUUID(), type: "benefits", data: { title: "Uma oportunidade para conhecer", items: [{ title: "Atendimento especializado", description: "Receba informações e orientação para tomar a melhor decisão." }, { title: "Contato direto", description: "Fale com um corretor de imóveis com CRECI." }] } },
-    { id: crypto.randomUUID(), type: "lead_form", data: { title: formTitle, subtitle: "Preencha seus dados e entrarei em contato.", buttonLabel: "Quero receber informações", fields: ["nome", "telefone", "email", "mensagem", ...(type === "CURADORIA" ? ["objetivo", "tipo_imovel", "faixa_valor", "localizacao"] : [])], requiredFields: ["nome"], successMessage: "Obrigado! Seus dados foram enviados com sucesso." } },
+    { id: crypto.randomUUID(), type: "lead_form", data: { title: formTitle, subtitle: "Preencha seus dados e entrarei em contato.", buttonLabel: "Quero receber informações", emailOptional: false, successMessage: "Obrigado! Seus dados foram enviados com sucesso." } },
     { id: crypto.randomUUID(), type: "broker_profile", data: {} },
   ] });
 }

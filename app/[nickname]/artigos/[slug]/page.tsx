@@ -8,6 +8,7 @@ import { ArticleContentRenderer } from "@/app/[nickname]/_components/article-con
 import { ArticleShareBar, ArticleShareFooter } from "@/app/[nickname]/_components/article-share-bar";
 import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
 import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
+import { PublicAnalytics } from "@/app/[nickname]/_components/public-analytics";
 import { getArticleCategoryLabel, normalizeArticleBlocks, type ArtigoConteudo } from "@/lib/artigos/content";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
@@ -134,6 +135,7 @@ export default async function PublicArticleDetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white text-slate-950">
+      <PublicAnalytics resourceType="ARTICLE" resourceId={article.id} />
       <PublicBrokerHeader
         nickname={publicNickname}
         brokerName={brokerName}

@@ -131,3 +131,13 @@ export function buildImovelHeaderTitle(item: ImovelDisplayTitleInput) {
   if (item.codigo?.trim().length) return `Imóvel ${item.codigo.trim()}`;
   return "Imóvel";
 }
+
+export function buildImovelShortTitle(item: ImovelDisplayTitleInput) {
+  const categoriaBase = getCategoriaTitulo(item.tipo);
+  const subtipo = getSubtipoTitulo(item.subtipo);
+  const categoria = subtipo && subtipo.toLowerCase() !== categoriaBase.toLowerCase()
+    ? `${categoriaBase} ${subtipo}`
+    : categoriaBase;
+  const title = `${categoria} ${getFinalidadeTitulo(item)}`.trim();
+  return title && title !== "-" ? title : buildImovelHeaderTitle(item);
+}

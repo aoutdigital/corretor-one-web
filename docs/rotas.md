@@ -134,6 +134,12 @@
 - **/audiencia/listas** — Listas segmentadas
 - **/audiencia/listas/[id]** — Gerenciar contatos da lista
 
+#### Relatórios
+- **/relatorios** — Central de relatórios de Marketing
+  - **Tráfego (MVP):** visitantes, sessões, visualizações, conversões, first touch, last non-direct, assistências, canais, campanhas e recursos públicos
+  - **E-mail (futuro):** entregas, aberturas, cliques e conversões
+  - **WhatsApp (futuro):** disparos, entregas, respostas e conversões
+
 #### Ayka
 - **/ayka** — Saldo, consumo e histórico
 - **/ayka/comprar** — Comprar créditos avulsos

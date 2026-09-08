@@ -68,7 +68,7 @@ export default function DashboardPage() {
     { title: "Leads", value: summary.leads, icon: Users },
     { title: "Imóveis", value: summary.imoveis, icon: House },
     { title: "Empreendimentos", value: summary.empreendimentos, icon: Buildings },
-    { title: "Visualizações no Portal", value: summary.visualizacoes_portal, icon: Eye },
+    { title: "Visualizações públicas", value: summary.visualizacoes_portal, icon: Eye },
     { title: "Seguidores", value: summary.seguidores, icon: UserPlus },
   ];
 
@@ -96,6 +96,12 @@ export default function DashboardPage() {
               </article>
             );
           })}
+        </div>
+
+        <div className="flex justify-end">
+          <Link href="/relatorios" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--blue-slate)] hover:underline">
+            Ver relatórios de tráfego <ArrowRight size={15} />
+          </Link>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
@@ -183,4 +189,3 @@ export default function DashboardPage() {
     </AppShell>
   );
 }
-

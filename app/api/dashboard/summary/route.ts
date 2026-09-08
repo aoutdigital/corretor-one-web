@@ -66,7 +66,7 @@ export async function GET(request: Request) {
   ]);
 
   const [viewsResult, followersResult, profileResult] = await Promise.all([
-    client.from("imoveis").select("views_count").eq("owner_id", ownerId),
+    client.from("public_events").select("id", { count: "exact", head: true }).eq("owner_id", ownerId).eq("event_type", "VIEW"),
     client.from("user_follows").select("id", { count: "exact", head: true }).eq("corretor_id", ownerId),
     client
       .from("profiles")
@@ -75,9 +75,7 @@ export async function GET(request: Request) {
       .maybeSingle<ProfileStatus>(),
   ]);
 
-  const visualizacoesPortal = viewsResult.error
-    ? 0
-    : (viewsResult.data ?? []).reduce((acc, item) => acc + Number(item.views_count ?? 0), 0);
+  const visualizacoesPortal = viewsResult.error ? 0 : (viewsResult.count ?? 0);
 
   const summary: DashboardSummary = {
     leads,
@@ -95,4 +93,3 @@ export async function GET(request: Request) {
 
   return NextResponse.json({ ok: true, data: summary }, { status: 200 });
 }
-

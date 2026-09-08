@@ -19,6 +19,7 @@ import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-f
 import { HorizontalLoopCarousel } from "@/app/[nickname]/_components/horizontal-loop-carousel";
 import { LeadWhatsAppButton } from "@/app/[nickname]/_components/lead-whatsapp-button";
 import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
+import { PublicAnalytics } from "@/app/[nickname]/_components/public-analytics";
 import { PublicEmpreendimentoCard } from "@/app/[nickname]/_components/public-empreendimento-card";
 import { PublicPropertyCard, type PublicPropertyCardImovel } from "@/app/[nickname]/_components/public-property-card";
 import { SocialProofCarousel, type SocialProofItem } from "@/app/[nickname]/_components/social-proof-carousel";
@@ -287,6 +288,7 @@ export default async function PublicBrokerProfilePage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white text-slate-950">
+      <PublicAnalytics resourceType="PROFILE" resourceId={profile.id} />
       <PublicBrokerHeader
         nickname={profile.nickname ?? nickname}
         brokerName={brokerName}

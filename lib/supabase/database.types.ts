@@ -998,6 +998,36 @@ export type Database = {
           { foreignKeyName: "landing_page_events_owner_id_fkey"; columns: ["owner_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
         ]
       }
+      marketing_touchpoints: {
+        Row: { id: string; owner_id: string; visitor_id: string; session_id: string; resource_type: Database["public"]["Enums"]["public_resource_type"]; resource_id: string | null; channel: Database["public"]["Enums"]["marketing_channel"]; source: string | null; medium: string | null; campaign: string | null; content: string | null; term: string | null; click_ids: Json; landing_url: string | null; referrer: string | null; is_direct: boolean; occurred_at: string }
+        Insert: { id?: string; owner_id: string; visitor_id: string; session_id: string; resource_type: Database["public"]["Enums"]["public_resource_type"]; resource_id?: string | null; channel: Database["public"]["Enums"]["marketing_channel"]; source?: string | null; medium?: string | null; campaign?: string | null; content?: string | null; term?: string | null; click_ids?: Json; landing_url?: string | null; referrer?: string | null; is_direct?: boolean; occurred_at?: string }
+        Update: { id?: string; owner_id?: string; visitor_id?: string; session_id?: string; resource_type?: Database["public"]["Enums"]["public_resource_type"]; resource_id?: string | null; channel?: Database["public"]["Enums"]["marketing_channel"]; source?: string | null; medium?: string | null; campaign?: string | null; content?: string | null; term?: string | null; click_ids?: Json; landing_url?: string | null; referrer?: string | null; is_direct?: boolean; occurred_at?: string }
+        Relationships: []
+      }
+      public_events: {
+        Row: { id: string; owner_id: string; visitor_id: string; session_id: string; touchpoint_id: string | null; resource_type: Database["public"]["Enums"]["public_resource_type"]; resource_id: string | null; event_type: Database["public"]["Enums"]["public_event_type"]; page_url: string | null; metadata: Json; occurred_at: string }
+        Insert: { id?: string; owner_id: string; visitor_id: string; session_id: string; touchpoint_id?: string | null; resource_type: Database["public"]["Enums"]["public_resource_type"]; resource_id?: string | null; event_type: Database["public"]["Enums"]["public_event_type"]; page_url?: string | null; metadata?: Json; occurred_at?: string }
+        Update: { id?: string; owner_id?: string; visitor_id?: string; session_id?: string; touchpoint_id?: string | null; resource_type?: Database["public"]["Enums"]["public_resource_type"]; resource_id?: string | null; event_type?: Database["public"]["Enums"]["public_event_type"]; page_url?: string | null; metadata?: Json; occurred_at?: string }
+        Relationships: []
+      }
+      templates: {
+        Row: { id: string; nome: string; tipo: Database["public"]["Enums"]["tipo_template"]; objetivo: Database["public"]["Enums"]["objetivo_template"]; provider: Database["public"]["Enums"]["provider_template"]; renderer_key: string; version: number; mode: Database["public"]["Enums"]["creative_template_mode"]; formatos: Database["public"]["Enums"]["creative_output_format"][]; preview_url: string | null; config: Json; ativo: boolean; created_at: string; updated_at: string }
+        Insert: { id?: string; nome: string; tipo: Database["public"]["Enums"]["tipo_template"]; objetivo: Database["public"]["Enums"]["objetivo_template"]; provider: Database["public"]["Enums"]["provider_template"]; renderer_key: string; version?: number; mode?: Database["public"]["Enums"]["creative_template_mode"]; formatos?: Database["public"]["Enums"]["creative_output_format"][]; preview_url?: string | null; config?: Json; ativo?: boolean; created_at?: string; updated_at?: string }
+        Update: { id?: string; nome?: string; tipo?: Database["public"]["Enums"]["tipo_template"]; objetivo?: Database["public"]["Enums"]["objetivo_template"]; provider?: Database["public"]["Enums"]["provider_template"]; renderer_key?: string; version?: number; mode?: Database["public"]["Enums"]["creative_template_mode"]; formatos?: Database["public"]["Enums"]["creative_output_format"][]; preview_url?: string | null; config?: Json; ativo?: boolean; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      posts: {
+        Row: { id: string; owner_id: string; subject_type: Database["public"]["Enums"]["public_resource_type"]; subject_id: string; template_id: string; tipo: Database["public"]["Enums"]["tipo_post"]; formato: Database["public"]["Enums"]["creative_output_format"]; status: Database["public"]["Enums"]["status_post"]; resultado_url: string | null; storage_bucket: string | null; storage_path: string | null; payload: Json; erro: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; owner_id: string; subject_type: Database["public"]["Enums"]["public_resource_type"]; subject_id: string; template_id: string; tipo: Database["public"]["Enums"]["tipo_post"]; formato: Database["public"]["Enums"]["creative_output_format"]; status?: Database["public"]["Enums"]["status_post"]; resultado_url?: string | null; storage_bucket?: string | null; storage_path?: string | null; payload?: Json; erro?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; owner_id?: string; subject_type?: Database["public"]["Enums"]["public_resource_type"]; subject_id?: string; template_id?: string; tipo?: Database["public"]["Enums"]["tipo_post"]; formato?: Database["public"]["Enums"]["creative_output_format"]; status?: Database["public"]["Enums"]["status_post"]; resultado_url?: string | null; storage_bucket?: string | null; storage_path?: string | null; payload?: Json; erro?: string | null; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      lead_attributions: {
+        Row: { id: string; owner_id: string; lead_id: string; conversion_event_id: string | null; first_touch_id: string | null; last_touch_id: string | null; last_non_direct_touch_id: string | null; assisted_touch_ids: string[]; sessions_count: number; touchpoints_count: number; days_to_convert: number; attribution_window_days: number; snapshot: Json; converted_at: string; created_at: string; updated_at: string }
+        Insert: { id?: string; owner_id: string; lead_id: string; conversion_event_id?: string | null; first_touch_id?: string | null; last_touch_id?: string | null; last_non_direct_touch_id?: string | null; assisted_touch_ids?: string[]; sessions_count?: number; touchpoints_count?: number; days_to_convert?: number; attribution_window_days?: number; snapshot?: Json; converted_at?: string; created_at?: string; updated_at?: string }
+        Update: { id?: string; owner_id?: string; lead_id?: string; conversion_event_id?: string | null; first_touch_id?: string | null; last_touch_id?: string | null; last_non_direct_touch_id?: string | null; assisted_touch_ids?: string[]; sessions_count?: number; touchpoints_count?: number; days_to_convert?: number; attribution_window_days?: number; snapshot?: Json; converted_at?: string; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
       landing_pages: {
         Row: { conteudo_blocos: Json; created_at: string; empreendimento_id: string | null; encerramento_em: string | null; id: string; imovel_id: string | null; indexar: boolean; meta_description: string | null; meta_title: string | null; nome_interno: string; og_image_url: string | null; owner_id: string; publicado_em: string | null; slug: string; status: Database["public"]["Enums"]["landing_page_status"]; subtitulo: string | null; tema_config: Json; tipo: Database["public"]["Enums"]["landing_page_tipo"]; titulo: string; updated_at: string }
         Insert: { conteudo_blocos?: Json; created_at?: string; empreendimento_id?: string | null; encerramento_em?: string | null; id?: string; imovel_id?: string | null; indexar?: boolean; meta_description?: string | null; meta_title?: string | null; nome_interno: string; og_image_url?: string | null; owner_id: string; publicado_em?: string | null; slug: string; status?: Database["public"]["Enums"]["landing_page_status"]; subtitulo?: string | null; tema_config?: Json; tipo?: Database["public"]["Enums"]["landing_page_tipo"]; titulo: string; updated_at?: string }
@@ -2696,6 +2726,16 @@ export type Database = {
       landing_page_status: "RASCUNHO" | "PUBLICADO" | "ARQUIVADO"
       landing_page_tipo: "PRE_LANCAMENTO" | "LANCAMENTO" | "LISTA_ESPERA" | "IMOVEL_DESTAQUE" | "EMPREENDIMENTO" | "CAPTACAO_IMOVEL" | "CURADORIA" | "EVENTO" | "CAMPANHA_GENERICA"
       public_path_resource: "EMPREENDIMENTO" | "LANDING_PAGE"
+      public_resource_type: "PROFILE" | "PROPERTY" | "DEVELOPMENT" | "ARTICLE" | "LANDING_PAGE"
+      public_event_type: "VIEW" | "FORM_START" | "FORM_SUBMIT" | "CTA_CLICK"
+      marketing_channel: "DIRECT" | "ORGANIC_SEARCH" | "PAID_SEARCH" | "ORGANIC_SOCIAL" | "PAID_SOCIAL" | "EMAIL" | "REFERRAL" | "OTHER"
+      tipo_template: "STATIC" | "CAROUSEL" | "VIDEO"
+      objetivo_template: "PROMOVER_IMOVEL" | "PROMOVER_EMPREENDIMENTO" | "PROMOVER_ARTIGO" | "PROMOVER_LANDING_PAGE" | "PROMOVER_PERFIL"
+      provider_template: "HTML_STATIC" | "HTML_VIDEO" | "REMOTION"
+      creative_output_format: "SQUARE" | "PORTRAIT" | "VERTICAL" | "HORIZONTAL"
+      creative_template_mode: "FIXED" | "HYBRID"
+      tipo_post: "STATIC" | "CAROUSEL" | "VIDEO"
+      status_post: "GERANDO" | "PRONTO" | "ERRO"
       canal_contato: "EMAIL" | "WHATSAPP"
       profile_authority_number_type:
         | "VGV_NEGOCIADO"

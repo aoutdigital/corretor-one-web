@@ -1330,6 +1330,8 @@ Regras:
 - Blocos V1: hero, split_media, paragraph, heading, quote, list, image, gallery, youtube, button, benefits, lead_form, property_feature, property_carousel, development_feature, development_carousel, social_proof, faq, location, countdown, broker_profile e cta.
 - O bloco `hero` (Seção Full) aceita somente imagem de fundo opcional, mantém o conteúdo centralizado e usa fundo branco quando não houver imagem; não oferece gradiente ou cor sólida.
 - O bloco `split_media` usa o editor rich text do módulo Artigos e exige escolha explícita entre imagem enviada ou vídeo por URL válida do YouTube.
+- No MVP, o bloco `lead_form` tem campos fixos: nome, sobrenome e telefone obrigatórios; mensagem opcional; e-mail obrigatório por padrão, podendo ser marcado como opcional pelo corretor. O bloco permite editar título e subtítulo do formulário.
+- As datas de publicação e encerramento são editadas no header da LP. A rota pública respeita a janela: não exibe antes de `publicado_em` nem após `encerramento_em`.
 
 ---
 
@@ -1366,6 +1368,60 @@ Regras:
 
 Regras: gravação pública somente por endpoint controlado; leitura apenas pelo dono.
 
+> Compatibilidade: permanece durante a transição dos relatórios de LP. Novos eventos também usam o motor transversal abaixo.
+
+### marketing_touchpoints
+- id (uuid, PK)
+- owner_id (uuid, FK profiles.id)
+- visitor_id (uuid)
+- session_id (uuid)
+- resource_type (text, enum PUBLIC_RESOURCE_TYPE)
+- resource_id (uuid, nullable)
+- channel (text, enum MARKETING_CHANNEL)
+- source, medium, campaign, content, term (text, nullable)
+- click_ids (jsonb, default `{}`)
+- landing_url, referrer (text, nullable)
+- is_direct (boolean)
+- occurred_at (timestamptz)
+
+Índices: (owner_id, visitor_id, occurred_at), (owner_id, campaign, occurred_at), session_id.
+
+Regras:
+- Um touchpoint é criado no início da sessão ou quando surge uma nova origem/campanha externa; navegação interna não troca a origem.
+- Sessão expira após 30 minutos de inatividade; janela de atribuição do MVP é de 180 dias.
+- Acesso direto participa da jornada, mas não substitui o último touchpoint não direto.
+
+### public_events
+- id (uuid, PK)
+- owner_id (uuid, FK profiles.id)
+- visitor_id (uuid)
+- session_id (uuid)
+- touchpoint_id (uuid, FK marketing_touchpoints.id, nullable)
+- resource_type (text, enum PUBLIC_RESOURCE_TYPE)
+- resource_id (uuid, nullable)
+- event_type (text, enum PUBLIC_EVENT_TYPE)
+- page_url (text, nullable)
+- metadata (jsonb, default `{}`)
+- occurred_at (timestamptz)
+
+Regras: preview e eventos do próprio `owner_id` são descartados pelo endpoint; visualizações repetidas de outros visitantes são preservadas.
+
+### lead_attributions
+- id (uuid, PK)
+- owner_id (uuid, FK profiles.id)
+- lead_id (uuid, FK leads.id, unique)
+- conversion_event_id (uuid, FK public_events.id, nullable)
+- first_touch_id (uuid, FK marketing_touchpoints.id, nullable)
+- last_touch_id (uuid, FK marketing_touchpoints.id, nullable)
+- last_non_direct_touch_id (uuid, FK marketing_touchpoints.id, nullable)
+- assisted_touch_ids (uuid[], default `{}`)
+- sessions_count, touchpoints_count, days_to_convert (int)
+- attribution_window_days (int, default 180)
+- snapshot (jsonb)
+- converted_at, created_at, updated_at (timestamptz)
+
+Regras: o snapshot é congelado no envio do lead e preserva first touch, last touch, last non-direct, auxiliares e conteúdos visitados para relatórios históricos.
+
 ---
 
 ### lead_empreendimentos
@@ -1395,10 +1451,12 @@ Constraints: unique(lead_id, empreendimento_id)
 - nome (text)
 - tipo (text, enum TIPO_TEMPLATE)
 - objetivo (text, enum OBJETIVO_TEMPLATE)
-- itens_min (int, nullable)
-- itens_max (int, nullable)
 - provider (text, enum PROVIDER_TEMPLATE)
-- provider_template_id (text)
+- renderer_key (text)
+- version (int)
+- mode (text, enum CREATIVE_TEMPLATE_MODE)
+- formatos (text[], enum CREATIVE_OUTPUT_FORMAT)
+- preview_url (text, nullable)
 - config (jsonb)
 - ativo (bool)
 
@@ -1407,13 +1465,25 @@ Constraints: unique(lead_id, empreendimento_id)
 ### posts (materiais gerados)
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
-- imovel_id (uuid, FK imoveis.id)
+- subject_type (text, enum PUBLIC_RESOURCE_TYPE)
+- subject_id (uuid)
 - template_id (uuid, FK templates.id)
 - tipo (text, enum TIPO_POST)
+- formato (text, enum CREATIVE_OUTPUT_FORMAT)
 - status (text, enum STATUS_POST)
-- resultado_url (text)
-- payload (jsonb)
+- resultado_url (text, nullable)
+- storage_bucket, storage_path (text, nullable)
+- payload (jsonb) — snapshot imutável dos dados usados na renderização
+- erro (text, nullable)
 - created_at (timestamptz)
+- updated_at (timestamptz)
+
+Regras MVP:
+- Apenas `STATIC`, renderizado internamente por HTML/CSS + Puppeteer.
+- Primeiro template: `property-essential-01`, híbrido, para imóvel publicado nos formatos SQUARE, PORTRAIT e VERTICAL.
+- Assinatura com `corretor.one/nickname`, foto, nome e CRECI é obrigatória e não editável.
+- Headline, apoio, CTA e imagem principal podem ser escolhidos pelo corretor dentro dos limites do template.
+- Nos formatos verticais, informação de conversão não pode depender do rodapé: preço e CTA devem ficar acima da área normalmente coberta pelos controles de Stories/Status.
 
 ---
 
