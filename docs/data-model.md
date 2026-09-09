@@ -75,6 +75,29 @@ Display:
 - created_at (timestamptz)
 - updated_at (timestamptz)
 
+Regras:
+- apenas registros `ATIVO` podem acessar o Admin;
+- apenas `ADM` pode criar, alterar papel ou suspender usuários internos;
+- um usuário não pode suspender ou rebaixar a própria conta;
+- o último `ADM` ativo não pode ser suspenso ou rebaixado.
+
+---
+
+### admin_audit_logs (auditoria interna imutável)
+- id (uuid, PK)
+- admin_user_id (uuid, FK admin_users.id)
+- acao (text)
+- recurso_tipo (text)
+- recurso_id (text, nullable)
+- dados_anteriores (jsonb, nullable)
+- dados_novos (jsonb, nullable)
+- justificativa (text, nullable)
+- ip (inet, nullable)
+- user_agent (text, nullable)
+- created_at (timestamptz)
+
+Regra: registros não podem ser alterados ou removidos pela aplicação.
+
 ---
 
 ### verificacoes_contato (OTP — email/whatsapp)
@@ -1458,7 +1481,18 @@ Constraints: unique(lead_id, empreendimento_id)
 - formatos (text[], enum CREATIVE_OUTPUT_FORMAT)
 - preview_url (text, nullable)
 - config (jsonb)
+- draft_config (jsonb, nullable) *(rascunho administrativo; não afeta gerações até publicação)*
 - ativo (bool)
+
+### template_versions (histórico publicado)
+- id (uuid, PK)
+- template_id (uuid, FK templates.id)
+- version (int)
+- config (jsonb)
+- published_by (uuid, FK admin_users.id)
+- created_at (timestamptz)
+
+Constraint: unique(template_id, version)
 
 ---
 

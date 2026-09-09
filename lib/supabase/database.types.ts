@@ -14,6 +14,18 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_logs: {
+        Row: { id: string; admin_user_id: string; acao: string; recurso_tipo: string; recurso_id: string | null; dados_anteriores: Json | null; dados_novos: Json | null; justificativa: string | null; ip: unknown | null; user_agent: string | null; created_at: string }
+        Insert: { id?: string; admin_user_id: string; acao: string; recurso_tipo: string; recurso_id?: string | null; dados_anteriores?: Json | null; dados_novos?: Json | null; justificativa?: string | null; ip?: unknown | null; user_agent?: string | null; created_at?: string }
+        Update: { id?: string; admin_user_id?: string; acao?: string; recurso_tipo?: string; recurso_id?: string | null; dados_anteriores?: Json | null; dados_novos?: Json | null; justificativa?: string | null; ip?: unknown | null; user_agent?: string | null; created_at?: string }
+        Relationships: [{ foreignKeyName: "admin_audit_logs_admin_user_id_fkey"; columns: ["admin_user_id"]; isOneToOne: false; referencedRelation: "admin_users"; referencedColumns: ["id"] }]
+      }
+      admin_users: {
+        Row: { id: string; nome: string; email: string; papel: Database["public"]["Enums"]["papel_admin"]; status: Database["public"]["Enums"]["status_admin"]; last_login_at: string | null; created_by: string | null; notas: string | null; created_at: string; updated_at: string }
+        Insert: { id: string; nome: string; email: string; papel: Database["public"]["Enums"]["papel_admin"]; status?: Database["public"]["Enums"]["status_admin"]; last_login_at?: string | null; created_by?: string | null; notas?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; nome?: string; email?: string; papel?: Database["public"]["Enums"]["papel_admin"]; status?: Database["public"]["Enums"]["status_admin"]; last_login_at?: string | null; created_by?: string | null; notas?: string | null; created_at?: string; updated_at?: string }
+        Relationships: [{ foreignKeyName: "admin_users_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "admin_users"; referencedColumns: ["id"] }]
+      }
       assinaturas: {
         Row: {
           cancelado_em: string | null
@@ -1011,9 +1023,15 @@ export type Database = {
         Relationships: []
       }
       templates: {
-        Row: { id: string; nome: string; tipo: Database["public"]["Enums"]["tipo_template"]; objetivo: Database["public"]["Enums"]["objetivo_template"]; provider: Database["public"]["Enums"]["provider_template"]; renderer_key: string; version: number; mode: Database["public"]["Enums"]["creative_template_mode"]; formatos: Database["public"]["Enums"]["creative_output_format"][]; preview_url: string | null; config: Json; ativo: boolean; created_at: string; updated_at: string }
-        Insert: { id?: string; nome: string; tipo: Database["public"]["Enums"]["tipo_template"]; objetivo: Database["public"]["Enums"]["objetivo_template"]; provider: Database["public"]["Enums"]["provider_template"]; renderer_key: string; version?: number; mode?: Database["public"]["Enums"]["creative_template_mode"]; formatos?: Database["public"]["Enums"]["creative_output_format"][]; preview_url?: string | null; config?: Json; ativo?: boolean; created_at?: string; updated_at?: string }
-        Update: { id?: string; nome?: string; tipo?: Database["public"]["Enums"]["tipo_template"]; objetivo?: Database["public"]["Enums"]["objetivo_template"]; provider?: Database["public"]["Enums"]["provider_template"]; renderer_key?: string; version?: number; mode?: Database["public"]["Enums"]["creative_template_mode"]; formatos?: Database["public"]["Enums"]["creative_output_format"][]; preview_url?: string | null; config?: Json; ativo?: boolean; created_at?: string; updated_at?: string }
+        Row: { id: string; nome: string; tipo: Database["public"]["Enums"]["tipo_template"]; objetivo: Database["public"]["Enums"]["objetivo_template"]; provider: Database["public"]["Enums"]["provider_template"]; renderer_key: string; version: number; mode: Database["public"]["Enums"]["creative_template_mode"]; formatos: Database["public"]["Enums"]["creative_output_format"][]; preview_url: string | null; config: Json; draft_config: Json | null; ativo: boolean; created_at: string; updated_at: string }
+        Insert: { id?: string; nome: string; tipo: Database["public"]["Enums"]["tipo_template"]; objetivo: Database["public"]["Enums"]["objetivo_template"]; provider: Database["public"]["Enums"]["provider_template"]; renderer_key: string; version?: number; mode?: Database["public"]["Enums"]["creative_template_mode"]; formatos?: Database["public"]["Enums"]["creative_output_format"][]; preview_url?: string | null; config?: Json; draft_config?: Json | null; ativo?: boolean; created_at?: string; updated_at?: string }
+        Update: { id?: string; nome?: string; tipo?: Database["public"]["Enums"]["tipo_template"]; objetivo?: Database["public"]["Enums"]["objetivo_template"]; provider?: Database["public"]["Enums"]["provider_template"]; renderer_key?: string; version?: number; mode?: Database["public"]["Enums"]["creative_template_mode"]; formatos?: Database["public"]["Enums"]["creative_output_format"][]; preview_url?: string | null; config?: Json; draft_config?: Json | null; ativo?: boolean; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      template_versions: {
+        Row: { id: string; template_id: string; version: number; config: Json; published_by: string; created_at: string }
+        Insert: { id?: string; template_id: string; version: number; config: Json; published_by: string; created_at?: string }
+        Update: { id?: string; template_id?: string; version?: number; config?: Json; published_by?: string; created_at?: string }
         Relationships: []
       }
       posts: {
@@ -2721,6 +2739,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      papel_admin: "ADM" | "SUPORTE" | "MARKETING"
+      status_admin: "ATIVO" | "SUSPENSO"
       alt_origem: "MANUAL" | "AYKA"
       landing_page_event_type: "VIEW" | "FORM_START" | "FORM_SUBMIT" | "CTA_CLICK"
       landing_page_status: "RASCUNHO" | "PUBLICADO" | "ARQUIVADO"
@@ -3232,6 +3252,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      papel_admin: ["ADM", "SUPORTE", "MARKETING"],
+      status_admin: ["ATIVO", "SUSPENSO"],
       alt_origem: ["MANUAL", "AYKA"],
       canal_contato: ["EMAIL", "WHATSAPP"],
       profile_authority_number_type: [

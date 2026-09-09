@@ -17,6 +17,8 @@ function text(value: unknown, max: number) { return typeof value === "string" ? 
 function money(value: unknown) { const amount = Number(value); return Number.isFinite(amount) && amount > 0 ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(amount) : "Consulte o valor"; }
 function bufferArray(buffer: Buffer) { return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer; }
 function creci(profile: Row) { return [profile.creci_uf, profile.creci_numero ? `${profile.creci_numero}-F` : null].filter(Boolean).join(" "); }
+function empreendimentoNome(property: Row) { const value = property.empreendimento; return value && typeof value === "object" && !Array.isArray(value) && typeof (value as Row).nome === "string" ? (value as Row).nome as string : ""; }
+function localizacao(property: Row) { return [property.bairro_comercial || property.bairro, [property.cidade, property.estado].filter(Boolean).join(" / ")].filter(Boolean).join(" | "); }
 
 async function authenticate(request: Request) {
   const token = getBearerTokenFromRequest(request); if (!token) return null;
@@ -29,7 +31,7 @@ export async function GET(request: Request) {
   const { admin, ownerId } = authenticated; const db = admin as unknown as Db;
   const [templates, properties, media, profile, posts] = await Promise.all([
     db.from("templates").select("*").eq("ativo", true).eq("objetivo", "PROMOVER_IMOVEL").order("nome"),
-    db.from("imoveis").select("id,titulo,codigo,finalidade,tipo_negociacao,tipo,subtipo,bairro_comercial,bairro,cidade,estado,preco_venda,preco_locacao,area_util,area_terreno,dormitorios,suites,salas,vagas,status").eq("owner_id", ownerId).eq("status", "PUBLICADO").order("updated_at", { ascending: false }),
+    db.from("imoveis").select("id,titulo,codigo,finalidade,tipo_negociacao,tipo,subtipo,bairro_comercial,bairro,cidade,estado,preco_venda,preco_locacao,area_util,area_terreno,dormitorios,suites,salas,vagas,status,empreendimento:empreendimento_id(nome)").eq("owner_id", ownerId).eq("status", "PUBLICADO").order("updated_at", { ascending: false }),
     db.from("midia_relacoes").select("ref_id,ordem,midia:midia_id(tipo,url)").eq("owner_id", ownerId).eq("ref_tipo", "IMOVEL").order("ordem"),
     db.from("profiles").select("id,nickname,primeiro_nome,sobrenome,avatar_url,logo_nickname_url,logo_nickname_white_url,creci_uf,creci_numero").eq("id", ownerId).maybeSingle(),
     db.from("posts").select("id,subject_id,template_id,formato,status,resultado_url,payload,erro,created_at").eq("owner_id", ownerId).order("created_at", { ascending: false }).limit(30),
@@ -46,14 +48,12 @@ export async function POST(request: Request) {
   let body: unknown; try { body = await request.json(); } catch { return NextResponse.json({ ok: false, error: { message: "Dados inválidos" } }, { status: 400 }); }
   if (!body || typeof body !== "object") return NextResponse.json({ ok: false }, { status: 400 });
   const input = body as Record<string, unknown>; const propertyId = text(input.property_id, 40); const templateId = text(input.template_id, 40); const imageUrl = text(input.image_url, 1500); const format = text(input.format, 20) as CreativeFormat;
-  const headlineInput = text(input.headline, 60); const supportingTextInput = text(input.supporting_text, 60); const cta = text(input.cta, 28); const titleMode = input.title_mode === "SHORT" ? "SHORT" : "FULL";
-  const hideSupportingCopy = format !== "VERTICAL" && titleMode === "FULL";
-  const headline = hideSupportingCopy ? "" : headlineInput; const supportingText = hideSupportingCopy ? "" : supportingTextInput;
+  const cta = text(input.cta, 28); const imageLabelMode = input.image_label_mode === "LOCATION" ? "LOCATION" : "DEVELOPMENT";
   if (!propertyId || !templateId || !imageUrl || !FORMATS.has(format) || !cta) return NextResponse.json({ ok: false, error: { message: "Preencha todos os campos obrigatórios do criativo." } }, { status: 400 });
   const { admin, ownerId } = authenticated; const db = admin as unknown as Db;
   const [template, property, images, profile] = await Promise.all([
-    db.from("templates").select("id,renderer_key,version,formatos,ativo").eq("id", templateId).eq("ativo", true).maybeSingle(),
-    db.from("imoveis").select("id,titulo,codigo,finalidade,tipo_negociacao,tipo,subtipo,bairro_comercial,bairro,cidade,estado,preco_venda,preco_locacao,area_util,area_terreno,dormitorios,suites,salas,vagas,status").eq("id", propertyId).eq("owner_id", ownerId).eq("status", "PUBLICADO").maybeSingle(),
+    db.from("templates").select("id,renderer_key,version,formatos,ativo,config").eq("id", templateId).eq("ativo", true).maybeSingle(),
+    db.from("imoveis").select("id,titulo,codigo,finalidade,tipo_negociacao,tipo,subtipo,bairro_comercial,bairro,cidade,estado,preco_venda,preco_locacao,area_util,area_terreno,dormitorios,suites,salas,vagas,status,empreendimento:empreendimento_id(nome)").eq("id", propertyId).eq("owner_id", ownerId).eq("status", "PUBLICADO").maybeSingle(),
     db.from("midia_relacoes").select("midia:midia_id(tipo,url)").eq("ref_id", propertyId).eq("owner_id", ownerId).eq("ref_tipo", "IMOVEL"),
     db.from("profiles").select("nickname,primeiro_nome,sobrenome,avatar_url,logo_nickname_url,logo_nickname_white_url,creci_uf,creci_numero").eq("id", ownerId).maybeSingle(),
   ]);
@@ -69,8 +69,8 @@ export async function POST(request: Request) {
     { kind: "SUITE", value: Number(p.suites) > 0 ? String(p.suites) : "—", label: "Suítes" },
     { kind: "CAR", value: Number(p.vagas) > 0 ? String(p.vagas) : "—", label: "Vagas" },
   ] as PropertyCreativePayload["property"]["stats"];
-  const generatedTitle = titleMode === "SHORT" ? buildImovelShortTitle(p) : buildImovelHeaderTitle(p);
-  const payload: PropertyCreativePayload = { property: { id: propertyId, title: generatedTitle, location: [p.bairro_comercial || p.bairro, [p.cidade, p.estado].filter(Boolean).join("/")].filter(Boolean).join(" · "), price, code: text(p.codigo, 40), imageUrl, stats }, broker: { name: [profileRow.primeiro_nome, profileRow.sobrenome].filter(Boolean).join(" "), nickname: text(profileRow.nickname, 35), creci: creci(profileRow), avatarUrl: text(profileRow.avatar_url, 1500) || null, logoUrl: text(profileRow.logo_nickname_url, 1500) || null, logoWhiteUrl: text(profileRow.logo_nickname_white_url, 1500) || null }, copy: { headline, supportingText, cta, titleMode }, format };
+  const generatedTitle = buildImovelHeaderTitle(p); const developmentName = empreendimentoNome(p);
+  const payload: PropertyCreativePayload = { property: { id: propertyId, title: generatedTitle, location: imageLabelMode === "DEVELOPMENT" && developmentName ? developmentName : localizacao(p), price, code: text(p.codigo, 40), imageUrl, stats }, broker: { name: [profileRow.primeiro_nome, profileRow.sobrenome].filter(Boolean).join(" "), nickname: text(profileRow.nickname, 35), creci: creci(profileRow), avatarUrl: text(profileRow.avatar_url, 1500) || null, logoUrl: text(profileRow.logo_nickname_url, 1500) || null, logoWhiteUrl: text(profileRow.logo_nickname_white_url, 1500) || null }, copy: { headline: "", supportingText: "", cta, titleMode: "FULL" }, format, templateConfig: templateRow.config as PropertyCreativePayload["templateConfig"] };
   const post = await db.from("posts").insert({ owner_id: ownerId, subject_type: "PROPERTY", subject_id: propertyId, template_id: templateId, tipo: "STATIC", formato: format, status: "GERANDO", payload }).select("id").single();
   const postRow = post.data && !Array.isArray(post.data) ? post.data : null;
   if (post.error || !postRow) return NextResponse.json({ ok: false, error: { message: post.error?.message ?? "Falha ao iniciar geração." } }, { status: 500 });

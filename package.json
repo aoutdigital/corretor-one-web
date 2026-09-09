@@ -10,7 +10,8 @@
     "logo:glyph-map": "node scripts/logo/build-glyph-map-from-letras-svg.mjs",
     "logo:nickname:path": "node scripts/logo/build-nickname-logo.mjs",
     "logo:png": "node scripts/logo/export-html-png.mjs",
-    "seed:related-properties": "node scripts/seed-related-properties.mjs"
+    "seed:related-properties": "node scripts/seed-related-properties.mjs",
+    "admin:bootstrap": "node --env-file=.env.local scripts/bootstrap-admin.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

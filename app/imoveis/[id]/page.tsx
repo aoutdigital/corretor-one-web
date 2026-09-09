@@ -31,8 +31,14 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AppShell } from "@/app/_components/app-shell";
-import { FloatingToastViewport, type FloatingToastItem } from "@/app/_components/floating-toast";
-import { LongTextAykaEditor, type AykaConfig } from "@/app/_components/long-text-ayka-editor";
+import {
+  FloatingToastViewport,
+  type FloatingToastItem,
+} from "@/app/_components/floating-toast";
+import {
+  LongTextAykaEditor,
+  type AykaConfig,
+} from "@/app/_components/long-text-ayka-editor";
 import { apiFetchWithAuth, getAccessToken } from "@/lib/client/auth-api";
 import { buildImovelHeaderTitle as buildSharedImovelHeaderTitle } from "@/lib/imoveis/display-title";
 import {
@@ -41,7 +47,10 @@ import {
   type ImovelPublicUrlInput,
   willImovelPublicUrlChange,
 } from "@/lib/imoveis/public-url";
-import { formatAddressFromFields, replaceOrAppendAddressNumber } from "@/lib/location/address";
+import {
+  formatAddressFromFields,
+  replaceOrAppendAddressNumber,
+} from "@/lib/location/address";
 
 type Imovel = {
   id: string;
@@ -111,7 +120,12 @@ type Imovel = {
   numero?: string | null;
   endereco_complemento?: string | null;
   bairro_comercial?: string | null;
-  enderecovisualizacao?: "END_SEM_COMPLEMENTO" | "END_COMPLETO" | "END_BAIRRO" | "END_SEM_NUMERO" | null;
+  enderecovisualizacao?:
+    | "END_SEM_COMPLEMENTO"
+    | "END_COMPLETO"
+    | "END_BAIRRO"
+    | "END_SEM_NUMERO"
+    | null;
   bairro?: string | null;
   cep?: string | null;
   lat?: number | null;
@@ -288,7 +302,10 @@ type YoutubeVideoDraftItem = {
   title: string | null;
 };
 
-type RejectedImageReason = "TAMANHO_PEQUENO" | "ACIMA_15MB" | "FORMATO_INVALIDO";
+type RejectedImageReason =
+  | "TAMANHO_PEQUENO"
+  | "ACIMA_15MB"
+  | "FORMATO_INVALIDO";
 
 type RejectedImageDraftItem = {
   id: string;
@@ -305,14 +322,54 @@ type BlockItem = {
 };
 
 const EDIT_BLOCKS: BlockItem[] = [
-  { step: 2, title: "Localização", description: "Endereço e contexto local", icon: MapPin },
-  { step: 3, title: "Dados do imóvel", description: "Metragens e composição", icon: House },
-  { step: 4, title: "Negociação", description: "Preços e regras comerciais", icon: Tag },
-  { step: 5, title: "Detalhes dos ambientes", description: "Dormitórios, salas e cozinha", icon: Info },
-  { step: 6, title: "Características", description: "Diferenciais do anúncio", icon: Sparkle },
-  { step: 7, title: "Descrição", description: "Texto comercial com Ayka", icon: TextB },
-  { step: 8, title: "Imagens", description: "Galeria e ordenação", icon: Images },
-  { step: 9, title: "Vídeos", description: "Links de vídeo do anúncio", icon: VideoCamera },
+  {
+    step: 2,
+    title: "Localização",
+    description: "Endereço e contexto local",
+    icon: MapPin,
+  },
+  {
+    step: 3,
+    title: "Dados do imóvel",
+    description: "Metragens e composição",
+    icon: House,
+  },
+  {
+    step: 4,
+    title: "Negociação",
+    description: "Preços e regras comerciais",
+    icon: Tag,
+  },
+  {
+    step: 5,
+    title: "Detalhes dos ambientes",
+    description: "Dormitórios, salas e cozinha",
+    icon: Info,
+  },
+  {
+    step: 6,
+    title: "Características",
+    description: "Diferenciais do anúncio",
+    icon: Sparkle,
+  },
+  {
+    step: 7,
+    title: "Descrição",
+    description: "Texto comercial com Ayka",
+    icon: TextB,
+  },
+  {
+    step: 8,
+    title: "Imagens",
+    description: "Galeria e ordenação",
+    icon: Images,
+  },
+  {
+    step: 9,
+    title: "Vídeos",
+    description: "Links de vídeo do anúncio",
+    icon: VideoCamera,
+  },
 ];
 
 type EditFormState = {
@@ -595,8 +652,13 @@ const MAX_IMAGE_UPLOAD_BYTES = 15 * 1024 * 1024; // 15MB
 const MAX_YOUTUBE_VIDEOS = 3;
 const MIN_IMAGE_WIDTH = 800;
 const MIN_IMAGE_HEIGHT = 600;
-type AceitaParceriaStatusValue = (typeof ACEITA_PARCERIA_STATUS_OPTIONS)[number]["value"];
-type ModeloCaptacaoValue = "" | "PARCERIA" | "CAPTACAO_SEM_EXCLUSIVIDADE" | "EXCLUSIVIDADE";
+type AceitaParceriaStatusValue =
+  (typeof ACEITA_PARCERIA_STATUS_OPTIONS)[number]["value"];
+type ModeloCaptacaoValue =
+  | ""
+  | "PARCERIA"
+  | "CAPTACAO_SEM_EXCLUSIVIDADE"
+  | "EXCLUSIVIDADE";
 type AmbientePisoValue = (typeof AMBIENTE_PISO_OPTIONS)[number]["value"];
 type PersianaTipoValue = (typeof PERSIANA_TIPO_OPTIONS)[number]["value"];
 type CozinhaTipoValue = (typeof COZINHA_TIPO_OPTIONS)[number]["value"];
@@ -633,7 +695,8 @@ function formatIsoDateToPtBr(value: string) {
 function parseOptionalInteger(value: string) {
   const normalized = value.trim();
   if (!normalized) return { ok: true as const, value: null };
-  if (!/^\d+$/.test(normalized)) return { ok: false as const, error: "Use apenas números inteiros." };
+  if (!/^\d+$/.test(normalized))
+    return { ok: false as const, error: "Use apenas números inteiros." };
   return { ok: true as const, value: Number(normalized) };
 }
 
@@ -663,7 +726,8 @@ function parseOptionalDecimal(value: string) {
     normalized = normalized.replace(/\./g, "");
   }
 
-  if (!/^\d+(\.\d+)?$/.test(normalized)) return { ok: false as const, error: "Use um número válido." };
+  if (!/^\d+(\.\d+)?$/.test(normalized))
+    return { ok: false as const, error: "Use um número válido." };
   return { ok: true as const, value: Number(normalized) };
 }
 
@@ -681,7 +745,10 @@ function sanitizeDecimalPtBrInput(value: string) {
   if (cleaned.includes(",")) {
     const commaIndex = cleaned.indexOf(",");
     const intPart = formatThousandGroupsPtBr(cleaned.slice(0, commaIndex));
-    const decPart = cleaned.slice(commaIndex + 1).replace(/\D/g, "").slice(0, 2);
+    const decPart = cleaned
+      .slice(commaIndex + 1)
+      .replace(/\D/g, "")
+      .slice(0, 2);
     return decPart.length > 0 ? `${intPart},${decPart}` : `${intPart},`;
   }
 
@@ -751,7 +818,9 @@ function formatCurrencyValue(value: number) {
 function formatPhoneDisplay(input: string) {
   const digitsRaw = input.replace(/\D/g, "");
   const localDigits =
-    digitsRaw.startsWith("55") && digitsRaw.length >= 12 ? digitsRaw.slice(2) : digitsRaw;
+    digitsRaw.startsWith("55") && digitsRaw.length >= 12
+      ? digitsRaw.slice(2)
+      : digitsRaw;
   const digits = localDigits.slice(0, 11);
 
   if (!digits) return "";
@@ -760,12 +829,18 @@ function formatPhoneDisplay(input: string) {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
-function isTipoNegociacao(value: string): value is (typeof TIPO_NEGOCIACAO_OPTIONS)[number]["value"] {
+function isTipoNegociacao(
+  value: string,
+): value is (typeof TIPO_NEGOCIACAO_OPTIONS)[number]["value"] {
   return TIPO_NEGOCIACAO_OPTIONS.some((option) => option.value === value);
 }
 
-function isAceitaParceriaStatus(value: string): value is AceitaParceriaStatusValue {
-  return ACEITA_PARCERIA_STATUS_OPTIONS.some((option) => option.value === value);
+function isAceitaParceriaStatus(
+  value: string,
+): value is AceitaParceriaStatusValue {
+  return ACEITA_PARCERIA_STATUS_OPTIONS.some(
+    (option) => option.value === value,
+  );
 }
 
 function isAmbientePiso(value: string): value is AmbientePisoValue {
@@ -788,7 +863,9 @@ function isVarandaTipo(value: string): value is VarandaTipoValue {
   return VARANDA_TIPO_OPTIONS.some((option) => option.value === value);
 }
 
-function isVarandaChurrasqueira(value: string): value is VarandaChurrasqueiraValue {
+function isVarandaChurrasqueira(
+  value: string,
+): value is VarandaChurrasqueiraValue {
   return VARANDA_CHURRASQUEIRA_OPTIONS.some((option) => option.value === value);
 }
 
@@ -874,7 +951,11 @@ function createVarandaAmbiente(): VarandaAmbienteForm {
   };
 }
 
-function resizeAmbientes<T>(current: T[], targetSize: number, factory: () => T): T[] {
+function resizeAmbientes<T>(
+  current: T[],
+  targetSize: number,
+  factory: () => T,
+): T[] {
   const nextTarget = Math.max(0, targetSize);
   if (current.length === nextTarget) return current;
   if (current.length > nextTarget) return current.slice(0, nextTarget);
@@ -908,8 +989,10 @@ function computeTerrenoAreaFromMedidas(params: {
 
   if (largura.length === 0 || profundidade.length === 0) return null;
 
-  const larguraMedia = largura.reduce((acc, value) => acc + value, 0) / largura.length;
-  const profundidadeMedia = profundidade.reduce((acc, value) => acc + value, 0) / profundidade.length;
+  const larguraMedia =
+    largura.reduce((acc, value) => acc + value, 0) / largura.length;
+  const profundidadeMedia =
+    profundidade.reduce((acc, value) => acc + value, 0) / profundidade.length;
   const area = larguraMedia * profundidadeMedia;
   if (!Number.isFinite(area) || area <= 0) return null;
   return area;
@@ -925,13 +1008,15 @@ function normalizeOptionalText(value: unknown) {
   if (typeof value !== "string") return "";
   const trimmed = value.trim();
   if (!trimmed) return "";
-  if (trimmed.toLowerCase() === "false" || trimmed.toLowerCase() === "true") return "";
+  if (trimmed.toLowerCase() === "false" || trimmed.toLowerCase() === "true")
+    return "";
   return trimmed;
 }
 
 function normalizeBairroComercial(value: unknown, fallbackBairro: unknown) {
   if (typeof value === "boolean") {
-    if (value && typeof fallbackBairro === "string") return fallbackBairro.trim();
+    if (value && typeof fallbackBairro === "string")
+      return fallbackBairro.trim();
     return "";
   }
   return normalizeOptionalText(value);
@@ -958,22 +1043,29 @@ function normalizeLocalizacaoResumo(value: unknown) {
 
 function toEditForm(item: Imovel): EditFormState {
   const localizacaoContexto =
-    item.localizacao_contexto && typeof item.localizacao_contexto === "object" && !Array.isArray(item.localizacao_contexto)
+    item.localizacao_contexto &&
+    typeof item.localizacao_contexto === "object" &&
+    !Array.isArray(item.localizacao_contexto)
       ? (item.localizacao_contexto as Record<string, unknown>)
       : {};
   const parceriaStatus = item.aceita_parceria_status ?? "";
   const contatoNome = item.corretor_parceiro_nome ?? "";
-  const contatoTelefone = formatPhoneDisplay(item.corretor_parceiro_telefone ?? "");
+  const contatoTelefone = formatPhoneDisplay(
+    item.corretor_parceiro_telefone ?? "",
+  );
   const contatoEmail = item.corretor_parceiro_email ?? "";
   const hasContatoPreenchido =
-    contatoNome.trim().length > 0 || contatoTelefone.trim().length > 0 || contatoEmail.trim().length > 0;
-  const modeloCaptacaoLoaded: ModeloCaptacaoValue = item.captacao_corretor_parceiro
-    ? "PARCERIA"
-    : item.exclusividade
-      ? "EXCLUSIVIDADE"
-      : hasContatoPreenchido
-        ? "CAPTACAO_SEM_EXCLUSIVIDADE"
-        : "";
+    contatoNome.trim().length > 0 ||
+    contatoTelefone.trim().length > 0 ||
+    contatoEmail.trim().length > 0;
+  const modeloCaptacaoLoaded: ModeloCaptacaoValue =
+    item.captacao_corretor_parceiro
+      ? "PARCERIA"
+      : item.exclusividade
+        ? "EXCLUSIVIDADE"
+        : hasContatoPreenchido
+          ? "CAPTACAO_SEM_EXCLUSIVIDADE"
+          : "";
 
   return {
     titulo: item.titulo ?? "",
@@ -984,7 +1076,8 @@ function toEditForm(item: Imovel): EditFormState {
     numero: item.numero ?? "",
     endereco_complemento: normalizeOptionalText(item.endereco_complemento),
     bairro_comercial: normalizeBairroComercial(
-      item.bairro_comercial ?? (item.address_json as Record<string, unknown> | null)?.bairro_comercial,
+      item.bairro_comercial ??
+        (item.address_json as Record<string, unknown> | null)?.bairro_comercial,
       item.bairro,
     ),
     enderecovisualizacao: item.enderecovisualizacao ?? "END_SEM_COMPLEMENTO",
@@ -1008,14 +1101,20 @@ function toEditForm(item: Imovel): EditFormState {
       localizacaoContexto.lazer_estilo_vida,
       LOCALIZACAO_LAZER_ESTILO_OPTIONS,
     ),
-    localizacao_resumo_local: normalizeLocalizacaoResumo(localizacaoContexto.resumo_local),
+    localizacao_resumo_local: normalizeLocalizacaoResumo(
+      localizacaoContexto.resumo_local,
+    ),
     area_total: normalizeDecimalPtBrInput(numberToInput(item.area_total)),
     area_util: normalizeDecimalPtBrInput(numberToInput(item.area_util)),
     area_terreno: normalizeDecimalPtBrInput(numberToInput(item.area_terreno)),
     frente_metros: normalizeDecimalPtBrInput(numberToInput(item.frente_metros)),
     fundos_metros: normalizeDecimalPtBrInput(numberToInput(item.fundos_metros)),
-    lateral_1_metros: normalizeDecimalPtBrInput(numberToInput(item.lateral_1_metros)),
-    lateral_2_metros: normalizeDecimalPtBrInput(numberToInput(item.lateral_2_metros)),
+    lateral_1_metros: normalizeDecimalPtBrInput(
+      numberToInput(item.lateral_1_metros),
+    ),
+    lateral_2_metros: normalizeDecimalPtBrInput(
+      numberToInput(item.lateral_2_metros),
+    ),
     dormitorios: numberToInput(item.dormitorios),
     suites: numberToInput(item.suites),
     banheiros: numberToInput(item.banheiros),
@@ -1031,13 +1130,17 @@ function toEditForm(item: Imovel): EditFormState {
       : [],
     vaga_tamanho:
       Array.isArray(item.vaga_tamanhos) && item.vaga_tamanhos.length > 0
-        ? VAGA_TAMANHO_OPTIONS.some((option) => option.value === item.vaga_tamanhos?.[0])
+        ? VAGA_TAMANHO_OPTIONS.some(
+            (option) => option.value === item.vaga_tamanhos?.[0],
+          )
           ? (item.vaga_tamanhos?.[0] ?? "")
           : ""
         : "",
     vaga_cobertura:
       Array.isArray(item.vaga_coberturas) && item.vaga_coberturas.length > 0
-        ? VAGA_COBERTURA_OPTIONS.some((option) => option.value === item.vaga_coberturas?.[0])
+        ? VAGA_COBERTURA_OPTIONS.some(
+            (option) => option.value === item.vaga_coberturas?.[0],
+          )
           ? (item.vaga_coberturas?.[0] ?? "")
           : ""
         : "",
@@ -1048,30 +1151,56 @@ function toEditForm(item: Imovel): EditFormState {
     iptu: formatCurrencyInput(numberToInput(item.iptu)),
     iptu_periodicidade: item.iptu_periodicidade ?? "ANUAL",
     comissao_locacao: item.comissao_locacao ?? "",
-    comissao_venda_percentual: numberToPercentInput(item.comissao_venda_percentual),
-    minimo_aceito_em_maos: formatCurrencyInput(numberToInput(item.minimo_aceito_em_maos)),
+    comissao_venda_percentual: numberToPercentInput(
+      item.comissao_venda_percentual,
+    ),
+    minimo_aceito_em_maos: formatCurrencyInput(
+      numberToInput(item.minimo_aceito_em_maos),
+    ),
     aceita_permuta: Boolean(item.aceita_permuta),
     descricao_permuta: item.descricao_permuta ?? "",
     modelo_captacao: modeloCaptacaoLoaded,
-    corretor_parceiro_nome: modeloCaptacaoLoaded === "PARCERIA" ? contatoNome : "",
-    corretor_parceiro_telefone: modeloCaptacaoLoaded === "PARCERIA" ? contatoTelefone : "",
-    corretor_parceiro_email: modeloCaptacaoLoaded === "PARCERIA" ? contatoEmail : "",
+    corretor_parceiro_nome:
+      modeloCaptacaoLoaded === "PARCERIA" ? contatoNome : "",
+    corretor_parceiro_telefone:
+      modeloCaptacaoLoaded === "PARCERIA" ? contatoTelefone : "",
+    corretor_parceiro_email:
+      modeloCaptacaoLoaded === "PARCERIA" ? contatoEmail : "",
     proprietario_nome: modeloCaptacaoLoaded === "PARCERIA" ? "" : contatoNome,
-    proprietario_telefone: modeloCaptacaoLoaded === "PARCERIA" ? "" : contatoTelefone,
+    proprietario_telefone:
+      modeloCaptacaoLoaded === "PARCERIA" ? "" : contatoTelefone,
     proprietario_email: modeloCaptacaoLoaded === "PARCERIA" ? "" : contatoEmail,
-    comissao_captador_percentual: numberToPercentInput(item.comissao_captador_percentual),
-    comissao_vendedor_percentual: numberToPercentInput(item.comissao_vendedor_percentual),
-    exclusividade_comissao_minha_percentual: numberToPercentInput(item.exclusividade_comissao_minha_percentual),
-    exclusividade_comissao_parceiro_percentual: numberToPercentInput(item.exclusividade_comissao_parceiro_percentual),
+    comissao_captador_percentual: numberToPercentInput(
+      item.comissao_captador_percentual,
+    ),
+    comissao_vendedor_percentual: numberToPercentInput(
+      item.comissao_vendedor_percentual,
+    ),
+    exclusividade_comissao_minha_percentual: numberToPercentInput(
+      item.exclusividade_comissao_minha_percentual,
+    ),
+    exclusividade_comissao_parceiro_percentual: numberToPercentInput(
+      item.exclusividade_comissao_parceiro_percentual,
+    ),
     exclusividade_data_vencimento: item.exclusividade_data_vencimento ?? "",
     exclusividade_observacoes: item.exclusividade_observacoes ?? "",
-    disponibilizar_no_bolsao_parceria: Boolean(item.disponibilizar_no_bolsao_parceria),
+    disponibilizar_no_bolsao_parceria: Boolean(
+      item.disponibilizar_no_bolsao_parceria,
+    ),
     bolsao_permitir_mudanca_preco: Boolean(item.bolsao_permitir_mudanca_preco),
-    bolsao_permitir_download_midia_kit: Boolean(item.bolsao_permitir_download_midia_kit),
-    bolsao_somente_visitas_agendadas: Boolean(item.bolsao_somente_visitas_agendadas),
-    bolsao_somente_visitas_com_minha_presenca: Boolean(item.bolsao_somente_visitas_com_minha_presenca),
+    bolsao_permitir_download_midia_kit: Boolean(
+      item.bolsao_permitir_download_midia_kit,
+    ),
+    bolsao_somente_visitas_agendadas: Boolean(
+      item.bolsao_somente_visitas_agendadas,
+    ),
+    bolsao_somente_visitas_com_minha_presenca: Boolean(
+      item.bolsao_somente_visitas_com_minha_presenca,
+    ),
     aceite_corretor_exclusivo: Boolean(item.aceite_corretor_exclusivo),
-    aceita_parceria_status: isAceitaParceriaStatus(parceriaStatus) ? parceriaStatus : "",
+    aceita_parceria_status: isAceitaParceriaStatus(parceriaStatus)
+      ? parceriaStatus
+      : "",
     descricao: item.descricao ?? "",
   };
 }
@@ -1094,7 +1223,10 @@ function formatStatusLabel(status: string) {
 
 function formatCurrency(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "-";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
 }
 
 function formatTipo(value: string | null | undefined) {
@@ -1107,11 +1239,18 @@ function formatTipo(value: string | null | undefined) {
 }
 
 function formatAddress(item: Imovel) {
-  const rua = [item.logradouro?.trim(), item.numero?.trim()].filter(Boolean).join(", ");
-  const local = [item.bairro?.trim(), [item.cidade?.trim(), item.estado?.trim()].filter(Boolean).join(" - ")]
+  const rua = [item.logradouro?.trim(), item.numero?.trim()]
+    .filter(Boolean)
+    .join(", ");
+  const local = [
+    item.bairro?.trim(),
+    [item.cidade?.trim(), item.estado?.trim()].filter(Boolean).join(" - "),
+  ]
     .filter(Boolean)
     .join(" • ");
-  return [rua, local].filter(Boolean).join(" • ") || `${item.cidade}/${item.estado}`;
+  return (
+    [rua, local].filter(Boolean).join(" • ") || `${item.cidade}/${item.estado}`
+  );
 }
 
 function buildImovelHeaderTitle(item: Imovel) {
@@ -1129,26 +1268,35 @@ function buildImovelPublicUrlInput(
   payload?: Record<string, unknown>,
 ): ImovelPublicUrlInput {
   const getValue = (key: keyof ImovelPublicUrlInput): unknown => {
-    if (payload && Object.prototype.hasOwnProperty.call(payload, key)) return payload[key];
+    if (payload && Object.prototype.hasOwnProperty.call(payload, key))
+      return payload[key];
     return (base as unknown as Record<string, unknown>)[key];
   };
 
-  const addressJson = payload && Object.prototype.hasOwnProperty.call(payload, "address_json")
-    ? payload.address_json
-    : base.address_json;
+  const addressJson =
+    payload && Object.prototype.hasOwnProperty.call(payload, "address_json")
+      ? payload.address_json
+      : base.address_json;
 
-  const bairroComercialFromPayload = payload && Object.prototype.hasOwnProperty.call(payload, "bairro_comercial")
-    ? normalizeOptionalText(payload.bairro_comercial)
-    : "";
-  const bairroComercialFromAddress = extractBairroComercialFromAddressJson(addressJson);
-  const bairroComercial = bairroComercialFromPayload || bairroComercialFromAddress || normalizeOptionalText(base.bairro_comercial);
+  const bairroComercialFromPayload =
+    payload && Object.prototype.hasOwnProperty.call(payload, "bairro_comercial")
+      ? normalizeOptionalText(payload.bairro_comercial)
+      : "";
+  const bairroComercialFromAddress =
+    extractBairroComercialFromAddressJson(addressJson);
+  const bairroComercial =
+    bairroComercialFromPayload ||
+    bairroComercialFromAddress ||
+    normalizeOptionalText(base.bairro_comercial);
 
   const empreendimentoNomeFromPayload =
-    payload && Object.prototype.hasOwnProperty.call(payload, "empreendimento_nome")
+    payload &&
+    Object.prototype.hasOwnProperty.call(payload, "empreendimento_nome")
       ? normalizeOptionalText(payload.empreendimento_nome)
       : "";
   const empreendimentoNomeFromBase = normalizeOptionalText(
-    (base as unknown as { empreendimento_nome?: string | null }).empreendimento_nome,
+    (base as unknown as { empreendimento_nome?: string | null })
+      .empreendimento_nome,
   );
 
   return {
@@ -1167,7 +1315,8 @@ function buildImovelPublicUrlInput(
     area_total: getValue("area_total"),
     area_terreno: getValue("area_terreno"),
     vagas: getValue("vagas"),
-    empreendimento_nome: empreendimentoNomeFromPayload || empreendimentoNomeFromBase || null,
+    empreendimento_nome:
+      empreendimentoNomeFromPayload || empreendimentoNomeFromBase || null,
     codigo: getValue("codigo"),
   };
 }
@@ -1175,7 +1324,10 @@ function buildImovelPublicUrlInput(
 function buildThumbUrl(url: string | null) {
   if (!url) return null;
   if (!url.includes("/storage/v1/object/public/")) return url;
-  const transformed = url.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
+  const transformed = url.replace(
+    "/storage/v1/object/public/",
+    "/storage/v1/render/image/public/",
+  );
   const separator = transformed.includes("?") ? "&" : "?";
   return `${transformed}${separator}width=560&height=360&quality=70&resize=cover`;
 }
@@ -1255,9 +1407,13 @@ async function getImageDimensionsClient(
 ): Promise<{ width: number; height: number } | null> {
   const objectUrl = URL.createObjectURL(file);
   try {
-    const dimensions = await new Promise<{ width: number; height: number } | null>((resolve) => {
+    const dimensions = await new Promise<{
+      width: number;
+      height: number;
+    } | null>((resolve) => {
       const img = new window.Image();
-      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onload = () =>
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
       img.onerror = () => resolve(null);
       img.src = objectUrl;
     });
@@ -1328,10 +1484,17 @@ function normalizeYouTubeUrl(input: string): string | null {
 
   if (host === "youtu.be") {
     videoId = parsed.pathname.split("/").filter(Boolean)[0] ?? null;
-  } else if (host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com") {
+  } else if (
+    host === "youtube.com" ||
+    host === "m.youtube.com" ||
+    host === "music.youtube.com"
+  ) {
     if (parsed.pathname === "/watch") {
       videoId = parsed.searchParams.get("v");
-    } else if (parsed.pathname.startsWith("/shorts/") || parsed.pathname.startsWith("/embed/")) {
+    } else if (
+      parsed.pathname.startsWith("/shorts/") ||
+      parsed.pathname.startsWith("/embed/")
+    ) {
       videoId = parsed.pathname.split("/")[2] ?? null;
     }
   }
@@ -1398,9 +1561,13 @@ function htmlToPlainText(value: string) {
 }
 
 function serializeCaracteristicasSnapshot(caracteristicas: string[]) {
-  const normalized = [...new Set(caracteristicas.map((item) => item.trim()).filter((item) => item.length > 0))].sort(
-    (a, b) => a.localeCompare(b, "pt-BR"),
-  );
+  const normalized = [
+    ...new Set(
+      caracteristicas
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0),
+    ),
+  ].sort((a, b) => a.localeCompare(b, "pt-BR"));
   return JSON.stringify(normalized);
 }
 
@@ -1458,7 +1625,9 @@ export default function ImovelDetalhePage() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingBlock, setSavingBlock] = useState<number | null>(null);
-  const [pendingNavigationHref, setPendingNavigationHref] = useState<string | null>(null);
+  const [pendingNavigationHref, setPendingNavigationHref] = useState<
+    string | null
+  >(null);
   const [showUnsavedLeaveModal, setShowUnsavedLeaveModal] = useState(false);
   const [blockError, setBlockError] = useState<string | null>(null);
   const [blockMessage, setBlockMessage] = useState<string | null>(null);
@@ -1469,46 +1638,76 @@ export default function ImovelDetalhePage() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchingPlaces, setSearchingPlaces] = useState(false);
   const [placeOptions, setPlaceOptions] = useState<PlacePrediction[]>([]);
-  const [caracteristicasCatalogo, setCaracteristicasCatalogo] = useState<CaracteristicaCatalogoItem[]>([]);
-  const [loadingCaracteristicasCatalogo, setLoadingCaracteristicasCatalogo] = useState(false);
-  const [caracteristicaQuery, setCaracteristicaQuery] = useState("");
-  const [caracteristicasSelecionadas, setCaracteristicasSelecionadas] = useState<string[]>([]);
-  const [caracteristicasSnapshot, setCaracteristicasSnapshot] = useState("[]");
-  const [empreendimentoCaracteristicasAssociadas, setEmpreendimentoCaracteristicasAssociadas] = useState<
+  const [caracteristicasCatalogo, setCaracteristicasCatalogo] = useState<
     CaracteristicaCatalogoItem[]
   >([]);
-  const [loadingEmpreendimentoCaracteristicasAssociadas, setLoadingEmpreendimentoCaracteristicasAssociadas] =
+  const [loadingCaracteristicasCatalogo, setLoadingCaracteristicasCatalogo] =
     useState(false);
-  const [showEmpreendimentoCaracteristicasModal, setShowEmpreendimentoCaracteristicasModal] = useState(false);
+  const [caracteristicaQuery, setCaracteristicaQuery] = useState("");
+  const [caracteristicasSelecionadas, setCaracteristicasSelecionadas] =
+    useState<string[]>([]);
+  const [caracteristicasSnapshot, setCaracteristicasSnapshot] = useState("[]");
+  const [
+    empreendimentoCaracteristicasAssociadas,
+    setEmpreendimentoCaracteristicasAssociadas,
+  ] = useState<CaracteristicaCatalogoItem[]>([]);
+  const [
+    loadingEmpreendimentoCaracteristicasAssociadas,
+    setLoadingEmpreendimentoCaracteristicasAssociadas,
+  ] = useState(false);
+  const [
+    showEmpreendimentoCaracteristicasModal,
+    setShowEmpreendimentoCaracteristicasModal,
+  ] = useState(false);
   const [empreendimentoAssociadoAyka, setEmpreendimentoAssociadoAyka] =
     useState<EmpreendimentoCaracteristicasResponse | null>(null);
   const [checkingAykaCreditos, setCheckingAykaCreditos] = useState(false);
   const [gerandoDescricaoAyka, setGerandoDescricaoAyka] = useState(false);
-  const [aykaActionCodigo, setAykaActionCodigo] = useState("CRIAR_DESCRICAO_IMOVEL");
+  const [aykaActionCodigo, setAykaActionCodigo] = useState(
+    "CRIAR_DESCRICAO_IMOVEL",
+  );
   const [midiasImovel, setMidiasImovel] = useState<ImageDraftItem[]>([]);
   const [youtubeUrlInput, setYoutubeUrlInput] = useState("");
-  const [youtubeVideos, setYoutubeVideos] = useState<YoutubeVideoDraftItem[]>([]);
+  const [youtubeVideos, setYoutubeVideos] = useState<YoutubeVideoDraftItem[]>(
+    [],
+  );
   const [addingYoutube, setAddingYoutube] = useState(false);
-  const [midiasPublicasImovelHeader, setMidiasPublicasImovelHeader] = useState<ImovelMidiaPublicaItem[]>([]);
+  const [midiasPublicasImovelHeader, setMidiasPublicasImovelHeader] = useState<
+    ImovelMidiaPublicaItem[]
+  >([]);
   const [showPublicImageLightbox, setShowPublicImageLightbox] = useState(false);
   const [publicLightboxImageIndex, setPublicLightboxImageIndex] = useState(0);
-  const [midiasEmpreendimentoRelacionadas, setMidiasEmpreendimentoRelacionadas] = useState<
-    EmpreendimentoMidiaPublicaItem[]
+  const [
+    midiasEmpreendimentoRelacionadas,
+    setMidiasEmpreendimentoRelacionadas,
+  ] = useState<EmpreendimentoMidiaPublicaItem[]>([]);
+  const [rejectedMidiasImovel, setRejectedMidiasImovel] = useState<
+    RejectedImageDraftItem[]
   >([]);
-  const [rejectedMidiasImovel, setRejectedMidiasImovel] = useState<RejectedImageDraftItem[]>([]);
   const [loadingMidiasImovel, setLoadingMidiasImovel] = useState(false);
-  const [loadingMidiasPublicasImovelHeader, setLoadingMidiasPublicasImovelHeader] = useState(false);
-  const [loadingMidiasEmpreendimentoRelacionadas, setLoadingMidiasEmpreendimentoRelacionadas] =
-    useState(false);
+  const [
+    loadingMidiasPublicasImovelHeader,
+    setLoadingMidiasPublicasImovelHeader,
+  ] = useState(false);
+  const [
+    loadingMidiasEmpreendimentoRelacionadas,
+    setLoadingMidiasEmpreendimentoRelacionadas,
+  ] = useState(false);
   const [loadingStep5, setLoadingStep5] = useState(false);
   const [qtdDormitoriosDetalhe, setQtdDormitoriosDetalhe] = useState("");
   const [qtdCozinhasDetalhe, setQtdCozinhasDetalhe] = useState("");
   const [qtdSalasDetalhe, setQtdSalasDetalhe] = useState("");
   const [qtdVarandasDetalhe, setQtdVarandasDetalhe] = useState("");
-  const [dormitoriosDetalhe, setDormitoriosDetalhe] = useState<DormitorioAmbienteForm[]>([]);
-  const [cozinhasDetalhe, setCozinhasDetalhe] = useState<CozinhaAmbienteForm[]>([]);
+  const [dormitoriosDetalhe, setDormitoriosDetalhe] = useState<
+    DormitorioAmbienteForm[]
+  >([]);
+  const [cozinhasDetalhe, setCozinhasDetalhe] = useState<CozinhaAmbienteForm[]>(
+    [],
+  );
   const [salasDetalhe, setSalasDetalhe] = useState<SalaAmbienteForm[]>([]);
-  const [varandasDetalhe, setVarandasDetalhe] = useState<VarandaAmbienteForm[]>([]);
+  const [varandasDetalhe, setVarandasDetalhe] = useState<VarandaAmbienteForm[]>(
+    [],
+  );
   const [step5Snapshot, setStep5Snapshot] = useState(() =>
     serializeAmbientesSnapshot({
       qtdDormitorios: "",
@@ -1522,11 +1721,18 @@ export default function ImovelDetalhePage() {
     }),
   );
   const [uploadingMidiaImovel, setUploadingMidiaImovel] = useState(false);
-  const [uploadingMidiaImovelPercent, setUploadingMidiaImovelPercent] = useState<number | null>(null);
-  const [deletingMidiaImovelIds, setDeletingMidiaImovelIds] = useState<string[]>([]);
+  const [uploadingMidiaImovelPercent, setUploadingMidiaImovelPercent] =
+    useState<number | null>(null);
+  const [deletingMidiaImovelIds, setDeletingMidiaImovelIds] = useState<
+    string[]
+  >([]);
   const [isMidiaImovelDragActive, setIsMidiaImovelDragActive] = useState(false);
-  const [dropTargetMidiaImovelId, setDropTargetMidiaImovelId] = useState<string | null>(null);
-  const [editingMidiaImovelId, setEditingMidiaImovelId] = useState<string | null>(null);
+  const [dropTargetMidiaImovelId, setDropTargetMidiaImovelId] = useState<
+    string | null
+  >(null);
+  const [editingMidiaImovelId, setEditingMidiaImovelId] = useState<
+    string | null
+  >(null);
   const [mediaSnapshot, setMediaSnapshot] = useState("[]");
   const [videosSnapshot, setVideosSnapshot] = useState("[]");
   const geocodeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1540,13 +1746,16 @@ export default function ImovelDetalhePage() {
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
   const [locationEditingEnabled, setLocationEditingEnabled] = useState(false);
-  const [showLocationEditConfirmModal, setShowLocationEditConfirmModal] = useState(false);
+  const [showLocationEditConfirmModal, setShowLocationEditConfirmModal] =
+    useState(false);
   const [activeBlock, setActiveBlock] = useState<number | null>(null);
   const [switchingBlock, setSwitchingBlock] = useState(false);
-  const [blockTransitionPhase, setBlockTransitionPhase] = useState<"idle" | "leaving" | "pre-enter" | "entering">(
-    "idle",
-  );
-  const blockTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [blockTransitionPhase, setBlockTransitionPhase] = useState<
+    "idle" | "leaving" | "pre-enter" | "entering"
+  >("idle");
+  const blockTransitionTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
   const blockTransitionRafRef = useRef<number | null>(null);
   const step5HydratedRef = useRef<string | null>(null);
   const empreendimentoCaracteristicasHydratedRef = useRef<string | null>(null);
@@ -1567,16 +1776,20 @@ export default function ImovelDetalhePage() {
         return;
       }
 
-      const profileResult = await apiFetchWithAuth<ProfileResponse>("/api/profile");
+      const profileResult =
+        await apiFetchWithAuth<ProfileResponse>("/api/profile");
       if (profileResult.ok && profileResult.data.nickname) {
         setProfileNickname(profileResult.data.nickname);
       }
 
       setItem(result.data);
       const nextForm = toEditForm(result.data);
-      const nextCaracteristicasSelecionadas = Array.isArray(result.data.caracteristicas)
+      const nextCaracteristicasSelecionadas = Array.isArray(
+        result.data.caracteristicas,
+      )
         ? result.data.caracteristicas.filter(
-            (item): item is string => typeof item === "string" && item.trim().length > 0,
+            (item): item is string =>
+              typeof item === "string" && item.trim().length > 0,
           )
         : [];
       setForm(nextForm);
@@ -1587,10 +1800,14 @@ export default function ImovelDetalhePage() {
         cidade: result.data.cidade ?? "",
         estado: result.data.estado ?? "",
       });
-      setSearchAddress(String(result.data.address_json?.formatted_address ?? formattedAddress));
+      setSearchAddress(
+        String(result.data.address_json?.formatted_address ?? formattedAddress),
+      );
       setPlaceId(String(result.data.address_json?.place_id ?? ""));
       setSelectedPlaceName(String(result.data.address_json?.place_name ?? ""));
-      setEnderecoFormatado(String(result.data.address_json?.formatted_address ?? ""));
+      setEnderecoFormatado(
+        String(result.data.address_json?.formatted_address ?? ""),
+      );
       setAddressComponents(
         Array.isArray(result.data.address_json?.address_components)
           ? (result.data.address_json?.address_components as unknown[])
@@ -1603,7 +1820,9 @@ export default function ImovelDetalhePage() {
           form: nextForm,
           placeId: String(result.data.address_json?.place_id ?? ""),
           selectedPlaceName: String(result.data.address_json?.place_name ?? ""),
-          enderecoFormatado: String(result.data.address_json?.formatted_address ?? ""),
+          enderecoFormatado: String(
+            result.data.address_json?.formatted_address ?? "",
+          ),
           lat: typeof result.data.lat === "number" ? result.data.lat : null,
           lng: typeof result.data.lng === "number" ? result.data.lng : null,
         }),
@@ -1621,7 +1840,9 @@ export default function ImovelDetalhePage() {
       setVideosSnapshot("[]");
       setCaracteristicaQuery("");
       setCaracteristicasSelecionadas(nextCaracteristicasSelecionadas);
-      setCaracteristicasSnapshot(serializeCaracteristicasSnapshot(nextCaracteristicasSelecionadas));
+      setCaracteristicasSnapshot(
+        serializeCaracteristicasSnapshot(nextCaracteristicasSelecionadas),
+      );
       setShowEmpreendimentoCaracteristicasModal(false);
       step5HydratedRef.current = null;
       empreendimentoCaracteristicasHydratedRef.current = null;
@@ -1678,7 +1899,10 @@ export default function ImovelDetalhePage() {
         : "",
     [form, placeId, selectedPlaceName, enderecoFormatado, lat, lng],
   );
-  const currentMidiasSnapshot = useMemo(() => serializeMidiasSnapshot(midiasImovel), [midiasImovel]);
+  const currentMidiasSnapshot = useMemo(
+    () => serializeMidiasSnapshot(midiasImovel),
+    [midiasImovel],
+  );
   const currentVideosSnapshot = useMemo(
     () => serializeYoutubeVideosSnapshot(youtubeVideos),
     [youtubeVideos],
@@ -1710,10 +1934,12 @@ export default function ImovelDetalhePage() {
       varandasDetalhe,
     ],
   );
-  const hasPendingFormChanges = Boolean(initialSnapshot) && currentSnapshot !== initialSnapshot;
+  const hasPendingFormChanges =
+    Boolean(initialSnapshot) && currentSnapshot !== initialSnapshot;
   const hasPendingMediaChanges = currentMidiasSnapshot !== mediaSnapshot;
   const hasPendingVideosChanges = currentVideosSnapshot !== videosSnapshot;
-  const hasPendingCaracteristicasChanges = currentCaracteristicasSnapshot !== caracteristicasSnapshot;
+  const hasPendingCaracteristicasChanges =
+    currentCaracteristicasSnapshot !== caracteristicasSnapshot;
   const hasPendingAmbientesChanges = currentStep5Snapshot !== step5Snapshot;
   const hasPendingChanges =
     hasPendingFormChanges ||
@@ -1781,8 +2007,10 @@ export default function ImovelDetalhePage() {
 
   useEffect(() => {
     return () => {
-      if (blockTransitionTimeoutRef.current) clearTimeout(blockTransitionTimeoutRef.current);
-      if (blockTransitionRafRef.current !== null) cancelAnimationFrame(blockTransitionRafRef.current);
+      if (blockTransitionTimeoutRef.current)
+        clearTimeout(blockTransitionTimeoutRef.current);
+      if (blockTransitionRafRef.current !== null)
+        cancelAnimationFrame(blockTransitionRafRef.current);
       if (geocodeTimeoutRef.current) clearTimeout(geocodeTimeoutRef.current);
       for (const previewUrl of rejectedPreviewUrlsRef.current) {
         URL.revokeObjectURL(previewUrl);
@@ -1796,7 +2024,13 @@ export default function ImovelDetalhePage() {
   }, []);
 
   const publicUrl = useMemo(() => {
-    if (!item || item.status !== "PUBLICADO" || !profileNickname || !item.slug_publico) return null;
+    if (
+      !item ||
+      item.status !== "PUBLICADO" ||
+      !profileNickname ||
+      !item.slug_publico
+    )
+      return null;
     const routeSegment = resolveImovelPublicRouteSegment({
       finalidade: item.finalidade,
       tipo_negociacao: item.tipo_negociacao,
@@ -1811,10 +2045,13 @@ export default function ImovelDetalhePage() {
           mediaItem.storage_bucket,
           mediaItem.storage_path,
         );
-        const rawUrl = typeof mediaItem.url === "string" ? mediaItem.url.trim() : "";
+        const rawUrl =
+          typeof mediaItem.url === "string" ? mediaItem.url.trim() : "";
         const primaryUrl = canonicalStorageUrl || rawUrl;
         const fallbackUrl =
-          canonicalStorageUrl && rawUrl && canonicalStorageUrl !== rawUrl ? rawUrl : null;
+          canonicalStorageUrl && rawUrl && canonicalStorageUrl !== rawUrl
+            ? rawUrl
+            : null;
         return {
           primaryUrl,
           fallbackUrl,
@@ -1831,10 +2068,13 @@ export default function ImovelDetalhePage() {
           mediaItem.storage_bucket,
           mediaItem.storage_path,
         );
-        const rawUrl = typeof mediaItem.url === "string" ? mediaItem.url.trim() : "";
+        const rawUrl =
+          typeof mediaItem.url === "string" ? mediaItem.url.trim() : "";
         const primaryUrl = canonicalStorageUrl || rawUrl;
         const fallbackUrl =
-          canonicalStorageUrl && rawUrl && canonicalStorageUrl !== rawUrl ? rawUrl : null;
+          canonicalStorageUrl && rawUrl && canonicalStorageUrl !== rawUrl
+            ? rawUrl
+            : null;
         return {
           primaryUrl,
           fallbackUrl,
@@ -1870,20 +2110,32 @@ export default function ImovelDetalhePage() {
       headerEmpreendimentoImagesTotal === 1 ? "imagem" : "imagens"
     } do empreendimento`;
     return `${imagensImovelLabel} + ${imagensEmpreendimentoLabel}`;
-  }, [headerEmpreendimentoImagesTotal, headerImovelPublicImagesTotal, item?.empreendimento_id]);
+  }, [
+    headerEmpreendimentoImagesTotal,
+    headerImovelPublicImagesTotal,
+    item?.empreendimento_id,
+  ]);
   const loadingHeaderPublicGallery =
     loadingMidiasPublicasImovelHeader ||
-    ((Boolean(item?.empreendimento_id) || headerEmpreendimentoImagesTotal > 0) &&
+    ((Boolean(item?.empreendimento_id) ||
+      headerEmpreendimentoImagesTotal > 0) &&
       loadingMidiasEmpreendimentoRelacionadas);
   const currentPublicLightboxImageIndex =
     headerPublicPhotoUrls.length > 0
-      ? Math.max(0, Math.min(publicLightboxImageIndex, headerPublicPhotoUrls.length - 1))
+      ? Math.max(
+          0,
+          Math.min(publicLightboxImageIndex, headerPublicPhotoUrls.length - 1),
+        )
       : 0;
-  const currentPublicLightboxImageUrl = headerPublicPhotoUrls[currentPublicLightboxImageIndex] ?? null;
+  const currentPublicLightboxImageUrl =
+    headerPublicPhotoUrls[currentPublicLightboxImageIndex] ?? null;
 
   function openPublicImageLightbox(index: number) {
     if (headerPublicPhotoUrls.length === 0) return;
-    const normalizedIndex = Math.max(0, Math.min(index, headerPublicPhotoUrls.length - 1));
+    const normalizedIndex = Math.max(
+      0,
+      Math.min(index, headerPublicPhotoUrls.length - 1),
+    );
     setPublicLightboxImageIndex(normalizedIndex);
     setShowPublicImageLightbox(true);
   }
@@ -1895,13 +2147,17 @@ export default function ImovelDetalhePage() {
   function goToPreviousPublicLightboxImage() {
     if (headerPublicPhotoUrls.length === 0) return;
     setPublicLightboxImageIndex(
-      (current) => (current - 1 + headerPublicPhotoUrls.length) % headerPublicPhotoUrls.length,
+      (current) =>
+        (current - 1 + headerPublicPhotoUrls.length) %
+        headerPublicPhotoUrls.length,
     );
   }
 
   function goToNextPublicLightboxImage() {
     if (headerPublicPhotoUrls.length === 0) return;
-    setPublicLightboxImageIndex((current) => (current + 1) % headerPublicPhotoUrls.length);
+    setPublicLightboxImageIndex(
+      (current) => (current + 1) % headerPublicPhotoUrls.length,
+    );
   }
 
   function handleHeaderPublicImageLoadError(
@@ -1936,7 +2192,9 @@ export default function ImovelDetalhePage() {
         event.preventDefault();
         if (headerPublicPhotoUrls.length > 0) {
           setPublicLightboxImageIndex(
-            (current) => (current - 1 + headerPublicPhotoUrls.length) % headerPublicPhotoUrls.length,
+            (current) =>
+              (current - 1 + headerPublicPhotoUrls.length) %
+              headerPublicPhotoUrls.length,
           );
         }
         return;
@@ -1944,7 +2202,9 @@ export default function ImovelDetalhePage() {
       if (event.key === "ArrowRight") {
         event.preventDefault();
         if (headerPublicPhotoUrls.length > 0) {
-          setPublicLightboxImageIndex((current) => (current + 1) % headerPublicPhotoUrls.length);
+          setPublicLightboxImageIndex(
+            (current) => (current + 1) % headerPublicPhotoUrls.length,
+          );
         }
       }
     }
@@ -1962,7 +2222,10 @@ export default function ImovelDetalhePage() {
       empreendimento_tipo_id?: string | null;
       empreendimento_nome?: string | null;
     };
-    const empreendimentoId = typeof item.empreendimento_id === "string" ? item.empreendimento_id.trim() : "";
+    const empreendimentoId =
+      typeof item.empreendimento_id === "string"
+        ? item.empreendimento_id.trim()
+        : "";
     const empreendimentoTipoId =
       typeof maybeItem.empreendimento_tipo_id === "string"
         ? maybeItem.empreendimento_tipo_id.trim()
@@ -1972,9 +2235,12 @@ export default function ImovelDetalhePage() {
         ? maybeItem.empreendimento_nome.trim()
         : "";
 
-    return Boolean(empreendimentoId || empreendimentoTipoId || empreendimentoNome);
+    return Boolean(
+      empreendimentoId || empreendimentoTipoId || empreendimentoNome,
+    );
   }, [item]);
-  const readOnlyLocation = hasEmpreendimentoAssociado || !locationEditingEnabled;
+  const readOnlyLocation =
+    hasEmpreendimentoAssociado || !locationEditingEnabled;
   const readOnlyLocationContext = false;
   const readOnlyLocationExtra = false;
   const isUsoComercial = useMemo(() => {
@@ -1984,10 +2250,24 @@ export default function ImovelDetalhePage() {
   const canShowTerrainFields = useMemo(() => {
     const tipoAtual = (form?.tipo || item?.tipo || "").toUpperCase();
     if (TERRAIN_APPLICABLE_TYPES.has(tipoAtual)) return true;
-    const normalizedLabel = (item?.empreendimento_tipologia_label ?? form?.subtipo ?? "").toUpperCase();
-    return normalizedLabel.includes("TERRENO") || normalizedLabel.includes("LOTE");
-  }, [form?.subtipo, form?.tipo, item?.empreendimento_tipologia_label, item?.tipo]);
-  const vagasCount = useMemo(() => toNonNegativeIntegerOrZero(form?.vagas ?? ""), [form?.vagas]);
+    const normalizedLabel = (
+      item?.empreendimento_tipologia_label ??
+      form?.subtipo ??
+      ""
+    ).toUpperCase();
+    return (
+      normalizedLabel.includes("TERRENO") || normalizedLabel.includes("LOTE")
+    );
+  }, [
+    form?.subtipo,
+    form?.tipo,
+    item?.empreendimento_tipologia_label,
+    item?.tipo,
+  ]);
+  const vagasCount = useMemo(
+    () => toNonNegativeIntegerOrZero(form?.vagas ?? ""),
+    [form?.vagas],
+  );
   const terrenoPreview = useMemo(() => {
     if (!form) return null;
     const parsePositive = (raw: string) => {
@@ -2001,7 +2281,12 @@ export default function ImovelDetalhePage() {
     const lateral1 = parsePositive(form.lateral_1_metros);
     const lateral2 = parsePositive(form.lateral_2_metros);
     const areaInformada = parsePositive(form.area_terreno);
-    const areaCalculada = computeTerrenoAreaFromMedidas({ frente, fundo, lateral1, lateral2 });
+    const areaCalculada = computeTerrenoAreaFromMedidas({
+      frente,
+      fundo,
+      lateral1,
+      lateral2,
+    });
 
     if (!frente && !fundo && !lateral1 && !lateral2) return null;
 
@@ -2031,7 +2316,10 @@ export default function ImovelDetalhePage() {
     const paddingY = 36;
     const spanX = Math.max(1, maxX - minX);
     const spanY = Math.max(1, maxY - minY);
-    const scale = Math.min((viewWidth - paddingX * 2) / spanX, (viewHeight - paddingY * 2) / spanY);
+    const scale = Math.min(
+      (viewWidth - paddingX * 2) / spanX,
+      (viewHeight - paddingY * 2) / spanY,
+    );
 
     const toCanvas = (point: { x: number; y: number }) => ({
       x: paddingX + (point.x - minX) * scale,
@@ -2060,7 +2348,10 @@ export default function ImovelDetalhePage() {
       corners: { A, B, C, D },
       labels: {
         top: { x: midTop.x, y: Math.max(14, midTop.y - 12) },
-        bottom: { x: midBottom.x, y: Math.min(viewHeight - 8, midBottom.y + 18) },
+        bottom: {
+          x: midBottom.x,
+          y: Math.min(viewHeight - 8, midBottom.y + 18),
+        },
         left: { x: Math.max(8, midLeft.x - 34), y: midLeft.y },
         right: { x: Math.min(viewWidth - 8, midRight.x + 34), y: midRight.y },
       },
@@ -2080,20 +2371,29 @@ export default function ImovelDetalhePage() {
       })
     );
   }, [enderecoFormatado, form]);
-  const reviewMapEmbedUrl = useMemo(() => buildGoogleMapsEmbedUrl(reviewMapQuery), [reviewMapQuery]);
+  const reviewMapEmbedUrl = useMemo(
+    () => buildGoogleMapsEmbedUrl(reviewMapQuery),
+    [reviewMapQuery],
+  );
   const hasVendaNegociacao =
-    form?.tipo_negociacao === "VENDA" || form?.tipo_negociacao === "VENDA_E_ALUGUEL";
+    form?.tipo_negociacao === "VENDA" ||
+    form?.tipo_negociacao === "VENDA_E_ALUGUEL";
   const hasAluguelNegociacao =
-    form?.tipo_negociacao === "ALUGUEL" || form?.tipo_negociacao === "VENDA_E_ALUGUEL";
+    form?.tipo_negociacao === "ALUGUEL" ||
+    form?.tipo_negociacao === "VENDA_E_ALUGUEL";
   const isCaptacaoParceria = form?.modelo_captacao === "PARCERIA";
-  const isMinhaCaptacaoSemExclusividade = form?.modelo_captacao === "CAPTACAO_SEM_EXCLUSIVIDADE";
+  const isMinhaCaptacaoSemExclusividade =
+    form?.modelo_captacao === "CAPTACAO_SEM_EXCLUSIVIDADE";
   const isMinhaExclusividade = form?.modelo_captacao === "EXCLUSIVIDADE";
   const isParceriaSemExclusividadeAtiva =
     isMinhaCaptacaoSemExclusividade &&
-    (form?.aceita_parceria_status === "SIM" || form?.aceita_parceria_status === "SOB_ANALISE");
-  const shouldShowComissaoParceria = isCaptacaoParceria || isParceriaSemExclusividadeAtiva;
+    (form?.aceita_parceria_status === "SIM" ||
+      form?.aceita_parceria_status === "SOB_ANALISE");
+  const shouldShowComissaoParceria =
+    isCaptacaoParceria || isParceriaSemExclusividadeAtiva;
   const isParceriaExclusividadeAtiva =
-    form?.aceita_parceria_status === "SIM" || form?.aceita_parceria_status === "SOB_ANALISE";
+    form?.aceita_parceria_status === "SIM" ||
+    form?.aceita_parceria_status === "SOB_ANALISE";
   const todayIsoDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const minBolsaoExclusividadeIsoDate = useMemo(() => {
     const baseDate = new Date();
@@ -2106,12 +2406,16 @@ export default function ImovelDetalhePage() {
     return form.exclusividade_data_vencimento >= minBolsaoExclusividadeIsoDate;
   }, [form, minBolsaoExclusividadeIsoDate]);
   const comissaoVendedorPercentualAuto = useMemo(() => {
-    const parsedMinha = parseOptionalPercent(form?.comissao_captador_percentual ?? "");
+    const parsedMinha = parseOptionalPercent(
+      form?.comissao_captador_percentual ?? "",
+    );
     if (!parsedMinha.ok || parsedMinha.value == null) return "";
     return numberToPercentInput(Math.max(0, 100 - parsedMinha.value));
   }, [form?.comissao_captador_percentual]);
   const exclusividadeComissaoParceiroAuto = useMemo(() => {
-    const parsedMinha = parseOptionalPercent(form?.exclusividade_comissao_minha_percentual ?? "");
+    const parsedMinha = parseOptionalPercent(
+      form?.exclusividade_comissao_minha_percentual ?? "",
+    );
     if (!parsedMinha.ok || parsedMinha.value == null) return "";
     return numberToPercentInput(Math.max(0, 100 - parsedMinha.value));
   }, [form?.exclusividade_comissao_minha_percentual]);
@@ -2119,7 +2423,9 @@ export default function ImovelDetalhePage() {
   const ganhoEstimadoComissaoVenda = useMemo(() => {
     if (!hasVendaNegociacao) return null;
     const preco = parseOptionalCurrency(form?.preco_venda ?? "");
-    const percentual = parseOptionalPercent(form?.comissao_venda_percentual ?? "");
+    const percentual = parseOptionalPercent(
+      form?.comissao_venda_percentual ?? "",
+    );
     if (!preco.ok || !percentual.ok) return null;
     if (preco.value == null || percentual.value == null) return null;
     return (preco.value * percentual.value) / 100;
@@ -2127,33 +2433,53 @@ export default function ImovelDetalhePage() {
 
   const ganhoPotencialCaptador = useMemo(() => {
     if (!hasVendaNegociacao) return null;
-    const percentual = parseOptionalPercent(form?.comissao_captador_percentual ?? "");
+    const percentual = parseOptionalPercent(
+      form?.comissao_captador_percentual ?? "",
+    );
     if (!percentual.ok) return null;
-    if (ganhoEstimadoComissaoVenda == null || percentual.value == null) return null;
+    if (ganhoEstimadoComissaoVenda == null || percentual.value == null)
+      return null;
     return (ganhoEstimadoComissaoVenda * percentual.value) / 100;
-  }, [form?.comissao_captador_percentual, ganhoEstimadoComissaoVenda, hasVendaNegociacao]);
+  }, [
+    form?.comissao_captador_percentual,
+    ganhoEstimadoComissaoVenda,
+    hasVendaNegociacao,
+  ]);
 
   const ganhoPotencialVendedor = useMemo(() => {
     if (!hasVendaNegociacao) return null;
     const percentual = parseOptionalPercent(comissaoVendedorPercentualAuto);
     if (!percentual.ok) return null;
-    if (ganhoEstimadoComissaoVenda == null || percentual.value == null) return null;
+    if (ganhoEstimadoComissaoVenda == null || percentual.value == null)
+      return null;
     return (ganhoEstimadoComissaoVenda * percentual.value) / 100;
-  }, [comissaoVendedorPercentualAuto, ganhoEstimadoComissaoVenda, hasVendaNegociacao]);
+  }, [
+    comissaoVendedorPercentualAuto,
+    ganhoEstimadoComissaoVenda,
+    hasVendaNegociacao,
+  ]);
 
   const ganhoEstimadoExclusividadeMinha = useMemo(() => {
     if (!hasVendaNegociacao) return null;
-    const percentual = parseOptionalPercent(form?.exclusividade_comissao_minha_percentual ?? "");
+    const percentual = parseOptionalPercent(
+      form?.exclusividade_comissao_minha_percentual ?? "",
+    );
     if (!percentual.ok) return null;
-    if (ganhoEstimadoComissaoVenda == null || percentual.value == null) return null;
+    if (ganhoEstimadoComissaoVenda == null || percentual.value == null)
+      return null;
     return (ganhoEstimadoComissaoVenda * percentual.value) / 100;
-  }, [form?.exclusividade_comissao_minha_percentual, ganhoEstimadoComissaoVenda, hasVendaNegociacao]);
+  }, [
+    form?.exclusividade_comissao_minha_percentual,
+    ganhoEstimadoComissaoVenda,
+    hasVendaNegociacao,
+  ]);
 
   const ganhoEstimadoExclusividadeParceiro = useMemo(() => {
     if (!hasVendaNegociacao) return null;
     const percentual = parseOptionalPercent(exclusividadeComissaoParceiroAuto);
     if (!percentual.ok) return null;
-    if (ganhoEstimadoComissaoVenda == null || percentual.value == null) return null;
+    if (ganhoEstimadoComissaoVenda == null || percentual.value == null)
+      return null;
     return (ganhoEstimadoComissaoVenda * percentual.value) / 100;
   }, [
     exclusividadeComissaoParceiroAuto,
@@ -2163,14 +2489,21 @@ export default function ImovelDetalhePage() {
   const tipoUsoApi = isUsoComercial ? "COMERCIAL" : "RESIDENCIAL";
   const subtipoImovelApi = (form?.subtipo ?? "").trim().toUpperCase() || null;
   const tipoUsoLabel = isUsoComercial ? "Comercial" : "Residencial";
-  const descricaoImovelPlain = useMemo(() => htmlToPlainText(form?.descricao ?? ""), [form?.descricao]);
-  const tipologiaAtualLabel = item?.empreendimento_tipologia_label?.trim() || form?.subtipo?.trim() || "";
+  const descricaoImovelPlain = useMemo(
+    () => htmlToPlainText(form?.descricao ?? ""),
+    [form?.descricao],
+  );
+  const tipologiaAtualLabel =
+    item?.empreendimento_tipologia_label?.trim() || form?.subtipo?.trim() || "";
   const caracteristicasSelecionadasOptions = useMemo(() => {
     const selectedKeys = [...new Set(caracteristicasSelecionadas)]
       .map((value) => value.trim())
       .filter((value): value is string => value.length > 0);
     const labelByKey = new Map(
-      caracteristicasCatalogo.map((catalogItem) => [catalogItem.chave, catalogItem.label_pt]),
+      caracteristicasCatalogo.map((catalogItem) => [
+        catalogItem.chave,
+        catalogItem.label_pt,
+      ]),
     );
 
     return selectedKeys
@@ -2183,7 +2516,9 @@ export default function ImovelDetalhePage() {
   }, [caracteristicasCatalogo, caracteristicasSelecionadas]);
   const caracteristicasFiltradas = useMemo(() => {
     const query = normalizeText(caracteristicaQuery);
-    const base = caracteristicasCatalogo.filter((catalogItem) => catalogItem.ativo !== false);
+    const base = caracteristicasCatalogo.filter(
+      (catalogItem) => catalogItem.ativo !== false,
+    );
     const filtered = !query
       ? base
       : base.filter((catalogItem) => {
@@ -2191,10 +2526,18 @@ export default function ImovelDetalhePage() {
           const chave = normalizeText(catalogItem.chave ?? "");
           return label.includes(query) || chave.includes(query);
         });
-    return [...filtered].sort((a, b) => (a.label_pt ?? "").localeCompare(b.label_pt ?? "", "pt-BR"));
+    return [...filtered].sort((a, b) =>
+      (a.label_pt ?? "").localeCompare(b.label_pt ?? "", "pt-BR"),
+    );
   }, [caracteristicaQuery, caracteristicasCatalogo]);
   const caracteristicaLabelByChave = useMemo(
-    () => new Map(caracteristicasSelecionadasOptions.map((catalogItem) => [catalogItem.chave, catalogItem.label_pt])),
+    () =>
+      new Map(
+        caracteristicasSelecionadasOptions.map((catalogItem) => [
+          catalogItem.chave,
+          catalogItem.label_pt,
+        ]),
+      ),
     [caracteristicasSelecionadasOptions],
   );
   const empreendimentoCaracteristicasAssociadasPreview = useMemo(
@@ -2203,35 +2546,47 @@ export default function ImovelDetalhePage() {
   );
   const empreendimentoCaracteristicasAssociadasExtras = Math.max(
     0,
-    empreendimentoCaracteristicasAssociadas.length - empreendimentoCaracteristicasAssociadasPreview.length,
+    empreendimentoCaracteristicasAssociadas.length -
+      empreendimentoCaracteristicasAssociadasPreview.length,
   );
   const imagensEmpreendimentoRelacionadas = useMemo(
     () =>
       [...midiasEmpreendimentoRelacionadas].sort((a, b) => {
-        if (a.indice_publico !== b.indice_publico) return a.indice_publico - b.indice_publico;
+        if (a.indice_publico !== b.indice_publico)
+          return a.indice_publico - b.indice_publico;
         return a.ordem - b.ordem;
       }),
     [midiasEmpreendimentoRelacionadas],
   );
   const empreendimentoAssociadoNome = useMemo(() => {
-    const maybeNamedItem = item as unknown as { empreendimento_nome?: string | null } | null;
+    const maybeNamedItem = item as unknown as {
+      empreendimento_nome?: string | null;
+    } | null;
     const nome = maybeNamedItem?.empreendimento_nome;
     if (typeof nome === "string" && nome.trim().length > 0) return nome.trim();
     return "Empreendimento associado";
   }, [item]);
   const headerEmpreendimentoNome = useMemo(() => {
-    const maybeNamedItem = item as unknown as { empreendimento_nome?: string | null } | null;
+    const maybeNamedItem = item as unknown as {
+      empreendimento_nome?: string | null;
+    } | null;
     const nome = maybeNamedItem?.empreendimento_nome;
     if (typeof nome === "string" && nome.trim().length > 0) return nome.trim();
 
     const nomeFromEmpreendimento = empreendimentoAssociadoAyka?.nome;
-    if (typeof nomeFromEmpreendimento === "string" && nomeFromEmpreendimento.trim().length > 0) {
+    if (
+      typeof nomeFromEmpreendimento === "string" &&
+      nomeFromEmpreendimento.trim().length > 0
+    ) {
       return nomeFromEmpreendimento.trim();
     }
 
     return null;
   }, [empreendimentoAssociadoAyka?.nome, item]);
-  const headerTitle = useMemo(() => (item ? buildImovelHeaderTitle(item) : "Imóvel"), [item]);
+  const headerTitle = useMemo(
+    () => (item ? buildImovelHeaderTitle(item) : "Imóvel"),
+    [item],
+  );
   const headerValoresResumo = useMemo(() => {
     if (!item) return "Valores não informados";
     const partes: string[] = [];
@@ -2245,7 +2600,8 @@ export default function ImovelDetalhePage() {
       partes.push(`Condomínio ${formatCurrency(item.condominio)}`);
     }
     if (item.iptu != null && Number.isFinite(item.iptu)) {
-      const periodicidade = item.iptu_periodicidade === "MENSAL" ? "/mês" : "/ano";
+      const periodicidade =
+        item.iptu_periodicidade === "MENSAL" ? "/mês" : "/ano";
       partes.push(`IPTU ${formatCurrency(item.iptu)} ${periodicidade}`);
     }
     return partes.length > 0 ? partes.join(" • ") : "Valores não informados";
@@ -2254,13 +2610,22 @@ export default function ImovelDetalhePage() {
     () => imagensEmpreendimentoRelacionadas.slice(0, 3),
     [imagensEmpreendimentoRelacionadas],
   );
-  const imagensEmpreendimentoExtras = Math.max(0, imagensEmpreendimentoRelacionadas.length - 3);
-  const totalMidiasCombinadas = midiasImovel.length + imagensEmpreendimentoRelacionadas.length;
+  const imagensEmpreendimentoExtras = Math.max(
+    0,
+    imagensEmpreendimentoRelacionadas.length - 3,
+  );
+  const totalMidiasCombinadas =
+    midiasImovel.length + imagensEmpreendimentoRelacionadas.length;
 
-  async function loadStep5Ambientes(imovelId: string, fallback?: Partial<EditFormState>) {
+  async function loadStep5Ambientes(
+    imovelId: string,
+    fallback?: Partial<EditFormState>,
+  ) {
     setLoadingStep5(true);
     setBlockError(null);
-    const result = await apiFetchWithAuth<ImovelAmbienteApiItem[]>(`/api/imoveis/${imovelId}/ambientes`);
+    const result = await apiFetchWithAuth<ImovelAmbienteApiItem[]>(
+      `/api/imoveis/${imovelId}/ambientes`,
+    );
     setLoadingStep5(false);
 
     if (!result.ok) {
@@ -2285,7 +2650,9 @@ export default function ImovelDetalhePage() {
 
     const dormitoriosMapped = dormitoriosRows.map((ambienteItem) => {
       const dados =
-        ambienteItem.dados && typeof ambienteItem.dados === "object" && !Array.isArray(ambienteItem.dados)
+        ambienteItem.dados &&
+        typeof ambienteItem.dados === "object" &&
+        !Array.isArray(ambienteItem.dados)
           ? ambienteItem.dados
           : {};
       const ehSuite = dados.eh_suite === true;
@@ -2293,7 +2660,8 @@ export default function ImovelDetalhePage() {
         local_id: ambienteItem.id || createLocalId("dorm"),
         area_m2: numberToInput(ambienteItem.area_m2),
         eh_suite: ehSuite,
-        suite_principal: ehSuite && (ambienteItem.principal || dados.suite_principal === true),
+        suite_principal:
+          ehSuite && (ambienteItem.principal || dados.suite_principal === true),
         banheiro_armarios: ehSuite && dados.banheiro_armarios === true,
         banheiro_pia_dupla: ehSuite && dados.banheiro_pia_dupla === true,
         banheiro_box: ehSuite && dados.banheiro_box === true,
@@ -2304,21 +2672,27 @@ export default function ImovelDetalhePage() {
         tem_tv: dados.tem_tv === true,
         tem_varanda: dados.tem_varanda === true,
         persiana_tipo:
-          typeof dados.persiana_tipo === "string" && isPersianaTipo(dados.persiana_tipo)
+          typeof dados.persiana_tipo === "string" &&
+          isPersianaTipo(dados.persiana_tipo)
             ? dados.persiana_tipo
             : "",
         tipo_piso:
-          typeof dados.tipo_piso === "string" && isAmbientePiso(dados.tipo_piso) ? dados.tipo_piso : "",
+          typeof dados.tipo_piso === "string" && isAmbientePiso(dados.tipo_piso)
+            ? dados.tipo_piso
+            : "",
       } satisfies DormitorioAmbienteForm;
     });
 
     const cozinhasMapped = cozinhasRows.map((ambienteItem) => {
       const dados =
-        ambienteItem.dados && typeof ambienteItem.dados === "object" && !Array.isArray(ambienteItem.dados)
+        ambienteItem.dados &&
+        typeof ambienteItem.dados === "object" &&
+        !Array.isArray(ambienteItem.dados)
           ? ambienteItem.dados
           : {};
       const tipoBancadaValido =
-        typeof dados.tipo_bancada === "string" && isCozinhaBancada(dados.tipo_bancada)
+        typeof dados.tipo_bancada === "string" &&
+        isCozinhaBancada(dados.tipo_bancada)
           ? dados.tipo_bancada
           : "";
       const bancada = dados.bancada === true || Boolean(tipoBancadaValido);
@@ -2326,7 +2700,8 @@ export default function ImovelDetalhePage() {
         local_id: ambienteItem.id || createLocalId("coz"),
         area_m2: numberToInput(ambienteItem.area_m2),
         tipo_cozinha:
-          typeof dados.tipo_cozinha === "string" && isCozinhaTipo(dados.tipo_cozinha)
+          typeof dados.tipo_cozinha === "string" &&
+          isCozinhaTipo(dados.tipo_cozinha)
             ? dados.tipo_cozinha
             : "",
         armarios_planejados: dados.armarios_planejados === true,
@@ -2337,17 +2712,23 @@ export default function ImovelDetalhePage() {
         bancada,
         tipo_bancada: tipoBancadaValido,
         tipo_piso:
-          typeof dados.tipo_piso === "string" && isAmbientePiso(dados.tipo_piso) ? dados.tipo_piso : "",
+          typeof dados.tipo_piso === "string" && isAmbientePiso(dados.tipo_piso)
+            ? dados.tipo_piso
+            : "",
       } satisfies CozinhaAmbienteForm;
     });
 
     const salasMapped = salasRows.map((ambienteItem) => {
       const dados =
-        ambienteItem.dados && typeof ambienteItem.dados === "object" && !Array.isArray(ambienteItem.dados)
+        ambienteItem.dados &&
+        typeof ambienteItem.dados === "object" &&
+        !Array.isArray(ambienteItem.dados)
           ? ambienteItem.dados
           : {};
       const diferenciaisLegado = Array.isArray(dados.diferenciais)
-        ? dados.diferenciais.filter((value): value is string => typeof value === "string")
+        ? dados.diferenciais.filter(
+            (value): value is string => typeof value === "string",
+          )
         : [];
       const tipoPisoLegado = diferenciaisLegado.includes("PISO_MADEIRA")
         ? "MADEIRA"
@@ -2359,8 +2740,13 @@ export default function ImovelDetalhePage() {
         area_m2: numberToInput(ambienteItem.area_m2),
         principal: ambienteItem.principal === true,
         tipo_sala:
-          typeof dados.tipo_sala === "string" && isSalaTipo(dados.tipo_sala) ? dados.tipo_sala : "",
-        layout: typeof dados.layout === "string" && isSalaLayout(dados.layout) ? dados.layout : "",
+          typeof dados.tipo_sala === "string" && isSalaTipo(dados.tipo_sala)
+            ? dados.tipo_sala
+            : "",
+        layout:
+          typeof dados.layout === "string" && isSalaLayout(dados.layout)
+            ? dados.layout
+            : "",
         tipo_piso:
           typeof dados.tipo_piso === "string" && isAmbientePiso(dados.tipo_piso)
             ? dados.tipo_piso
@@ -2376,23 +2762,28 @@ export default function ImovelDetalhePage() {
 
     const varandasMapped = varandasRows.map((ambienteItem) => {
       const dados =
-        ambienteItem.dados && typeof ambienteItem.dados === "object" && !Array.isArray(ambienteItem.dados)
+        ambienteItem.dados &&
+        typeof ambienteItem.dados === "object" &&
+        !Array.isArray(ambienteItem.dados)
           ? ambienteItem.dados
           : {};
       return {
         local_id: ambienteItem.id || createLocalId("var"),
         area_m2: numberToInput(ambienteItem.area_m2),
         tipo_varanda:
-          typeof dados.tipo_varanda === "string" && isVarandaTipo(dados.tipo_varanda)
+          typeof dados.tipo_varanda === "string" &&
+          isVarandaTipo(dados.tipo_varanda)
             ? dados.tipo_varanda
             : "",
         churrasqueira_tipo:
-          typeof dados.churrasqueira_tipo === "string" && isVarandaChurrasqueira(dados.churrasqueira_tipo)
+          typeof dados.churrasqueira_tipo === "string" &&
+          isVarandaChurrasqueira(dados.churrasqueira_tipo)
             ? dados.churrasqueira_tipo
             : "",
         bancada: dados.bancada === true,
         persiana_tipo:
-          typeof dados.persiana_tipo === "string" && isPersianaTipo(dados.persiana_tipo)
+          typeof dados.persiana_tipo === "string" &&
+          isPersianaTipo(dados.persiana_tipo)
             ? dados.persiana_tipo
             : "",
         fechada_com_vidro: dados.fechada_com_vidro === true,
@@ -2402,33 +2793,61 @@ export default function ImovelDetalhePage() {
         chopeira: dados.chopeira === true,
         tem_tv: dados.tem_tv === true,
         tipo_piso:
-          typeof dados.tipo_piso === "string" && isAmbientePiso(dados.tipo_piso) ? dados.tipo_piso : "",
+          typeof dados.tipo_piso === "string" && isAmbientePiso(dados.tipo_piso)
+            ? dados.tipo_piso
+            : "",
       } satisfies VarandaAmbienteForm;
     });
 
-    const fallbackDormitorios = toNonNegativeIntegerOrZero(fallback?.dormitorios ?? "");
-    const fallbackCozinhas = toNonNegativeIntegerOrZero(fallback?.cozinhas ?? "");
+    const fallbackDormitorios = toNonNegativeIntegerOrZero(
+      fallback?.dormitorios ?? "",
+    );
+    const fallbackCozinhas = toNonNegativeIntegerOrZero(
+      fallback?.cozinhas ?? "",
+    );
     const fallbackSalas = toNonNegativeIntegerOrZero(fallback?.salas ?? "");
-    const fallbackVarandas = toNonNegativeIntegerOrZero(fallback?.varandas ?? "");
+    const fallbackVarandas = toNonNegativeIntegerOrZero(
+      fallback?.varandas ?? "",
+    );
 
     const nextDormitoriosCount =
-      dormitoriosMapped.length > 0 ? dormitoriosMapped.length : fallbackDormitorios;
-    const nextCozinhasCount = cozinhasMapped.length > 0 ? cozinhasMapped.length : fallbackCozinhas;
-    const nextSalasCount = salasMapped.length > 0 ? salasMapped.length : fallbackSalas;
-    const nextVarandasCount = varandasMapped.length > 0 ? varandasMapped.length : fallbackVarandas;
+      dormitoriosMapped.length > 0
+        ? dormitoriosMapped.length
+        : fallbackDormitorios;
+    const nextCozinhasCount =
+      cozinhasMapped.length > 0 ? cozinhasMapped.length : fallbackCozinhas;
+    const nextSalasCount =
+      salasMapped.length > 0 ? salasMapped.length : fallbackSalas;
+    const nextVarandasCount =
+      varandasMapped.length > 0 ? varandasMapped.length : fallbackVarandas;
 
-    const nextQtdDormitorios = nextDormitoriosCount > 0 ? String(nextDormitoriosCount) : "";
-    const nextQtdCozinhas = nextCozinhasCount > 0 ? String(nextCozinhasCount) : "";
+    const nextQtdDormitorios =
+      nextDormitoriosCount > 0 ? String(nextDormitoriosCount) : "";
+    const nextQtdCozinhas =
+      nextCozinhasCount > 0 ? String(nextCozinhasCount) : "";
     const nextQtdSalas = nextSalasCount > 0 ? String(nextSalasCount) : "";
-    const nextQtdVarandas = nextVarandasCount > 0 ? String(nextVarandasCount) : "";
+    const nextQtdVarandas =
+      nextVarandasCount > 0 ? String(nextVarandasCount) : "";
     const nextDormitorios = resizeAmbientes(
       dormitoriosMapped,
       nextDormitoriosCount,
       createDormitorioAmbiente,
     );
-    const nextCozinhas = resizeAmbientes(cozinhasMapped, nextCozinhasCount, createCozinhaAmbiente);
-    const nextSalas = resizeAmbientes(salasMapped, nextSalasCount, createSalaAmbiente);
-    const nextVarandas = resizeAmbientes(varandasMapped, nextVarandasCount, createVarandaAmbiente);
+    const nextCozinhas = resizeAmbientes(
+      cozinhasMapped,
+      nextCozinhasCount,
+      createCozinhaAmbiente,
+    );
+    const nextSalas = resizeAmbientes(
+      salasMapped,
+      nextSalasCount,
+      createSalaAmbiente,
+    );
+    const nextVarandas = resizeAmbientes(
+      varandasMapped,
+      nextVarandasCount,
+      createVarandaAmbiente,
+    );
     const nextSnapshot = serializeAmbientesSnapshot({
       qtdDormitorios: nextQtdDormitorios,
       qtdCozinhas: nextQtdCozinhas,
@@ -2451,11 +2870,14 @@ export default function ImovelDetalhePage() {
     setStep5Snapshot(nextSnapshot);
   }
 
-  async function loadEmpreendimentoCaracteristicasAssociadas(empreendimentoId: string) {
+  async function loadEmpreendimentoCaracteristicasAssociadas(
+    empreendimentoId: string,
+  ) {
     setLoadingEmpreendimentoCaracteristicasAssociadas(true);
-    const empreendimentoResult = await apiFetchWithAuth<EmpreendimentoCaracteristicasResponse>(
-      `/api/empreendimentos/${empreendimentoId}`,
-    );
+    const empreendimentoResult =
+      await apiFetchWithAuth<EmpreendimentoCaracteristicasResponse>(
+        `/api/empreendimentos/${empreendimentoId}`,
+      );
 
     if (!empreendimentoResult.ok) {
       setLoadingEmpreendimentoCaracteristicasAssociadas(false);
@@ -2466,9 +2888,12 @@ export default function ImovelDetalhePage() {
     setEmpreendimentoAssociadoAyka(empreendimentoResult.data);
     empreendimentoAykaHydratedRef.current = empreendimentoId;
 
-    const caracteristicaIds = Array.isArray(empreendimentoResult.data.caracteristica_ids)
+    const caracteristicaIds = Array.isArray(
+      empreendimentoResult.data.caracteristica_ids,
+    )
       ? empreendimentoResult.data.caracteristica_ids.filter(
-          (item): item is string => typeof item === "string" && item.trim().length > 0,
+          (item): item is string =>
+            typeof item === "string" && item.trim().length > 0,
         )
       : [];
 
@@ -2499,19 +2924,27 @@ export default function ImovelDetalhePage() {
       return;
     }
 
-    const labelById = new Map(catalogoResult.data.map((catalogItem) => [catalogItem.id, catalogItem]));
+    const labelById = new Map(
+      catalogoResult.data.map((catalogItem) => [catalogItem.id, catalogItem]),
+    );
     const mapped = caracteristicaIds
       .map((caracteristicaId) => labelById.get(caracteristicaId) ?? null)
-      .filter((catalogItem): catalogItem is CaracteristicaCatalogoItem => catalogItem !== null)
+      .filter(
+        (catalogItem): catalogItem is CaracteristicaCatalogoItem =>
+          catalogItem !== null,
+      )
       .sort((a, b) => a.label_pt.localeCompare(b.label_pt, "pt-BR"));
 
     setEmpreendimentoCaracteristicasAssociadas(mapped);
   }
 
-  async function loadEmpreendimentoAssociadoAykaContext(empreendimentoId: string) {
-    const empreendimentoResult = await apiFetchWithAuth<EmpreendimentoCaracteristicasResponse>(
-      `/api/empreendimentos/${empreendimentoId}`,
-    );
+  async function loadEmpreendimentoAssociadoAykaContext(
+    empreendimentoId: string,
+  ) {
+    const empreendimentoResult =
+      await apiFetchWithAuth<EmpreendimentoCaracteristicasResponse>(
+        `/api/empreendimentos/${empreendimentoId}`,
+      );
 
     if (!empreendimentoResult.ok) {
       setEmpreendimentoAssociadoAyka(null);
@@ -2524,25 +2957,41 @@ export default function ImovelDetalhePage() {
 
   useEffect(() => {
     setDormitoriosDetalhe((current) =>
-      resizeAmbientes(current, toNonNegativeIntegerOrZero(qtdDormitoriosDetalhe), createDormitorioAmbiente),
+      resizeAmbientes(
+        current,
+        toNonNegativeIntegerOrZero(qtdDormitoriosDetalhe),
+        createDormitorioAmbiente,
+      ),
     );
   }, [qtdDormitoriosDetalhe]);
 
   useEffect(() => {
     setCozinhasDetalhe((current) =>
-      resizeAmbientes(current, toNonNegativeIntegerOrZero(qtdCozinhasDetalhe), createCozinhaAmbiente),
+      resizeAmbientes(
+        current,
+        toNonNegativeIntegerOrZero(qtdCozinhasDetalhe),
+        createCozinhaAmbiente,
+      ),
     );
   }, [qtdCozinhasDetalhe]);
 
   useEffect(() => {
     setSalasDetalhe((current) =>
-      resizeAmbientes(current, toNonNegativeIntegerOrZero(qtdSalasDetalhe), createSalaAmbiente),
+      resizeAmbientes(
+        current,
+        toNonNegativeIntegerOrZero(qtdSalasDetalhe),
+        createSalaAmbiente,
+      ),
     );
   }, [qtdSalasDetalhe]);
 
   useEffect(() => {
     setVarandasDetalhe((current) =>
-      resizeAmbientes(current, toNonNegativeIntegerOrZero(qtdVarandasDetalhe), createVarandaAmbiente),
+      resizeAmbientes(
+        current,
+        toNonNegativeIntegerOrZero(qtdVarandasDetalhe),
+        createVarandaAmbiente,
+      ),
     );
   }, [qtdVarandasDetalhe]);
 
@@ -2612,7 +3061,10 @@ export default function ImovelDetalhePage() {
     if (placeId) return;
 
     const hasStructuredAddress =
-      !!form.logradouro.trim() && !!form.bairro.trim() && !!form.cidade.trim() && !!form.estado.trim();
+      !!form.logradouro.trim() &&
+      !!form.bairro.trim() &&
+      !!form.cidade.trim() &&
+      !!form.estado.trim();
     const typedSearch = searchAddress.trim();
     const userTypedCustomAddress =
       typedSearch.length > 0 &&
@@ -2680,7 +3132,9 @@ export default function ImovelDetalhePage() {
         setCaracteristicasCatalogo([]);
         return;
       }
-      setCaracteristicasCatalogo(result.data.filter((catalogItem) => catalogItem.ativo !== false));
+      setCaracteristicasCatalogo(
+        result.data.filter((catalogItem) => catalogItem.ativo !== false),
+      );
     });
   }, [activeBlock, form?.tipo, item?.tipo, subtipoImovelApi, tipoUsoApi]);
 
@@ -2692,7 +3146,11 @@ export default function ImovelDetalhePage() {
       setShowEmpreendimentoCaracteristicasModal(false);
       return;
     }
-    if (empreendimentoCaracteristicasHydratedRef.current === item.empreendimento_id) return;
+    if (
+      empreendimentoCaracteristicasHydratedRef.current ===
+      item.empreendimento_id
+    )
+      return;
     void loadEmpreendimentoCaracteristicasAssociadas(item.empreendimento_id);
   }, [activeBlock, hasEmpreendimentoAssociado, item?.empreendimento_id]);
 
@@ -2703,7 +3161,8 @@ export default function ImovelDetalhePage() {
       setEmpreendimentoAssociadoAyka(null);
       return;
     }
-    if (empreendimentoAykaHydratedRef.current === item.empreendimento_id) return;
+    if (empreendimentoAykaHydratedRef.current === item.empreendimento_id)
+      return;
     void loadEmpreendimentoAssociadoAykaContext(item.empreendimento_id);
   }, [activeBlock, hasEmpreendimentoAssociado, item?.empreendimento_id]);
 
@@ -2724,7 +3183,8 @@ export default function ImovelDetalhePage() {
     }
 
     const ordered = [...result.data].sort((a, b) => {
-      if (a.indice_publico !== b.indice_publico) return a.indice_publico - b.indice_publico;
+      if (a.indice_publico !== b.indice_publico)
+        return a.indice_publico - b.indice_publico;
       return a.ordem - b.ordem;
     });
     setMidiasPublicasImovelHeader(ordered);
@@ -2734,7 +3194,9 @@ export default function ImovelDetalhePage() {
     setLoadingMidiasImovel(true);
     setBlockError(null);
 
-    const result = await apiFetchWithAuth<ImovelMidiaItem[]>(`/api/imoveis/${imovelId}/midia`);
+    const result = await apiFetchWithAuth<ImovelMidiaItem[]>(
+      `/api/imoveis/${imovelId}/midia`,
+    );
     setLoadingMidiasImovel(false);
 
     if (!result.ok) {
@@ -2750,7 +3212,8 @@ export default function ImovelDetalhePage() {
           storageParts[storageParts.length - 1] ?? mediaItem.titulo ?? "imagem";
         const fileName = storageFileName.trim() || "imagem";
         const lowerFile = fileName.toLowerCase();
-        const isHeic = lowerFile.endsWith(".heic") || lowerFile.endsWith(".heif");
+        const isHeic =
+          lowerFile.endsWith(".heic") || lowerFile.endsWith(".heif");
 
         return {
           id: crypto.randomUUID(),
@@ -2779,7 +3242,9 @@ export default function ImovelDetalhePage() {
           title: mediaItem.titulo ?? null,
         } satisfies YoutubeVideoDraftItem;
       })
-      .filter((mediaItem): mediaItem is YoutubeVideoDraftItem => mediaItem !== null);
+      .filter(
+        (mediaItem): mediaItem is YoutubeVideoDraftItem => mediaItem !== null,
+      );
 
     setMidiasImovel(nextMidias);
     setMediaSnapshot(serializeMidiasSnapshot(nextMidias));
@@ -2813,7 +3278,8 @@ export default function ImovelDetalhePage() {
       ).then(async (result) => {
         if (result.ok && result.data.length > 0) {
           const ordered = [...result.data].sort((a, b) => {
-            if (a.indice_publico !== b.indice_publico) return a.indice_publico - b.indice_publico;
+            if (a.indice_publico !== b.indice_publico)
+              return a.indice_publico - b.indice_publico;
             return a.ordem - b.ordem;
           });
           setMidiasEmpreendimentoRelacionadas(ordered);
@@ -2821,17 +3287,19 @@ export default function ImovelDetalhePage() {
           return;
         }
 
-        const syncResult = await apiFetchWithAuth<EmpreendimentoMidiaPublicaItem[]>(
-          `/api/empreendimentos/${item.empreendimento_id}/midia-publica`,
-          { method: "POST" },
-        );
+        const syncResult = await apiFetchWithAuth<
+          EmpreendimentoMidiaPublicaItem[]
+        >(`/api/empreendimentos/${item.empreendimento_id}/midia-publica`, {
+          method: "POST",
+        });
         setLoadingMidiasEmpreendimentoRelacionadas(false);
         if (!syncResult.ok) {
           setMidiasEmpreendimentoRelacionadas([]);
           return;
         }
         const ordered = [...syncResult.data].sort((a, b) => {
-          if (a.indice_publico !== b.indice_publico) return a.indice_publico - b.indice_publico;
+          if (a.indice_publico !== b.indice_publico)
+            return a.indice_publico - b.indice_publico;
           return a.ordem - b.ordem;
         });
         setMidiasEmpreendimentoRelacionadas(ordered);
@@ -2891,13 +3359,18 @@ export default function ImovelDetalhePage() {
         const dimensions = await getImageDimensionsClient(file);
         if (!dimensions) {
           reasons.push("FORMATO_INVALIDO");
-        } else if (dimensions.width < MIN_IMAGE_WIDTH || dimensions.height < MIN_IMAGE_HEIGHT) {
+        } else if (
+          dimensions.width < MIN_IMAGE_WIDTH ||
+          dimensions.height < MIN_IMAGE_HEIGHT
+        ) {
           reasons.push("TAMANHO_PEQUENO");
         }
       }
 
       if (reasons.length > 0) {
-        const previewUrl = isHeic ? null : await createLocalImageThumbObjectUrl(file);
+        const previewUrl = isHeic
+          ? null
+          : await createLocalImageThumbObjectUrl(file);
         if (previewUrl) {
           rejectedPreviewUrlsRef.current.add(previewUrl);
         }
@@ -2931,18 +3404,25 @@ export default function ImovelDetalhePage() {
     setUploadingMidiaImovelPercent(0);
 
     const failedFiles: string[] = [];
-    const totalBytesToUpload = approved.reduce((sum, file) => sum + file.size, 0);
+    const totalBytesToUpload = approved.reduce(
+      (sum, file) => sum + file.size,
+      0,
+    );
     let uploadedBytesDone = 0;
 
     for (const file of approved) {
       const alreadyExists = midiasImovel.some(
-        (mediaItem) => mediaItem.fileName === file.name && mediaItem.sizeBytes === file.size,
+        (mediaItem) =>
+          mediaItem.fileName === file.name && mediaItem.sizeBytes === file.size,
       );
       if (alreadyExists) continue;
 
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("ordem", String(midiasImovel.length + approved.indexOf(file)));
+      formData.append(
+        "ordem",
+        String(midiasImovel.length + approved.indexOf(file)),
+      );
 
       const token = await getAccessToken();
       if (!token) {
@@ -2950,7 +3430,13 @@ export default function ImovelDetalhePage() {
         uploadedBytesDone += file.size;
         if (totalBytesToUpload > 0) {
           setUploadingMidiaImovelPercent(
-            Math.min(100, Math.max(0, Math.round((uploadedBytesDone / totalBytesToUpload) * 100))),
+            Math.min(
+              100,
+              Math.max(
+                0,
+                Math.round((uploadedBytesDone / totalBytesToUpload) * 100),
+              ),
+            ),
           );
         }
         continue;
@@ -2978,21 +3464,32 @@ export default function ImovelDetalhePage() {
           const currentUploaded = uploadedBytesDone + event.loaded;
           const percent = Math.min(
             100,
-            Math.max(0, Math.round((currentUploaded / totalBytesToUpload) * 100)),
+            Math.max(
+              0,
+              Math.round((currentUploaded / totalBytesToUpload) * 100),
+            ),
           );
           setUploadingMidiaImovelPercent(percent);
         };
         xhr.onerror = () => {
-          resolve({ ok: false, error: "Falha de rede no upload da imagem.", status: 0 });
+          resolve({
+            ok: false,
+            error: "Falha de rede no upload da imagem.",
+            status: 0,
+          });
         };
         xhr.onload = () => {
-          let payload:
-            | { ok?: boolean; data?: unknown; error?: { message?: string } }
-            | null = null;
+          let payload: {
+            ok?: boolean;
+            data?: unknown;
+            error?: { message?: string };
+          } | null = null;
           try {
-            payload = JSON.parse(xhr.responseText || "null") as
-              | { ok?: boolean; data?: unknown; error?: { message?: string } }
-              | null;
+            payload = JSON.parse(xhr.responseText || "null") as {
+              ok?: boolean;
+              data?: unknown;
+              error?: { message?: string };
+            } | null;
           } catch {
             payload = null;
           }
@@ -3022,7 +3519,13 @@ export default function ImovelDetalhePage() {
       uploadedBytesDone += file.size;
       if (totalBytesToUpload > 0) {
         setUploadingMidiaImovelPercent(
-          Math.min(100, Math.max(0, Math.round((uploadedBytesDone / totalBytesToUpload) * 100))),
+          Math.min(
+            100,
+            Math.max(
+              0,
+              Math.round((uploadedBytesDone / totalBytesToUpload) * 100),
+            ),
+          ),
         );
       }
 
@@ -3083,11 +3586,16 @@ export default function ImovelDetalhePage() {
 
     setDeletingMidiaImovelIds((current) => [...current, id]);
 
-    const result = await apiFetchWithAuth<{ id: string }>(`/api/imoveis/${item.id}/midia/${target.midiaId}`, {
-      method: "DELETE",
-    });
+    const result = await apiFetchWithAuth<{ id: string }>(
+      `/api/imoveis/${item.id}/midia/${target.midiaId}`,
+      {
+        method: "DELETE",
+      },
+    );
 
-    setDeletingMidiaImovelIds((current) => current.filter((itemId) => itemId !== id));
+    setDeletingMidiaImovelIds((current) =>
+      current.filter((itemId) => itemId !== id),
+    );
 
     if (!result.ok) {
       setBlockError(result.error);
@@ -3098,7 +3606,9 @@ export default function ImovelDetalhePage() {
       URL.revokeObjectURL(target.thumbUrl);
       thumbPreviewUrlsRef.current.delete(target.thumbUrl);
     }
-    setMidiasImovel((current) => current.filter((mediaItem) => mediaItem.id !== id));
+    setMidiasImovel((current) =>
+      current.filter((mediaItem) => mediaItem.id !== id),
+    );
     if (editingMidiaImovelId === id) setEditingMidiaImovelId(null);
     if (item.status === "PUBLICADO") {
       await loadMidiasPublicasImovelHeader(item.id);
@@ -3110,9 +3620,14 @@ export default function ImovelDetalhePage() {
     if (!Number.isInteger(desiredIndex)) return;
 
     setMidiasImovel((current) => {
-      const fromIndex = current.findIndex((mediaItem) => mediaItem.id === imageId);
+      const fromIndex = current.findIndex(
+        (mediaItem) => mediaItem.id === imageId,
+      );
       if (fromIndex < 0) return current;
-      const boundedTarget = Math.max(0, Math.min(current.length - 1, desiredIndex));
+      const boundedTarget = Math.max(
+        0,
+        Math.min(current.length - 1, desiredIndex),
+      );
       if (boundedTarget === fromIndex) return current;
       const next = [...current];
       const [moved] = next.splice(fromIndex, 1);
@@ -3124,8 +3639,12 @@ export default function ImovelDetalhePage() {
   function moveMidiaImovelToTarget(dragImageId: string, targetImageId: string) {
     if (dragImageId === targetImageId) return;
     setMidiasImovel((current) => {
-      const fromIndex = current.findIndex((mediaItem) => mediaItem.id === dragImageId);
-      const toIndex = current.findIndex((mediaItem) => mediaItem.id === targetImageId);
+      const fromIndex = current.findIndex(
+        (mediaItem) => mediaItem.id === dragImageId,
+      );
+      const toIndex = current.findIndex(
+        (mediaItem) => mediaItem.id === targetImageId,
+      );
       if (fromIndex < 0 || toIndex < 0) return current;
       const next = [...current];
       const [moved] = next.splice(fromIndex, 1);
@@ -3148,7 +3667,9 @@ export default function ImovelDetalhePage() {
       lat: number | null;
       lng: number | null;
       address_components: unknown[];
-    }>(`/api/google/places/details?placeId=${encodeURIComponent(option.place_id)}`);
+    }>(
+      `/api/google/places/details?placeId=${encodeURIComponent(option.place_id)}`,
+    );
 
     if (!result.ok) {
       setBlockError(result.error);
@@ -3234,7 +3755,9 @@ export default function ImovelDetalhePage() {
     }
     if (hasPendingChanges) {
       setShowHeaderActionsMenu(false);
-      setBlockMessage("Salve ou descarte as alterações pendentes antes de alterar o status.");
+      setBlockMessage(
+        "Salve ou descarte as alterações pendentes antes de alterar o status.",
+      );
       setTimeout(() => setBlockMessage(null), 2500);
       return;
     }
@@ -3243,10 +3766,13 @@ export default function ImovelDetalhePage() {
     setError(null);
     setMessage(null);
 
-    const result = await apiFetchWithAuth<{ id: string }>(`/api/imoveis/${item.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: nextStatus }),
-    });
+    const result = await apiFetchWithAuth<{ id: string }>(
+      `/api/imoveis/${item.id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ status: nextStatus }),
+      },
+    );
 
     setSavingStatus(false);
 
@@ -3259,7 +3785,9 @@ export default function ImovelDetalhePage() {
     if (refreshed.ok) {
       setItem(refreshed.data);
     } else {
-      setItem((current) => (current ? { ...current, status: nextStatus } : current));
+      setItem((current) =>
+        current ? { ...current, status: nextStatus } : current,
+      );
     }
     setMessage("Status atualizado.");
   }
@@ -3268,7 +3796,9 @@ export default function ImovelDetalhePage() {
     if (!item) return;
     if (savingStatus) return;
     if (hasPendingChanges) {
-      setError("Salve ou descarte as alterações pendentes antes de excluir o imóvel.");
+      setError(
+        "Salve ou descarte as alterações pendentes antes de excluir o imóvel.",
+      );
       return;
     }
 
@@ -3276,9 +3806,12 @@ export default function ImovelDetalhePage() {
     setError(null);
     setMessage(null);
 
-    const result = await apiFetchWithAuth<{ id: string }>(`/api/imoveis/${item.id}`, {
-      method: "DELETE",
-    });
+    const result = await apiFetchWithAuth<{ id: string }>(
+      `/api/imoveis/${item.id}`,
+      {
+        method: "DELETE",
+      },
+    );
 
     setSavingStatus(false);
 
@@ -3290,31 +3823,48 @@ export default function ImovelDetalhePage() {
     router.push("/imoveis?exclusao_agendada=1");
   }
 
-  function updateForm<K extends keyof EditFormState>(key: K, value: EditFormState[K]) {
+  function updateForm<K extends keyof EditFormState>(
+    key: K,
+    value: EditFormState[K],
+  ) {
     setForm((current) => (current ? { ...current, [key]: value } : current));
   }
 
   function buildAykaImovelPrompt(config: AykaConfig) {
     if (!form) return "";
 
-    const endereco = [form.logradouro, form.numero, form.bairro, form.cidade, form.estado]
+    const endereco = [
+      form.logradouro,
+      form.numero,
+      form.bairro,
+      form.cidade,
+      form.estado,
+    ]
       .map((item) => item?.trim())
       .filter((item): item is string => Boolean(item))
       .join(", ");
     const enderecoPublicacao =
-      ENDERECO_VISUALIZACAO_OPTIONS.find((item) => item.value === form.enderecovisualizacao)?.label ??
-      form.enderecovisualizacao;
-    const empreendimentoNome = empreendimentoAssociadoAyka?.nome?.trim() || empreendimentoAssociadoNome;
-    const empreendimentoBairroComercial = empreendimentoAssociadoAyka?.bairro_comercial?.trim() || null;
+      ENDERECO_VISUALIZACAO_OPTIONS.find(
+        (item) => item.value === form.enderecovisualizacao,
+      )?.label ?? form.enderecovisualizacao;
+    const empreendimentoNome =
+      empreendimentoAssociadoAyka?.nome?.trim() || empreendimentoAssociadoNome;
+    const empreendimentoBairroComercial =
+      empreendimentoAssociadoAyka?.bairro_comercial?.trim() || null;
     const bairroComercialReferencia = hasEmpreendimentoAssociado
       ? empreendimentoBairroComercial
       : form.bairro_comercial.trim() || null;
-    const empreendimentoDescricao = htmlToPlainText(empreendimentoAssociadoAyka?.descricao ?? "");
+    const empreendimentoDescricao = htmlToPlainText(
+      empreendimentoAssociadoAyka?.descricao ?? "",
+    );
     const localizacaoContextoFonte = hasEmpreendimentoAssociado
       ? empreendimentoAssociadoAyka?.localizacao_contexto &&
         typeof empreendimentoAssociadoAyka.localizacao_contexto === "object" &&
         !Array.isArray(empreendimentoAssociadoAyka.localizacao_contexto)
-        ? (empreendimentoAssociadoAyka.localizacao_contexto as Record<string, unknown>)
+        ? (empreendimentoAssociadoAyka.localizacao_contexto as Record<
+            string,
+            unknown
+          >)
         : {}
       : {
           perfil_regiao: form.localizacao_perfil_regiao,
@@ -3323,24 +3873,44 @@ export default function ImovelDetalhePage() {
           lazer_estilo_vida: form.localizacao_lazer_estilo_vida,
           resumo_local: form.localizacao_resumo_local,
         };
-    const localizacaoPerfilRegiao = Array.isArray(localizacaoContextoFonte.perfil_regiao)
+    const localizacaoPerfilRegiao = Array.isArray(
+      localizacaoContextoFonte.perfil_regiao,
+    )
       ? localizacaoContextoFonte.perfil_regiao
-          .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+          .filter(
+            (item): item is string =>
+              typeof item === "string" && item.trim().length > 0,
+          )
           .join(", ")
       : "";
-    const localizacaoMobilidade = Array.isArray(localizacaoContextoFonte.mobilidade)
+    const localizacaoMobilidade = Array.isArray(
+      localizacaoContextoFonte.mobilidade,
+    )
       ? localizacaoContextoFonte.mobilidade
-          .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+          .filter(
+            (item): item is string =>
+              typeof item === "string" && item.trim().length > 0,
+          )
           .join(", ")
       : "";
-    const localizacaoComercioServicos = Array.isArray(localizacaoContextoFonte.comercio_servicos)
+    const localizacaoComercioServicos = Array.isArray(
+      localizacaoContextoFonte.comercio_servicos,
+    )
       ? localizacaoContextoFonte.comercio_servicos
-          .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+          .filter(
+            (item): item is string =>
+              typeof item === "string" && item.trim().length > 0,
+          )
           .join(", ")
       : "";
-    const localizacaoLazerEstilo = Array.isArray(localizacaoContextoFonte.lazer_estilo_vida)
+    const localizacaoLazerEstilo = Array.isArray(
+      localizacaoContextoFonte.lazer_estilo_vida,
+    )
       ? localizacaoContextoFonte.lazer_estilo_vida
-          .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+          .filter(
+            (item): item is string =>
+              typeof item === "string" && item.trim().length > 0,
+          )
           .join(", ")
       : "";
     const localizacaoResumo =
@@ -3348,14 +3918,18 @@ export default function ImovelDetalhePage() {
         ? localizacaoContextoFonte.resumo_local.trim()
         : "";
     const formatoDescricaoSolicitado =
-      config.formatoDescricao === "SECOES" ? "Dividir a descrição em partes" : "Texto fluído";
+      config.formatoDescricao === "SECOES"
+        ? "Dividir a descrição em partes"
+        : "Texto fluído";
     const regraEstruturaDescricao = hasEmpreendimentoAssociado
       ? config.formatoDescricao === "SECOES"
         ? "6. Como há empreendimento associado e o formato é 'dividir em partes', organize o texto em 3 blocos/parágrafos nesta ordem: (a) introdução e público-alvo, (b) detalhes do imóvel, (c) detalhes do empreendimento e localização. Não crie títulos, subtítulos, listas ou cabeçalhos visíveis."
         : "6. Como há empreendimento associado, escreva em texto fluído, sem títulos de seção, integrando imóvel, empreendimento e localização de forma natural."
       : "6. Sem empreendimento associado, priorize detalhes do imóvel e da localização imediata.";
     const caracteristicas = caracteristicasCatalogo
-      .filter((catalogItem) => caracteristicasSelecionadas.includes(catalogItem.chave))
+      .filter((catalogItem) =>
+        caracteristicasSelecionadas.includes(catalogItem.chave),
+      )
       .map((catalogItem) => catalogItem.label_pt);
     const dormitoriosResumo = dormitoriosDetalhe
       .map((ambienteItem, index) => {
@@ -3382,7 +3956,9 @@ export default function ImovelDetalhePage() {
           ambienteItem.forno ? "forno" : null,
           ambienteItem.geladeira ? "geladeira" : null,
           ambienteItem.microondas ? "micro-ondas" : null,
-          ambienteItem.tipo_bancada ? `bancada ${ambienteItem.tipo_bancada.toLowerCase()}` : null,
+          ambienteItem.tipo_bancada
+            ? `bancada ${ambienteItem.tipo_bancada.toLowerCase()}`
+            : null,
         ]
           .filter((flag): flag is string => Boolean(flag))
           .join(", ");
@@ -3407,7 +3983,9 @@ export default function ImovelDetalhePage() {
     const varandasResumo = varandasDetalhe
       .map((ambienteItem, index) => {
         const flags = [
-          ambienteItem.churrasqueira_tipo ? `churrasqueira ${ambienteItem.churrasqueira_tipo.toLowerCase()}` : null,
+          ambienteItem.churrasqueira_tipo
+            ? `churrasqueira ${ambienteItem.churrasqueira_tipo.toLowerCase()}`
+            : null,
           ambienteItem.fechada_com_vidro ? "fechada com vidro" : null,
           ambienteItem.bancada ? "bancada" : null,
           ambienteItem.ilha ? "ilha" : null,
@@ -3440,10 +4018,12 @@ export default function ImovelDetalhePage() {
         ? maybeItemExtra.observacoes_gerais.trim()
         : "";
     const andarLabel =
-      typeof maybeItemExtra.andar === "number" && Number.isFinite(maybeItemExtra.andar)
+      typeof maybeItemExtra.andar === "number" &&
+      Number.isFinite(maybeItemExtra.andar)
         ? String(maybeItemExtra.andar)
         : "Não informado";
-    const mostrarAndarNoAnuncio = maybeItemExtra.mostrar_andar_no_anuncio === true;
+    const mostrarAndarNoAnuncio =
+      maybeItemExtra.mostrar_andar_no_anuncio === true;
 
     return `### CONTEXTO
 Você é um redator imobiliário especialista em anúncios de imóveis no mercado brasileiro.
@@ -3485,8 +4065,9 @@ ${regraEstruturaDescricao}
 - Varandas: ${qtdVarandasDetalhe || form.varandas || "Não informado"}
 - Vagas: ${form.vagas || "Não informado"}
 - Tipo negociação: ${
-      TIPO_NEGOCIACAO_OPTIONS.find((option) => option.value === form.tipo_negociacao)?.label ||
-      form.tipo_negociacao
+      TIPO_NEGOCIACAO_OPTIONS.find(
+        (option) => option.value === form.tipo_negociacao,
+      )?.label || form.tipo_negociacao
     }
 - Valor venda: ${form.preco_venda ? `R$ ${form.preco_venda}` : "Não informado"}
 - Valor aluguel: ${form.preco_locacao ? `R$ ${form.preco_locacao}` : "Não informado"}
@@ -3505,7 +4086,9 @@ ${regraEstruturaDescricao}
 - Incluir CTA: ${config.incluirCta ? "Sim" : "Não"}
 - Público-alvo: ${
       config.publicosSelecionados.length > 0
-        ? config.publicosSelecionados.map((item) => `${item.categoria} > ${item.subcategoria}`).join(", ")
+        ? config.publicosSelecionados
+            .map((item) => `${item.categoria} > ${item.subcategoria}`)
+            .join(", ")
         : "Não informado"
     }
 - Observação geral final para a Ayka: ${config.observacaoGeral || "Nenhuma"}
@@ -3550,15 +4133,20 @@ Retorne SOMENTE JSON válido:
     return null;
   }
 
-  async function handleGenerateAykaDescricaoImovel(config: AykaConfig): Promise<string | null> {
+  async function handleGenerateAykaDescricaoImovel(
+    config: AykaConfig,
+  ): Promise<string | null> {
     setGerandoDescricaoAyka(true);
-    const result = await apiFetchWithAuth<AykaDescricaoGeradaResponse>("/api/ayka/descricao/gerar", {
-      method: "POST",
-      body: JSON.stringify({
-        acao: aykaActionCodigo,
-        prompt: buildAykaImovelPrompt(config),
-      }),
-    });
+    const result = await apiFetchWithAuth<AykaDescricaoGeradaResponse>(
+      "/api/ayka/descricao/gerar",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          acao: aykaActionCodigo,
+          prompt: buildAykaImovelPrompt(config),
+        }),
+      },
+    );
     setGerandoDescricaoAyka(false);
 
     if (!result.ok) {
@@ -3572,7 +4160,9 @@ Retorne SOMENTE JSON válido:
       return "A Ayka não retornou descrição válida.";
     }
 
-    setForm((current) => (current ? { ...current, descricao: nextDescricao } : current));
+    setForm((current) =>
+      current ? { ...current, descricao: nextDescricao } : current,
+    );
     setBlockMessage("Descrição gerada pela Ayka.");
     return null;
   }
@@ -3590,7 +4180,8 @@ Retorne SOMENTE JSON válido:
         logradouro: form.logradouro.trim(),
         numero: form.numero.trim(),
         endereco_complemento: form.endereco_complemento.trim() || null,
-        enderecovisualizacao: form.enderecovisualizacao || "END_SEM_COMPLEMENTO",
+        enderecovisualizacao:
+          form.enderecovisualizacao || "END_SEM_COMPLEMENTO",
         bairro: form.bairro.trim(),
         cidade: form.cidade.trim(),
         estado: form.estado.trim().toUpperCase(),
@@ -3612,8 +4203,15 @@ Retorne SOMENTE JSON válido:
           resumo_local: form.localizacao_resumo_local.trim() || null,
         },
       };
-      if (!payload.logradouro || !payload.bairro || !payload.cidade || !payload.estado) {
-        setBlockError("Preencha os campos principais de endereço (logradouro, bairro, cidade e UF).");
+      if (
+        !payload.logradouro ||
+        !payload.bairro ||
+        !payload.cidade ||
+        !payload.estado
+      ) {
+        setBlockError(
+          "Preencha os campos principais de endereço (logradouro, bairro, cidade e UF).",
+        );
         setSavingBlock(null);
         return false;
       }
@@ -3654,11 +4252,26 @@ Retorne SOMENTE JSON válido:
         return false;
       }
 
-      let parsedAreaTerreno: ReturnType<typeof parseOptionalDecimal> = { ok: true, value: null };
-      let parsedFrenteMetros: ReturnType<typeof parseOptionalDecimal> = { ok: true, value: null };
-      let parsedFundosMetros: ReturnType<typeof parseOptionalDecimal> = { ok: true, value: null };
-      let parsedLateral1Metros: ReturnType<typeof parseOptionalDecimal> = { ok: true, value: null };
-      let parsedLateral2Metros: ReturnType<typeof parseOptionalDecimal> = { ok: true, value: null };
+      let parsedAreaTerreno: ReturnType<typeof parseOptionalDecimal> = {
+        ok: true,
+        value: null,
+      };
+      let parsedFrenteMetros: ReturnType<typeof parseOptionalDecimal> = {
+        ok: true,
+        value: null,
+      };
+      let parsedFundosMetros: ReturnType<typeof parseOptionalDecimal> = {
+        ok: true,
+        value: null,
+      };
+      let parsedLateral1Metros: ReturnType<typeof parseOptionalDecimal> = {
+        ok: true,
+        value: null,
+      };
+      let parsedLateral2Metros: ReturnType<typeof parseOptionalDecimal> = {
+        ok: true,
+        value: null,
+      };
 
       if (canShowTerrainFields) {
         parsedAreaTerreno = parseOptionalDecimal(form.area_terreno);
@@ -3674,13 +4287,17 @@ Retorne SOMENTE JSON válido:
           !parsedLateral1Metros.ok ||
           !parsedLateral2Metros.ok
         ) {
-          setBlockError("Revise as medidas do terreno. Use somente números válidos.");
+          setBlockError(
+            "Revise as medidas do terreno. Use somente números válidos.",
+          );
           setSavingBlock(null);
           return false;
         }
       }
 
-      const dormitoriosPersist = isUsoComercial ? null : parsedDormitorios.value;
+      const dormitoriosPersist = isUsoComercial
+        ? null
+        : parsedDormitorios.value;
       const suitesPersist = isUsoComercial ? null : parsedSuites.value;
 
       payload = {
@@ -3693,16 +4310,25 @@ Retorne SOMENTE JSON válido:
         salas: parsedSalas.value,
         cozinhas: parsedCozinhas.value,
         vagas: parsedVagas.value,
-        vaga_tipos: parsedVagas.value && parsedVagas.value > 0 ? form.vaga_tipos : [],
+        vaga_tipos:
+          parsedVagas.value && parsedVagas.value > 0 ? form.vaga_tipos : [],
         vaga_tamanhos:
-          parsedVagas.value && parsedVagas.value > 0 && form.vaga_tamanho ? [form.vaga_tamanho] : [],
+          parsedVagas.value && parsedVagas.value > 0 && form.vaga_tamanho
+            ? [form.vaga_tamanho]
+            : [],
         vaga_coberturas:
-          parsedVagas.value && parsedVagas.value > 0 && form.vaga_cobertura ? [form.vaga_cobertura] : [],
+          parsedVagas.value && parsedVagas.value > 0 && form.vaga_cobertura
+            ? [form.vaga_cobertura]
+            : [],
         area_terreno: canShowTerrainFields ? parsedAreaTerreno.value : null,
         frente_metros: canShowTerrainFields ? parsedFrenteMetros.value : null,
         fundos_metros: canShowTerrainFields ? parsedFundosMetros.value : null,
-        lateral_1_metros: canShowTerrainFields ? parsedLateral1Metros.value : null,
-        lateral_2_metros: canShowTerrainFields ? parsedLateral2Metros.value : null,
+        lateral_1_metros: canShowTerrainFields
+          ? parsedLateral1Metros.value
+          : null,
+        lateral_2_metros: canShowTerrainFields
+          ? parsedLateral2Metros.value
+          : null,
       };
       step5HydratedRef.current = null;
     }
@@ -3718,13 +4344,21 @@ Retorne SOMENTE JSON válido:
       const parsedPrecoLocacao = parseOptionalCurrency(form.preco_locacao);
       const parsedValorCondominio = parseOptionalCurrency(form.condominio);
       const parsedValorIptu = parseOptionalCurrency(form.iptu);
-      const parsedComissaoVenda = parseOptionalPercent(form.comissao_venda_percentual);
-      const parsedMinimoMaos = parseOptionalCurrency(form.minimo_aceito_em_maos);
-      const parsedComissaoCaptador = parseOptionalPercent(form.comissao_captador_percentual);
+      const parsedComissaoVenda = parseOptionalPercent(
+        form.comissao_venda_percentual,
+      );
+      const parsedMinimoMaos = parseOptionalCurrency(
+        form.minimo_aceito_em_maos,
+      );
+      const parsedComissaoCaptador = parseOptionalPercent(
+        form.comissao_captador_percentual,
+      );
       const parsedExclusividadeComissaoMinha = parseOptionalPercent(
         form.exclusividade_comissao_minha_percentual,
       );
-      const parsedComissaoVendedor = parseOptionalPercent(comissaoVendedorPercentualAuto);
+      const parsedComissaoVendedor = parseOptionalPercent(
+        comissaoVendedorPercentualAuto,
+      );
       const parsedExclusividadeComissaoParceiro = parseOptionalPercent(
         exclusividadeComissaoParceiroAuto,
       );
@@ -3774,8 +4408,13 @@ Retorne SOMENTE JSON válido:
           return false;
         }
 
-        if (parsedComissaoCaptador.value == null || parsedComissaoVendedor.value == null) {
-          setBlockError("Informe minha comissão para calcular a comissão do parceiro.");
+        if (
+          parsedComissaoCaptador.value == null ||
+          parsedComissaoVendedor.value == null
+        ) {
+          setBlockError(
+            "Informe minha comissão para calcular a comissão do parceiro.",
+          );
           setSavingBlock(null);
           return false;
         }
@@ -3793,9 +4432,12 @@ Retorne SOMENTE JSON válido:
 
         if (
           isParceriaSemExclusividadeAtiva &&
-          (parsedComissaoCaptador.value == null || parsedComissaoVendedor.value == null)
+          (parsedComissaoCaptador.value == null ||
+            parsedComissaoVendedor.value == null)
         ) {
-          setBlockError("Informe minha comissão para calcular a comissão do parceiro.");
+          setBlockError(
+            "Informe minha comissão para calcular a comissão do parceiro.",
+          );
           setSavingBlock(null);
           return false;
         }
@@ -3818,7 +4460,9 @@ Retorne SOMENTE JSON válido:
         }
 
         if (form.exclusividade_data_vencimento < todayIsoDate) {
-          setBlockError("A data de vencimento da exclusividade não pode estar no passado.");
+          setBlockError(
+            "A data de vencimento da exclusividade não pode estar no passado.",
+          );
           setSavingBlock(null);
           return false;
         }
@@ -3828,7 +4472,9 @@ Retorne SOMENTE JSON válido:
             parsedExclusividadeComissaoMinha.value == null ||
             parsedExclusividadeComissaoParceiro.value == null
           ) {
-            setBlockError("Informe as comissões da parceria para a exclusividade.");
+            setBlockError(
+              "Informe as comissões da parceria para a exclusividade.",
+            );
             setSavingBlock(null);
             return false;
           }
@@ -3836,12 +4482,16 @@ Retorne SOMENTE JSON válido:
 
         if (form.disponibilizar_no_bolsao_parceria) {
           if (!isParceriaExclusividadeAtiva) {
-            setBlockError("Para ofertar no bolsão, marque que aceita parceria com outros corretores.");
+            setBlockError(
+              "Para ofertar no bolsão, marque que aceita parceria com outros corretores.",
+            );
             setSavingBlock(null);
             return false;
           }
 
-          if (form.exclusividade_data_vencimento < minBolsaoExclusividadeIsoDate) {
+          if (
+            form.exclusividade_data_vencimento < minBolsaoExclusividadeIsoDate
+          ) {
             setBlockError(
               `Para oferecer no bolsão, o vencimento da exclusividade precisa ter no mínimo ${BOLSAO_EXCLUSIVIDADE_MIN_DIAS} dias a partir de hoje (mínimo: ${formatIsoDateToPtBr(minBolsaoExclusividadeIsoDate)}).`,
             );
@@ -3853,7 +4503,9 @@ Retorne SOMENTE JSON válido:
             parsedExclusividadeComissaoMinha.value == null ||
             parsedExclusividadeComissaoParceiro.value == null
           ) {
-            setBlockError("Preencha as comissões de exclusividade para disponibilizar no bolsão.");
+            setBlockError(
+              "Preencha as comissões de exclusividade para disponibilizar no bolsão.",
+            );
             setSavingBlock(null);
             return false;
           }
@@ -3889,9 +4541,10 @@ Retorne SOMENTE JSON válido:
               ]
                 .filter((value): value is string => Boolean(value))
                 .join(" | ")
-          : null;
+            : null;
 
-      const hasContatoProprietario = isMinhaCaptacaoSemExclusividade || isMinhaExclusividade;
+      const hasContatoProprietario =
+        isMinhaCaptacaoSemExclusividade || isMinhaExclusividade;
       const contatoNomePayload = isCaptacaoParceria
         ? form.corretor_parceiro_nome.trim() || null
         : hasContatoProprietario
@@ -3912,22 +4565,41 @@ Retorne SOMENTE JSON válido:
         tipo_negociacao: form.tipo_negociacao,
         preco_venda: hasVendaNegociacao ? parsedPrecoVenda.value : null,
         preco_locacao: hasAluguelNegociacao ? parsedPrecoLocacao.value : null,
-        condominio: hasEmpreendimentoAssociado ? parsedValorCondominio.value : null,
+        condominio: hasEmpreendimentoAssociado
+          ? parsedValorCondominio.value
+          : null,
         iptu: parsedValorIptu.value,
-        iptu_periodicidade: parsedValorIptu.value == null ? null : form.iptu_periodicidade === "MENSAL" ? "MENSAL" : "ANUAL",
-        comissao_locacao: hasAluguelNegociacao ? form.comissao_locacao.trim() || null : null,
-        comissao_venda_percentual: hasVendaNegociacao ? parsedComissaoVenda.value : null,
-        minimo_aceito_em_maos: hasVendaNegociacao ? parsedMinimoMaos.value : null,
+        iptu_periodicidade:
+          parsedValorIptu.value == null
+            ? null
+            : form.iptu_periodicidade === "MENSAL"
+              ? "MENSAL"
+              : "ANUAL",
+        comissao_locacao: hasAluguelNegociacao
+          ? form.comissao_locacao.trim() || null
+          : null,
+        comissao_venda_percentual: hasVendaNegociacao
+          ? parsedComissaoVenda.value
+          : null,
+        minimo_aceito_em_maos: hasVendaNegociacao
+          ? parsedMinimoMaos.value
+          : null,
         aceita_permuta: hasVendaNegociacao ? form.aceita_permuta : false,
         descricao_permuta:
-          hasVendaNegociacao && form.aceita_permuta ? form.descricao_permuta.trim() : null,
+          hasVendaNegociacao && form.aceita_permuta
+            ? form.descricao_permuta.trim()
+            : null,
         veio_do_bolsao: false,
         captacao_corretor_parceiro: isCaptacaoParceria,
         corretor_parceiro_nome: contatoNomePayload,
         corretor_parceiro_telefone: contatoTelefonePayload,
         corretor_parceiro_email: contatoEmailPayload,
-        comissao_captador_percentual: shouldShowComissaoParceria ? parsedComissaoCaptador.value : null,
-        comissao_vendedor_percentual: shouldShowComissaoParceria ? parsedComissaoVendedor.value : null,
+        comissao_captador_percentual: shouldShowComissaoParceria
+          ? parsedComissaoCaptador.value
+          : null,
+        comissao_vendedor_percentual: shouldShowComissaoParceria
+          ? parsedComissaoVendedor.value
+          : null,
         outras_comissoes_percentual: null,
         exclusividade: isMinhaExclusividade,
         exclusividade_comissao_minha_percentual: isMinhaExclusividade
@@ -3937,9 +4609,15 @@ Retorne SOMENTE JSON válido:
           ? parsedExclusividadeComissaoParceiro.value
           : null,
         exclusividade_outras_comissoes_percentual: null,
-        exclusividade_data_vencimento: isMinhaExclusividade ? form.exclusividade_data_vencimento : null,
-        exclusividade_observacoes: isMinhaExclusividade ? form.exclusividade_observacoes.trim() || null : null,
-        disponibilizar_no_bolsao_parceria: isMinhaExclusividade ? form.disponibilizar_no_bolsao_parceria : false,
+        exclusividade_data_vencimento: isMinhaExclusividade
+          ? form.exclusividade_data_vencimento
+          : null,
+        exclusividade_observacoes: isMinhaExclusividade
+          ? form.exclusividade_observacoes.trim() || null
+          : null,
+        disponibilizar_no_bolsao_parceria: isMinhaExclusividade
+          ? form.disponibilizar_no_bolsao_parceria
+          : false,
         bolsao_permitir_mudanca_preco:
           isMinhaExclusividade && form.disponibilizar_no_bolsao_parceria
             ? form.bolsao_permitir_mudanca_preco
@@ -3956,7 +4634,9 @@ Retorne SOMENTE JSON válido:
           isMinhaExclusividade && form.disponibilizar_no_bolsao_parceria
             ? form.bolsao_somente_visitas_com_minha_presenca
             : false,
-        aceite_corretor_exclusivo: isMinhaExclusividade ? form.aceite_corretor_exclusivo : false,
+        aceite_corretor_exclusivo: isMinhaExclusividade
+          ? form.aceite_corretor_exclusivo
+          : false,
         regra_geral_exclusividade: null,
         aceita_parceria_status:
           isMinhaExclusividade || isMinhaCaptacaoSemExclusividade
@@ -3972,9 +4652,16 @@ Retorne SOMENTE JSON válido:
       const parsedQtdSalas = parseOptionalInteger(qtdSalasDetalhe);
       const parsedQtdVarandas = parseOptionalInteger(qtdVarandasDetalhe);
 
-      if (!parsedQtdDormitorios.ok || !parsedQtdCozinhas.ok || !parsedQtdSalas.ok || !parsedQtdVarandas.ok) {
+      if (
+        !parsedQtdDormitorios.ok ||
+        !parsedQtdCozinhas.ok ||
+        !parsedQtdSalas.ok ||
+        !parsedQtdVarandas.ok
+      ) {
         setSavingBlock(null);
-        setBlockError("Revise as quantidades dos ambientes. Use apenas números inteiros.");
+        setBlockError(
+          "Revise as quantidades dos ambientes. Use apenas números inteiros.",
+        );
         return false;
       }
 
@@ -3983,18 +4670,39 @@ Retorne SOMENTE JSON válido:
       const qtdSalas = parsedQtdSalas.value ?? 0;
       const qtdVarandas = parsedQtdVarandas.value ?? 0;
 
-      const dormitoriosRows = resizeAmbientes(dormitoriosDetalhe, qtdDormitorios, createDormitorioAmbiente);
-      const cozinhasRows = resizeAmbientes(cozinhasDetalhe, qtdCozinhas, createCozinhaAmbiente);
-      const salasRows = resizeAmbientes(salasDetalhe, qtdSalas, createSalaAmbiente);
-      const varandasRows = resizeAmbientes(varandasDetalhe, qtdVarandas, createVarandaAmbiente);
+      const dormitoriosRows = resizeAmbientes(
+        dormitoriosDetalhe,
+        qtdDormitorios,
+        createDormitorioAmbiente,
+      );
+      const cozinhasRows = resizeAmbientes(
+        cozinhasDetalhe,
+        qtdCozinhas,
+        createCozinhaAmbiente,
+      );
+      const salasRows = resizeAmbientes(
+        salasDetalhe,
+        qtdSalas,
+        createSalaAmbiente,
+      );
+      const varandasRows = resizeAmbientes(
+        varandasDetalhe,
+        qtdVarandas,
+        createVarandaAmbiente,
+      );
 
-      if (dormitoriosRows.filter((ambienteItem) => ambienteItem.suite_principal).length > 1) {
+      if (
+        dormitoriosRows.filter((ambienteItem) => ambienteItem.suite_principal)
+          .length > 1
+      ) {
         setSavingBlock(null);
         setBlockError("Defina apenas uma suíte principal.");
         return false;
       }
 
-      if (salasRows.filter((ambienteItem) => ambienteItem.principal).length > 1) {
+      if (
+        salasRows.filter((ambienteItem) => ambienteItem.principal).length > 1
+      ) {
         setSavingBlock(null);
         setBlockError("Defina apenas uma sala principal.");
         return false;
@@ -4029,9 +4737,12 @@ Retorne SOMENTE JSON válido:
           area_m2: parsedArea.value,
           dados: {
             eh_suite: ambienteItem.eh_suite,
-            suite_principal: ambienteItem.eh_suite && ambienteItem.suite_principal,
-            banheiro_armarios: ambienteItem.eh_suite && ambienteItem.banheiro_armarios,
-            banheiro_pia_dupla: ambienteItem.eh_suite && ambienteItem.banheiro_pia_dupla,
+            suite_principal:
+              ambienteItem.eh_suite && ambienteItem.suite_principal,
+            banheiro_armarios:
+              ambienteItem.eh_suite && ambienteItem.banheiro_armarios,
+            banheiro_pia_dupla:
+              ambienteItem.eh_suite && ambienteItem.banheiro_pia_dupla,
             banheiro_box: ambienteItem.eh_suite && ambienteItem.banheiro_box,
             ar_condicionado: ambienteItem.ar_condicionado,
             closet: ambienteItem.closet,
@@ -4120,13 +4831,13 @@ Retorne SOMENTE JSON válido:
         });
       }
 
-      const resultAmbientes = await apiFetchWithAuth<{ id: string; ambientes: ImovelAmbienteApiItem[] }>(
-        `/api/imoveis/${item.id}/ambientes`,
-        {
-          method: "PUT",
-          body: JSON.stringify({ ambientes: payloadAmbientes }),
-        },
-      );
+      const resultAmbientes = await apiFetchWithAuth<{
+        id: string;
+        ambientes: ImovelAmbienteApiItem[];
+      }>(`/api/imoveis/${item.id}/ambientes`, {
+        method: "PUT",
+        body: JSON.stringify({ ambientes: payloadAmbientes }),
+      });
 
       if (!resultAmbientes.ok) {
         setSavingBlock(null);
@@ -4134,11 +4845,14 @@ Retorne SOMENTE JSON válido:
         return false;
       }
 
-      const nextQtdDormitorios = qtdDormitorios > 0 ? String(qtdDormitorios) : "";
+      const nextQtdDormitorios =
+        qtdDormitorios > 0 ? String(qtdDormitorios) : "";
       const nextQtdCozinhas = qtdCozinhas > 0 ? String(qtdCozinhas) : "";
       const nextQtdSalas = qtdSalas > 0 ? String(qtdSalas) : "";
       const nextQtdVarandas = qtdVarandas > 0 ? String(qtdVarandas) : "";
-      const suitesDerivadas = dormitoriosRows.filter((ambienteItem) => ambienteItem.eh_suite).length;
+      const suitesDerivadas = dormitoriosRows.filter(
+        (ambienteItem) => ambienteItem.eh_suite,
+      ).length;
       const nextSuites = suitesDerivadas > 0 ? String(suitesDerivadas) : "";
       const nextStep5Snapshot = serializeAmbientesSnapshot({
         qtdDormitorios: nextQtdDormitorios,
@@ -4216,7 +4930,9 @@ Retorne SOMENTE JSON válido:
 
     if (step === 7) {
       if (descricaoImovelPlain.length > MAX_DESCRICAO_IMOVEL_CHARS) {
-        setBlockError(`Descrição acima do limite de ${MAX_DESCRICAO_IMOVEL_CHARS} caracteres.`);
+        setBlockError(
+          `Descrição acima do limite de ${MAX_DESCRICAO_IMOVEL_CHARS} caracteres.`,
+        );
         setSavingBlock(null);
         return false;
       }
@@ -4228,7 +4944,9 @@ Retorne SOMENTE JSON válido:
 
     if (step === 8) {
       if (uploadingMidiaImovel) {
-        setBlockError("Aguarde o término do envio das imagens antes de salvar.");
+        setBlockError(
+          "Aguarde o término do envio das imagens antes de salvar.",
+        );
         setSavingBlock(null);
         return false;
       }
@@ -4278,10 +4996,13 @@ Retorne SOMENTE JSON válido:
       }
 
       if (orderedMidiaIds.length > 0) {
-        const reorderResult = await apiFetchWithAuth<{ total: number }>(`/api/imoveis/${item.id}/midia`, {
-          method: "PATCH",
-          body: JSON.stringify({ orderedMidiaIds }),
-        });
+        const reorderResult = await apiFetchWithAuth<{ total: number }>(
+          `/api/imoveis/${item.id}/midia`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ orderedMidiaIds }),
+          },
+        );
         if (!reorderResult.ok) {
           setBlockError(reorderResult.error);
           setSavingBlock(null);
@@ -4300,14 +5021,18 @@ Retorne SOMENTE JSON válido:
 
     if (step === 9) {
       if (youtubeVideos.length > MAX_YOUTUBE_VIDEOS) {
-        setBlockError(`Você pode adicionar no máximo ${MAX_YOUTUBE_VIDEOS} vídeos.`);
+        setBlockError(
+          `Você pode adicionar no máximo ${MAX_YOUTUBE_VIDEOS} vídeos.`,
+        );
         setSavingBlock(null);
         return false;
       }
 
       for (const videoItem of youtubeVideos) {
         if (!normalizeYouTubeUrl(videoItem.url) || !videoItem.videoId) {
-          setBlockError("Há um link de vídeo do YouTube inválido. Revise antes de salvar.");
+          setBlockError(
+            "Há um link de vídeo do YouTube inválido. Revise antes de salvar.",
+          );
           setSavingBlock(null);
           return false;
         }
@@ -4322,7 +5047,9 @@ Retorne SOMENTE JSON válido:
         return false;
       }
 
-      const currentVideoUrlSet = new Set(youtubeVideos.map((videoItem) => videoItem.url));
+      const currentVideoUrlSet = new Set(
+        youtubeVideos.map((videoItem) => videoItem.url),
+      );
       const staleVideos = persistedMidiaResult.data.filter(
         (mediaItem) =>
           mediaItem.tipo === "VIDEO" &&
@@ -4349,7 +5076,9 @@ Retorne SOMENTE JSON válido:
           .filter((videoUrl): videoUrl is string => Boolean(videoUrl)),
       );
 
-      const missingYoutube = youtubeVideos.filter((videoItem) => !persistedYoutubeUrls.has(videoItem.url));
+      const missingYoutube = youtubeVideos.filter(
+        (videoItem) => !persistedYoutubeUrls.has(videoItem.url),
+      );
       for (let index = 0; index < missingYoutube.length; index += 1) {
         const videoItem = missingYoutube[index];
         const formData = new FormData();
@@ -4358,10 +5087,13 @@ Retorne SOMENTE JSON válido:
         if (videoItem.title?.trim()) {
           formData.append("titulo", videoItem.title.trim());
         }
-        const createResult = await apiFetchWithAuth<{ id: string }>(`/api/imoveis/${item.id}/midia`, {
-          method: "POST",
-          body: formData,
-        });
+        const createResult = await apiFetchWithAuth<{ id: string }>(
+          `/api/imoveis/${item.id}/midia`,
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
         if (!createResult.ok) {
           setBlockError(createResult.error);
           setSavingBlock(null);
@@ -4396,10 +5128,13 @@ Retorne SOMENTE JSON válido:
       ];
 
       if (orderedMidiaIds.length > 0) {
-        const reorderResult = await apiFetchWithAuth<{ total: number }>(`/api/imoveis/${item.id}/midia`, {
-          method: "PATCH",
-          body: JSON.stringify({ orderedMidiaIds }),
-        });
+        const reorderResult = await apiFetchWithAuth<{ total: number }>(
+          `/api/imoveis/${item.id}/midia`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ orderedMidiaIds }),
+          },
+        );
         if (!reorderResult.ok) {
           setBlockError(reorderResult.error);
           setSavingBlock(null);
@@ -4426,10 +5161,14 @@ Retorne SOMENTE JSON válido:
       willImovelPublicUrlChange(currentPublicUrlInput, nextPublicUrlInput);
 
     if (shouldWarnUrlChange) {
-      const currentSegment = resolveImovelPublicRouteSegment(currentPublicUrlInput);
+      const currentSegment = resolveImovelPublicRouteSegment(
+        currentPublicUrlInput,
+      );
       const nextSegment = resolveImovelPublicRouteSegment(nextPublicUrlInput);
       const nickname = profileNickname?.trim() || ":nickname";
-      const currentSlug = item.slug_publico?.trim() || buildImovelPublicSlug(currentPublicUrlInput);
+      const currentSlug =
+        item.slug_publico?.trim() ||
+        buildImovelPublicSlug(currentPublicUrlInput);
       const nextSlug = buildImovelPublicSlug(nextPublicUrlInput);
       const currentPath = `/${nickname}/${currentSegment}/${currentSlug}`;
       const nextPath = `/${nickname}/${nextSegment}/${nextSlug}`;
@@ -4450,10 +5189,13 @@ Retorne SOMENTE JSON válido:
       }
     }
 
-    const result = await apiFetchWithAuth<{ id: string }>(`/api/imoveis/${item.id}`, {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    });
+    const result = await apiFetchWithAuth<{ id: string }>(
+      `/api/imoveis/${item.id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+    );
 
     setSavingBlock(null);
 
@@ -4472,7 +5214,8 @@ Retorne SOMENTE JSON válido:
       setCaracteristicasSelecionadas(
         Array.isArray(payload.caracteristicas)
           ? payload.caracteristicas.filter(
-              (item): item is string => typeof item === "string" && item.trim().length > 0,
+              (item): item is string =>
+                typeof item === "string" && item.trim().length > 0,
             )
           : [],
       );
@@ -4480,7 +5223,8 @@ Retorne SOMENTE JSON válido:
         serializeCaracteristicasSnapshot(
           Array.isArray(payload.caracteristicas)
             ? payload.caracteristicas.filter(
-                (item): item is string => typeof item === "string" && item.trim().length > 0,
+                (item): item is string =>
+                  typeof item === "string" && item.trim().length > 0,
               )
             : [],
         ),
@@ -4498,14 +5242,18 @@ Retorne SOMENTE JSON válido:
     if (!item) return;
     const nextForm = toEditForm(item);
     const nextCaracteristicasSelecionadas = Array.isArray(item.caracteristicas)
-      ? item.caracteristicas.filter((caracteristica): caracteristica is string =>
-          typeof caracteristica === "string" && caracteristica.trim().length > 0,
+      ? item.caracteristicas.filter(
+          (caracteristica): caracteristica is string =>
+            typeof caracteristica === "string" &&
+            caracteristica.trim().length > 0,
         )
       : [];
     setForm(nextForm);
     setCaracteristicaQuery("");
     setCaracteristicasSelecionadas(nextCaracteristicasSelecionadas);
-    setCaracteristicasSnapshot(serializeCaracteristicasSnapshot(nextCaracteristicasSelecionadas));
+    setCaracteristicasSnapshot(
+      serializeCaracteristicasSnapshot(nextCaracteristicasSelecionadas),
+    );
     setShowEmpreendimentoCaracteristicasModal(false);
     setSearchAddress(
       String(
@@ -4558,7 +5306,9 @@ Retorne SOMENTE JSON válido:
     if (activeBlock === 6 || hasPendingCaracteristicasChanges) {
       empreendimentoCaracteristicasHydratedRef.current = null;
       if (hasEmpreendimentoAssociado && item.empreendimento_id) {
-        void loadEmpreendimentoCaracteristicasAssociadas(item.empreendimento_id);
+        void loadEmpreendimentoCaracteristicasAssociadas(
+          item.empreendimento_id,
+        );
       } else {
         setEmpreendimentoCaracteristicasAssociadas([]);
       }
@@ -4672,6 +5422,15 @@ Retorne SOMENTE JSON válido:
           Voltar para lista
         </Link>
         <div className="flex items-center gap-2">
+          {item.status === "PUBLICADO" ? (
+            <Link
+              href={`/criativos?imovel=${encodeURIComponent(item.id)}`}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 hover:border-stone-300 hover:bg-stone-50"
+            >
+              <Sparkle size={16} />
+              Gerar criativo
+            </Link>
+          ) : null}
           <Link
             href={publicUrl ?? "#"}
             target="_blank"
@@ -4760,7 +5519,9 @@ Retorne SOMENTE JSON válido:
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold text-slate-900">{headerTitle}</h1>
+              <h1 className="text-2xl font-semibold text-slate-900">
+                {headerTitle}
+              </h1>
             </div>
             <p className="text-sm text-slate-600">{formatAddress(item)}</p>
             {hasEmpreendimentoAssociado && headerEmpreendimentoNome ? (
@@ -4769,11 +5530,18 @@ Retorne SOMENTE JSON válido:
               </p>
             ) : null}
             <p className="text-sm text-slate-600">
-              Código: <strong>{item.codigo?.trim() ? item.codigo : "Será gerado ao publicar"}</strong>
+              Código:{" "}
+              <strong>
+                {item.codigo?.trim() ? item.codigo : "Será gerado ao publicar"}
+              </strong>
             </p>
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Valores</p>
-              <p className="mt-1 text-sm font-medium text-slate-700">{headerValoresResumo}</p>
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Valores
+              </p>
+              <p className="mt-1 text-sm font-medium text-slate-700">
+                {headerValoresResumo}
+              </p>
             </div>
           </div>
 
@@ -4796,8 +5564,10 @@ Retorne SOMENTE JSON válido:
                 const imageItem = headerPublicGridImages[index];
                 const imageUrl = imageItem?.primaryUrl ?? null;
                 const fallbackImageUrl = imageItem?.fallbackUrl ?? null;
-                const hasImage = typeof imageUrl === "string" && imageUrl.length > 0;
-                const shouldOverlayTotal = index === 5 && headerPublicExtraImages > 0;
+                const hasImage =
+                  typeof imageUrl === "string" && imageUrl.length > 0;
+                const shouldOverlayTotal =
+                  index === 5 && headerPublicExtraImages > 0;
                 return (
                   <button
                     key={`public-thumb-${index}`}
@@ -4813,7 +5583,10 @@ Retorne SOMENTE JSON válido:
                         src={buildThumbUrl(imageUrl) ?? imageUrl}
                         onError={(event) => {
                           if (imageItem?.source === "IMOVEL_PUBLICA") {
-                            handleHeaderPublicImageLoadError(event.currentTarget, fallbackImageUrl);
+                            handleHeaderPublicImageLoadError(
+                              event.currentTarget,
+                              fallbackImageUrl,
+                            );
                           }
                         }}
                         alt={`${item.titulo} - imagem ${index + 1}`}
@@ -4839,7 +5612,8 @@ Retorne SOMENTE JSON válido:
 
             {item.status !== "PUBLICADO" ? (
               <p className="mt-2 text-xs text-slate-500">
-                As imagens públicas com marca d&apos;água são geradas após a publicação.
+                As imagens públicas com marca d&apos;água são geradas após a
+                publicação.
               </p>
             ) : null}
           </div>
@@ -4875,9 +5649,13 @@ Retorne SOMENTE JSON válido:
             <CaretLeft size={22} weight="bold" />
           </button>
 
-          <div className="w-full max-w-[1600px]" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="w-full max-w-[1600px]"
+            onClick={(event) => event.stopPropagation()}
+          >
             <p className="mb-3 text-center text-sm text-white/80">
-              {currentPublicLightboxImageIndex + 1} de {headerPublicPhotoUrls.length}
+              {currentPublicLightboxImageIndex + 1} de{" "}
+              {headerPublicPhotoUrls.length}
             </p>
             <div className="flex max-h-[86vh] items-center justify-center overflow-hidden rounded-xl">
               <img
@@ -4904,8 +5682,12 @@ Retorne SOMENTE JSON válido:
 
       <Card className="mt-4 !border-slate-200 !bg-white !text-slate-900">
         <div className="mb-3">
-          <h3 className="text-xl font-semibold text-slate-900">Blocos de edição</h3>
-          <p className="text-sm text-slate-500">Edite por etapa, no mesmo fluxo do cadastro guiado.</p>
+          <h3 className="text-xl font-semibold text-slate-900">
+            Blocos de edição
+          </h3>
+          <p className="text-sm text-slate-500">
+            Edite por etapa, no mesmo fluxo do cadastro guiado.
+          </p>
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
@@ -4927,16 +5709,21 @@ Retorne SOMENTE JSON válido:
                   <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-700">
                     <Icon size={20} />
                   </div>
-                  <p className="text-sm font-semibold text-slate-900">{block.title}</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {block.title}
+                  </p>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">{block.description}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {block.description}
+                </p>
               </button>
             );
           })}
         </div>
 
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-          Selecione um bloco para abrir a edição abaixo, com o mesmo conteúdo da etapa do multistep.
+          Selecione um bloco para abrir a edição abaixo, com o mesmo conteúdo da
+          etapa do multistep.
         </div>
       </Card>
 
@@ -4944,14 +5731,22 @@ Retorne SOMENTE JSON válido:
         <Card
           className="mt-4 !border-slate-200 !bg-white !text-slate-900"
           style={{
-            opacity: blockTransitionPhase === "leaving" || blockTransitionPhase === "pre-enter" ? 0 : 1,
+            opacity:
+              blockTransitionPhase === "leaving" ||
+              blockTransitionPhase === "pre-enter"
+                ? 0
+                : 1,
             transform:
               blockTransitionPhase === "leaving"
                 ? "translateY(22px) scale(0.985)"
                 : blockTransitionPhase === "pre-enter"
                   ? "translateY(-22px) scale(0.985)"
                   : "translateY(0) scale(1)",
-            filter: blockTransitionPhase === "leaving" || blockTransitionPhase === "pre-enter" ? "blur(1.5px)" : "none",
+            filter:
+              blockTransitionPhase === "leaving" ||
+              blockTransitionPhase === "pre-enter"
+                ? "blur(1.5px)"
+                : "none",
             transition:
               "opacity 320ms cubic-bezier(0.22, 1, 0.36, 1), transform 320ms cubic-bezier(0.22, 1, 0.36, 1), filter 240ms ease",
             willChange: "opacity, transform, filter",
@@ -4959,7 +5754,8 @@ Retorne SOMENTE JSON válido:
         >
           <div className="mb-3 flex items-center gap-2">
             <h4 className="text-lg font-semibold text-slate-900">
-              {EDIT_BLOCKS.find((block) => block.step === activeBlock)?.title ?? "Edição"}
+              {EDIT_BLOCKS.find((block) => block.step === activeBlock)?.title ??
+                "Edição"}
             </h4>
           </div>
 
@@ -4969,7 +5765,9 @@ Retorne SOMENTE JSON válido:
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <label className="block flex-1">
-                      <span className="mb-1 block text-sm text-slate-600">Busca por endereço ou place</span>
+                      <span className="mb-1 block text-sm text-slate-600">
+                        Busca por endereço ou place
+                      </span>
                       <div className="relative">
                         <input
                           value={searchAddress}
@@ -5009,18 +5807,23 @@ Retorne SOMENTE JSON válido:
                         disabled={locationEditingEnabled}
                         className="self-end rounded-lg border border-[var(--grey-olive)] bg-[var(--grey-olive)]/10 px-3 py-2 text-sm text-[var(--grey-olive)] hover:bg-[var(--grey-olive)]/15 disabled:cursor-not-allowed disabled:opacity-70"
                       >
-                        {locationEditingEnabled ? "Localização desbloqueada" : "Editar localização"}
+                        {locationEditingEnabled
+                          ? "Localização desbloqueada"
+                          : "Editar localização"}
                       </button>
                     ) : null}
                   </div>
 
                   {hasEmpreendimentoAssociado ? (
                     <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                      Endereço bloqueado: imóvel associado a empreendimento não pode alterar localização.
+                      Endereço bloqueado: imóvel associado a empreendimento não
+                      pode alterar localização.
                     </p>
                   ) : null}
 
-                  {isSearchFocused && !readOnlyLocation && placeOptions.length > 0 ? (
+                  {isSearchFocused &&
+                  !readOnlyLocation &&
+                  placeOptions.length > 0 ? (
                     <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white">
                       {placeOptions.map((option) => (
                         <button
@@ -5039,24 +5842,36 @@ Retorne SOMENTE JSON válido:
 
                   <div className="grid gap-3 md:grid-cols-2">
                     <label className="block md:col-span-2">
-                      <span className="mb-1 block text-sm text-slate-600">Logradouro</span>
+                      <span className="mb-1 block text-sm text-slate-600">
+                        Logradouro
+                      </span>
                       <input
                         value={form.logradouro}
                         onChange={(event) =>
-                          setForm((current) => (current ? { ...current, logradouro: event.target.value } : current))
+                          setForm((current) =>
+                            current
+                              ? { ...current, logradouro: event.target.value }
+                              : current,
+                          )
                         }
                         disabled={readOnlyLocation}
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-100"
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-1 block text-sm text-slate-600">Número</span>
+                      <span className="mb-1 block text-sm text-slate-600">
+                        Número
+                      </span>
                       <input
                         value={form.numero}
                         onChange={(event) => {
                           const nextNumero = event.target.value;
 
-                          setForm((current) => (current ? { ...current, numero: nextNumero } : current));
+                          setForm((current) =>
+                            current
+                              ? { ...current, numero: nextNumero }
+                              : current,
+                          );
 
                           if (placeId) {
                             setPlaceId("");
@@ -5079,7 +5894,10 @@ Retorne SOMENTE JSON válido:
 
                             setSearchAddress(
                               nextNumero.trim()
-                                ? replaceOrAppendAddressNumber(withoutNumber, nextNumero)
+                                ? replaceOrAppendAddressNumber(
+                                    withoutNumber,
+                                    nextNumero,
+                                  )
                                 : withoutNumber,
                             );
                           }
@@ -5089,12 +5907,19 @@ Retorne SOMENTE JSON válido:
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-1 block text-sm text-slate-600">Complemento</span>
+                      <span className="mb-1 block text-sm text-slate-600">
+                        Complemento
+                      </span>
                       <input
                         value={form.endereco_complemento ?? ""}
                         onChange={(event) =>
                           setForm((current) =>
-                            current ? { ...current, endereco_complemento: event.target.value } : current,
+                            current
+                              ? {
+                                  ...current,
+                                  endereco_complemento: event.target.value,
+                                }
+                              : current,
                           )
                         }
                         disabled={readOnlyLocationExtra}
@@ -5102,12 +5927,19 @@ Retorne SOMENTE JSON válido:
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-1 block text-sm text-slate-600">Bairro comercial</span>
+                      <span className="mb-1 block text-sm text-slate-600">
+                        Bairro comercial
+                      </span>
                       <input
                         value={form.bairro_comercial ?? ""}
                         onChange={(event) =>
                           setForm((current) =>
-                            current ? { ...current, bairro_comercial: event.target.value } : current,
+                            current
+                              ? {
+                                  ...current,
+                                  bairro_comercial: event.target.value,
+                                }
+                              : current,
                           )
                         }
                         disabled={readOnlyLocationExtra}
@@ -5115,43 +5947,70 @@ Retorne SOMENTE JSON válido:
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-1 block text-sm text-slate-600">CEP</span>
+                      <span className="mb-1 block text-sm text-slate-600">
+                        CEP
+                      </span>
                       <input
                         value={form.cep}
-                        onChange={(event) => setForm((current) => (current ? { ...current, cep: event.target.value } : current))}
-                        disabled={readOnlyLocation}
-                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-100"
-                      />
-                    </label>
-                    <label className="block">
-                      <span className="mb-1 block text-sm text-slate-600">Bairro</span>
-                      <input
-                        value={form.bairro}
                         onChange={(event) =>
-                          setForm((current) => (current ? { ...current, bairro: event.target.value } : current))
+                          setForm((current) =>
+                            current
+                              ? { ...current, cep: event.target.value }
+                              : current,
+                          )
                         }
                         disabled={readOnlyLocation}
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-100"
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-1 block text-sm text-slate-600">Cidade</span>
+                      <span className="mb-1 block text-sm text-slate-600">
+                        Bairro
+                      </span>
+                      <input
+                        value={form.bairro}
+                        onChange={(event) =>
+                          setForm((current) =>
+                            current
+                              ? { ...current, bairro: event.target.value }
+                              : current,
+                          )
+                        }
+                        disabled={readOnlyLocation}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-100"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-sm text-slate-600">
+                        Cidade
+                      </span>
                       <input
                         value={form.cidade}
                         onChange={(event) =>
-                          setForm((current) => (current ? { ...current, cidade: event.target.value } : current))
+                          setForm((current) =>
+                            current
+                              ? { ...current, cidade: event.target.value }
+                              : current,
+                          )
                         }
                         disabled={readOnlyLocation}
                         className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-100"
                       />
                     </label>
                     <label className="block md:max-w-[180px]">
-                      <span className="mb-1 block text-sm text-slate-600">UF</span>
+                      <span className="mb-1 block text-sm text-slate-600">
+                        UF
+                      </span>
                       <input
                         value={form.estado}
                         onChange={(event) =>
                           setForm((current) =>
-                            current ? { ...current, estado: event.target.value.toUpperCase() } : current,
+                            current
+                              ? {
+                                  ...current,
+                                  estado: event.target.value.toUpperCase(),
+                                }
+                              : current,
                           )
                         }
                         maxLength={2}
@@ -5160,12 +6019,21 @@ Retorne SOMENTE JSON válido:
                       />
                     </label>
                     <label className="block md:col-span-2">
-                      <span className="mb-1 block text-sm text-slate-600">Visualização do endereço</span>
+                      <span className="mb-1 block text-sm text-slate-600">
+                        Visualização do endereço
+                      </span>
                       <select
-                        value={form.enderecovisualizacao ?? "END_SEM_COMPLEMENTO"}
+                        value={
+                          form.enderecovisualizacao ?? "END_SEM_COMPLEMENTO"
+                        }
                         onChange={(event) =>
                           setForm((current) =>
-                            current ? { ...current, enderecovisualizacao: event.target.value } : current,
+                            current
+                              ? {
+                                  ...current,
+                                  enderecovisualizacao: event.target.value,
+                                }
+                              : current,
                           )
                         }
                         disabled={readOnlyLocationExtra}
@@ -5183,7 +6051,10 @@ Retorne SOMENTE JSON válido:
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <p className="text-xs text-slate-600">
                       Endereço formatado:{" "}
-                      <strong>{enderecoFormatado || "Selecione um endereço para preencher automaticamente."}</strong>
+                      <strong>
+                        {enderecoFormatado ||
+                          "Selecione um endereço para preencher automaticamente."}
+                      </strong>
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
                       Latitude: {lat ?? "-"} • Longitude: {lng ?? "-"}
@@ -5199,13 +6070,18 @@ Retorne SOMENTE JSON válido:
                   </div>
 
                   <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Contexto da localização</p>
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Contexto da localização
+                    </p>
 
                     <div>
-                      <p className="mb-2 text-sm text-slate-700">Perfil da região</p>
+                      <p className="mb-2 text-sm text-slate-700">
+                        Perfil da região
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         {LOCALIZACAO_PERFIL_REGIAO_OPTIONS.map((option) => {
-                          const active = form.localizacao_perfil_regiao.includes(option);
+                          const active =
+                            form.localizacao_perfil_regiao.includes(option);
                           return (
                             <button
                               key={option}
@@ -5217,8 +6093,13 @@ Retorne SOMENTE JSON válido:
                                     ? {
                                         ...current,
                                         localizacao_perfil_regiao: active
-                                          ? current.localizacao_perfil_regiao.filter((item) => item !== option)
-                                          : [...current.localizacao_perfil_regiao, option],
+                                          ? current.localizacao_perfil_regiao.filter(
+                                              (item) => item !== option,
+                                            )
+                                          : [
+                                              ...current.localizacao_perfil_regiao,
+                                              option,
+                                            ],
                                       }
                                     : current,
                                 )
@@ -5240,7 +6121,8 @@ Retorne SOMENTE JSON válido:
                       <p className="mb-2 text-sm text-slate-700">Mobilidade</p>
                       <div className="flex flex-wrap gap-2">
                         {LOCALIZACAO_MOBILIDADE_OPTIONS.map((option) => {
-                          const active = form.localizacao_mobilidade.includes(option);
+                          const active =
+                            form.localizacao_mobilidade.includes(option);
                           return (
                             <button
                               key={option}
@@ -5252,8 +6134,13 @@ Retorne SOMENTE JSON válido:
                                     ? {
                                         ...current,
                                         localizacao_mobilidade: active
-                                          ? current.localizacao_mobilidade.filter((item) => item !== option)
-                                          : [...current.localizacao_mobilidade, option],
+                                          ? current.localizacao_mobilidade.filter(
+                                              (item) => item !== option,
+                                            )
+                                          : [
+                                              ...current.localizacao_mobilidade,
+                                              option,
+                                            ],
                                       }
                                     : current,
                                 )
@@ -5272,10 +6159,13 @@ Retorne SOMENTE JSON válido:
                     </div>
 
                     <div>
-                      <p className="mb-2 text-sm text-slate-700">Comércio e serviços</p>
+                      <p className="mb-2 text-sm text-slate-700">
+                        Comércio e serviços
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         {LOCALIZACAO_COMERCIO_SERVICOS_OPTIONS.map((option) => {
-                          const active = form.localizacao_comercio_servicos.includes(option);
+                          const active =
+                            form.localizacao_comercio_servicos.includes(option);
                           return (
                             <button
                               key={option}
@@ -5287,8 +6177,13 @@ Retorne SOMENTE JSON válido:
                                     ? {
                                         ...current,
                                         localizacao_comercio_servicos: active
-                                          ? current.localizacao_comercio_servicos.filter((item) => item !== option)
-                                          : [...current.localizacao_comercio_servicos, option],
+                                          ? current.localizacao_comercio_servicos.filter(
+                                              (item) => item !== option,
+                                            )
+                                          : [
+                                              ...current.localizacao_comercio_servicos,
+                                              option,
+                                            ],
                                       }
                                     : current,
                                 )
@@ -5307,10 +6202,13 @@ Retorne SOMENTE JSON válido:
                     </div>
 
                     <div>
-                      <p className="mb-2 text-sm text-slate-700">Lazer e estilo de vida</p>
+                      <p className="mb-2 text-sm text-slate-700">
+                        Lazer e estilo de vida
+                      </p>
                       <div className="flex flex-wrap gap-2">
                         {LOCALIZACAO_LAZER_ESTILO_OPTIONS.map((option) => {
-                          const active = form.localizacao_lazer_estilo_vida.includes(option);
+                          const active =
+                            form.localizacao_lazer_estilo_vida.includes(option);
                           return (
                             <button
                               key={option}
@@ -5322,8 +6220,13 @@ Retorne SOMENTE JSON válido:
                                     ? {
                                         ...current,
                                         localizacao_lazer_estilo_vida: active
-                                          ? current.localizacao_lazer_estilo_vida.filter((item) => item !== option)
-                                          : [...current.localizacao_lazer_estilo_vida, option],
+                                          ? current.localizacao_lazer_estilo_vida.filter(
+                                              (item) => item !== option,
+                                            )
+                                          : [
+                                              ...current.localizacao_lazer_estilo_vida,
+                                              option,
+                                            ],
                                       }
                                     : current,
                                 )
@@ -5342,13 +6245,19 @@ Retorne SOMENTE JSON válido:
                     </div>
 
                     <label className="block">
-                      <span className="mb-1 block text-sm text-slate-600">Resumo local para descrição</span>
+                      <span className="mb-1 block text-sm text-slate-600">
+                        Resumo local para descrição
+                      </span>
                       <textarea
                         value={form.localizacao_resumo_local}
                         onChange={(event) =>
                           setForm((current) =>
                             current
-                              ? { ...current, localizacao_resumo_local: event.target.value.slice(0, 300) }
+                              ? {
+                                  ...current,
+                                  localizacao_resumo_local:
+                                    event.target.value.slice(0, 300),
+                                }
                               : current,
                           )
                         }
@@ -5381,11 +6290,12 @@ Retorne SOMENTE JSON válido:
                         <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">
                           {formatTipo(form.tipo)}
                         </span>
-                        {(item.empreendimento_tipologia_label || form.subtipo) ? (
+                        {item.empreendimento_tipologia_label || form.subtipo ? (
                           <>
                             <span className="text-slate-400">›</span>
                             <span className="rounded-full border border-[var(--primary-scarlet)] bg-rose-50 px-3 py-1 text-[var(--primary-scarlet)]">
-                              {item.empreendimento_tipologia_label || formatTipo(form.subtipo)}
+                              {item.empreendimento_tipologia_label ||
+                                formatTipo(form.subtipo)}
                             </span>
                           </>
                         ) : null}
@@ -5394,17 +6304,33 @@ Retorne SOMENTE JSON válido:
 
                     <div className="grid gap-3 md:grid-cols-3">
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Área total (m²)</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Área total (m²)
+                        </label>
                         <input
                           value={form.area_total}
                           onChange={(event) =>
                             setForm((current) =>
-                              current ? { ...current, area_total: sanitizeDecimalPtBrInput(event.target.value) } : current,
+                              current
+                                ? {
+                                    ...current,
+                                    area_total: sanitizeDecimalPtBrInput(
+                                      event.target.value,
+                                    ),
+                                  }
+                                : current,
                             )
                           }
                           onBlur={(event) =>
                             setForm((current) =>
-                              current ? { ...current, area_total: normalizeDecimalPtBrInput(event.target.value) } : current,
+                              current
+                                ? {
+                                    ...current,
+                                    area_total: normalizeDecimalPtBrInput(
+                                      event.target.value,
+                                    ),
+                                  }
+                                : current,
                             )
                           }
                           inputMode="decimal"
@@ -5413,17 +6339,33 @@ Retorne SOMENTE JSON válido:
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Área útil (m²)</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Área útil (m²)
+                        </label>
                         <input
                           value={form.area_util}
                           onChange={(event) =>
                             setForm((current) =>
-                              current ? { ...current, area_util: sanitizeDecimalPtBrInput(event.target.value) } : current,
+                              current
+                                ? {
+                                    ...current,
+                                    area_util: sanitizeDecimalPtBrInput(
+                                      event.target.value,
+                                    ),
+                                  }
+                                : current,
                             )
                           }
                           onBlur={(event) =>
                             setForm((current) =>
-                              current ? { ...current, area_util: normalizeDecimalPtBrInput(event.target.value) } : current,
+                              current
+                                ? {
+                                    ...current,
+                                    area_util: normalizeDecimalPtBrInput(
+                                      event.target.value,
+                                    ),
+                                  }
+                                : current,
                             )
                           }
                           inputMode="decimal"
@@ -5433,12 +6375,22 @@ Retorne SOMENTE JSON válido:
                       </div>
                       {!isUsoComercial ? (
                         <div>
-                          <label className="mb-1 block text-sm text-slate-700">Dormitórios</label>
+                          <label className="mb-1 block text-sm text-slate-700">
+                            Dormitórios
+                          </label>
                           <input
                             value={form.dormitorios}
                             onChange={(event) =>
                               setForm((current) =>
-                                current ? { ...current, dormitorios: event.target.value.replace(/\D/g, "") } : current,
+                                current
+                                  ? {
+                                      ...current,
+                                      dormitorios: event.target.value.replace(
+                                        /\D/g,
+                                        "",
+                                      ),
+                                    }
+                                  : current,
                               )
                             }
                             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
@@ -5448,12 +6400,22 @@ Retorne SOMENTE JSON válido:
                       ) : null}
                       {!isUsoComercial ? (
                         <div>
-                          <label className="mb-1 block text-sm text-slate-700">Suítes</label>
+                          <label className="mb-1 block text-sm text-slate-700">
+                            Suítes
+                          </label>
                           <input
                             value={form.suites}
                             onChange={(event) =>
                               setForm((current) =>
-                                current ? { ...current, suites: event.target.value.replace(/\D/g, "") } : current,
+                                current
+                                  ? {
+                                      ...current,
+                                      suites: event.target.value.replace(
+                                        /\D/g,
+                                        "",
+                                      ),
+                                    }
+                                  : current,
                               )
                             }
                             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
@@ -5462,12 +6424,22 @@ Retorne SOMENTE JSON válido:
                         </div>
                       ) : null}
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Banheiros</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Banheiros
+                        </label>
                         <input
                           value={form.banheiros}
                           onChange={(event) =>
                             setForm((current) =>
-                              current ? { ...current, banheiros: event.target.value.replace(/\D/g, "") } : current,
+                              current
+                                ? {
+                                    ...current,
+                                    banheiros: event.target.value.replace(
+                                      /\D/g,
+                                      "",
+                                    ),
+                                  }
+                                : current,
                             )
                           }
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
@@ -5475,12 +6447,22 @@ Retorne SOMENTE JSON válido:
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Lavabos</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Lavabos
+                        </label>
                         <input
                           value={form.lavabos}
                           onChange={(event) =>
                             setForm((current) =>
-                              current ? { ...current, lavabos: event.target.value.replace(/\D/g, "") } : current,
+                              current
+                                ? {
+                                    ...current,
+                                    lavabos: event.target.value.replace(
+                                      /\D/g,
+                                      "",
+                                    ),
+                                  }
+                                : current,
                             )
                           }
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
@@ -5488,12 +6470,22 @@ Retorne SOMENTE JSON válido:
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Salas</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Salas
+                        </label>
                         <input
                           value={form.salas}
                           onChange={(event) =>
                             setForm((current) =>
-                              current ? { ...current, salas: event.target.value.replace(/\D/g, "") } : current,
+                              current
+                                ? {
+                                    ...current,
+                                    salas: event.target.value.replace(
+                                      /\D/g,
+                                      "",
+                                    ),
+                                  }
+                                : current,
                             )
                           }
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
@@ -5501,12 +6493,21 @@ Retorne SOMENTE JSON válido:
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Varandas</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Varandas
+                        </label>
                         <input
                           value={form.varandas}
                           onChange={(event) =>
                             setForm((current) =>
-                              current ? { ...current, varandas: event.target.value.replace(/\D/g, "").slice(0, 2) } : current,
+                              current
+                                ? {
+                                    ...current,
+                                    varandas: event.target.value
+                                      .replace(/\D/g, "")
+                                      .slice(0, 2),
+                                  }
+                                : current,
                             )
                           }
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
@@ -5514,12 +6515,22 @@ Retorne SOMENTE JSON válido:
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Cozinhas</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Cozinhas
+                        </label>
                         <input
                           value={form.cozinhas}
                           onChange={(event) =>
                             setForm((current) =>
-                              current ? { ...current, cozinhas: event.target.value.replace(/\D/g, "") } : current,
+                              current
+                                ? {
+                                    ...current,
+                                    cozinhas: event.target.value.replace(
+                                      /\D/g,
+                                      "",
+                                    ),
+                                  }
+                                : current,
                             )
                           }
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
@@ -5527,12 +6538,22 @@ Retorne SOMENTE JSON válido:
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Vagas</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Vagas
+                        </label>
                         <input
                           value={form.vagas}
                           onChange={(event) =>
                             setForm((current) =>
-                              current ? { ...current, vagas: event.target.value.replace(/\D/g, "") } : current,
+                              current
+                                ? {
+                                    ...current,
+                                    vagas: event.target.value.replace(
+                                      /\D/g,
+                                      "",
+                                    ),
+                                  }
+                                : current,
                             )
                           }
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
@@ -5542,10 +6563,14 @@ Retorne SOMENTE JSON válido:
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm text-slate-700">Tipos de vaga</label>
+                      <label className="mb-2 block text-sm text-slate-700">
+                        Tipos de vaga
+                      </label>
                       <div className="flex flex-wrap gap-2">
                         {VAGA_TIPO_OPTIONS.map((option) => {
-                          const selected = form.vaga_tipos.includes(option.value);
+                          const selected = form.vaga_tipos.includes(
+                            option.value,
+                          );
                           return (
                             <button
                               key={option.value}
@@ -5556,9 +6581,16 @@ Retorne SOMENTE JSON válido:
                                   current
                                     ? {
                                         ...current,
-                                        vaga_tipos: current.vaga_tipos.includes(option.value)
-                                          ? current.vaga_tipos.filter((item) => item !== option.value)
-                                          : [...current.vaga_tipos, option.value],
+                                        vaga_tipos: current.vaga_tipos.includes(
+                                          option.value,
+                                        )
+                                          ? current.vaga_tipos.filter(
+                                              (item) => item !== option.value,
+                                            )
+                                          : [
+                                              ...current.vaga_tipos,
+                                              option.value,
+                                            ],
                                       }
                                     : current,
                                 )
@@ -5577,7 +6609,9 @@ Retorne SOMENTE JSON válido:
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm text-slate-700">Tamanho da vaga (opção única)</label>
+                      <label className="mb-2 block text-sm text-slate-700">
+                        Tamanho da vaga (opção única)
+                      </label>
                       <div className="flex flex-wrap gap-2">
                         {VAGA_TAMANHO_OPTIONS.map((option) => {
                           const selected = form.vaga_tamanho === option.value;
@@ -5591,7 +6625,10 @@ Retorne SOMENTE JSON válido:
                                   current
                                     ? {
                                         ...current,
-                                        vaga_tamanho: current.vaga_tamanho === option.value ? "" : option.value,
+                                        vaga_tamanho:
+                                          current.vaga_tamanho === option.value
+                                            ? ""
+                                            : option.value,
                                       }
                                     : current,
                                 )
@@ -5610,7 +6647,9 @@ Retorne SOMENTE JSON válido:
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm text-slate-700">Cobertura da vaga (opção única)</label>
+                      <label className="mb-2 block text-sm text-slate-700">
+                        Cobertura da vaga (opção única)
+                      </label>
                       <div className="flex flex-wrap gap-2">
                         {VAGA_COBERTURA_OPTIONS.map((option) => {
                           const selected = form.vaga_cobertura === option.value;
@@ -5624,7 +6663,11 @@ Retorne SOMENTE JSON válido:
                                   current
                                     ? {
                                         ...current,
-                                        vaga_cobertura: current.vaga_cobertura === option.value ? "" : option.value,
+                                        vaga_cobertura:
+                                          current.vaga_cobertura ===
+                                          option.value
+                                            ? ""
+                                            : option.value,
                                       }
                                     : current,
                                 )
@@ -5645,13 +6688,19 @@ Retorne SOMENTE JSON válido:
 
                   {canShowTerrainFields ? (
                     <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <h4 className="text-base font-medium text-slate-900">Terreno e medidas</h4>
+                      <h4 className="text-base font-medium text-slate-900">
+                        Terreno e medidas
+                      </h4>
                       <div className="grid gap-4 xl:grid-cols-2">
                         <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-                          <p className="text-sm font-medium text-slate-900">Área e medidas do terreno</p>
+                          <p className="text-sm font-medium text-slate-900">
+                            Área e medidas do terreno
+                          </p>
                           <div className="grid gap-3 sm:grid-cols-2">
                             <div className="sm:col-span-2">
-                              <label className="mb-1 block text-sm text-slate-700">Área terreno (m²)</label>
+                              <label className="mb-1 block text-sm text-slate-700">
+                                Área terreno (m²)
+                              </label>
                               <input
                                 value={form.area_terreno}
                                 onChange={(event) =>
@@ -5659,7 +6708,10 @@ Retorne SOMENTE JSON válido:
                                     current
                                       ? {
                                           ...current,
-                                          area_terreno: sanitizeDecimalPtBrInput(event.target.value),
+                                          area_terreno:
+                                            sanitizeDecimalPtBrInput(
+                                              event.target.value,
+                                            ),
                                         }
                                       : current,
                                   )
@@ -5669,7 +6721,10 @@ Retorne SOMENTE JSON válido:
                                     current
                                       ? {
                                           ...current,
-                                          area_terreno: normalizeDecimalPtBrInput(event.target.value),
+                                          area_terreno:
+                                            normalizeDecimalPtBrInput(
+                                              event.target.value,
+                                            ),
                                         }
                                       : current,
                                   )
@@ -5680,7 +6735,9 @@ Retorne SOMENTE JSON válido:
                               />
                             </div>
                             <div>
-                              <label className="mb-1 block text-sm text-slate-700">Frente (m)</label>
+                              <label className="mb-1 block text-sm text-slate-700">
+                                Frente (m)
+                              </label>
                               <input
                                 value={form.frente_metros}
                                 onChange={(event) =>
@@ -5688,7 +6745,10 @@ Retorne SOMENTE JSON válido:
                                     current
                                       ? {
                                           ...current,
-                                          frente_metros: sanitizeDecimalPtBrInput(event.target.value),
+                                          frente_metros:
+                                            sanitizeDecimalPtBrInput(
+                                              event.target.value,
+                                            ),
                                         }
                                       : current,
                                   )
@@ -5698,7 +6758,10 @@ Retorne SOMENTE JSON válido:
                                     current
                                       ? {
                                           ...current,
-                                          frente_metros: normalizeDecimalPtBrInput(event.target.value),
+                                          frente_metros:
+                                            normalizeDecimalPtBrInput(
+                                              event.target.value,
+                                            ),
                                         }
                                       : current,
                                   )
@@ -5709,7 +6772,9 @@ Retorne SOMENTE JSON válido:
                               />
                             </div>
                             <div>
-                              <label className="mb-1 block text-sm text-slate-700">Fundo (m)</label>
+                              <label className="mb-1 block text-sm text-slate-700">
+                                Fundo (m)
+                              </label>
                               <input
                                 value={form.fundos_metros}
                                 onChange={(event) =>
@@ -5717,7 +6782,10 @@ Retorne SOMENTE JSON válido:
                                     current
                                       ? {
                                           ...current,
-                                          fundos_metros: sanitizeDecimalPtBrInput(event.target.value),
+                                          fundos_metros:
+                                            sanitizeDecimalPtBrInput(
+                                              event.target.value,
+                                            ),
                                         }
                                       : current,
                                   )
@@ -5727,7 +6795,10 @@ Retorne SOMENTE JSON válido:
                                     current
                                       ? {
                                           ...current,
-                                          fundos_metros: normalizeDecimalPtBrInput(event.target.value),
+                                          fundos_metros:
+                                            normalizeDecimalPtBrInput(
+                                              event.target.value,
+                                            ),
                                         }
                                       : current,
                                   )
@@ -5738,7 +6809,9 @@ Retorne SOMENTE JSON válido:
                               />
                             </div>
                             <div>
-                              <label className="mb-1 block text-sm text-slate-700">Lateral 1 (m)</label>
+                              <label className="mb-1 block text-sm text-slate-700">
+                                Lateral 1 (m)
+                              </label>
                               <input
                                 value={form.lateral_1_metros}
                                 onChange={(event) =>
@@ -5746,7 +6819,10 @@ Retorne SOMENTE JSON válido:
                                     current
                                       ? {
                                           ...current,
-                                          lateral_1_metros: sanitizeDecimalPtBrInput(event.target.value),
+                                          lateral_1_metros:
+                                            sanitizeDecimalPtBrInput(
+                                              event.target.value,
+                                            ),
                                         }
                                       : current,
                                   )
@@ -5756,7 +6832,10 @@ Retorne SOMENTE JSON válido:
                                     current
                                       ? {
                                           ...current,
-                                          lateral_1_metros: normalizeDecimalPtBrInput(event.target.value),
+                                          lateral_1_metros:
+                                            normalizeDecimalPtBrInput(
+                                              event.target.value,
+                                            ),
                                         }
                                       : current,
                                   )
@@ -5767,7 +6846,9 @@ Retorne SOMENTE JSON válido:
                               />
                             </div>
                             <div>
-                              <label className="mb-1 block text-sm text-slate-700">Lateral 2 (m)</label>
+                              <label className="mb-1 block text-sm text-slate-700">
+                                Lateral 2 (m)
+                              </label>
                               <input
                                 value={form.lateral_2_metros}
                                 onChange={(event) =>
@@ -5775,7 +6856,10 @@ Retorne SOMENTE JSON válido:
                                     current
                                       ? {
                                           ...current,
-                                          lateral_2_metros: sanitizeDecimalPtBrInput(event.target.value),
+                                          lateral_2_metros:
+                                            sanitizeDecimalPtBrInput(
+                                              event.target.value,
+                                            ),
                                         }
                                       : current,
                                   )
@@ -5785,7 +6869,10 @@ Retorne SOMENTE JSON válido:
                                     current
                                       ? {
                                           ...current,
-                                          lateral_2_metros: normalizeDecimalPtBrInput(event.target.value),
+                                          lateral_2_metros:
+                                            normalizeDecimalPtBrInput(
+                                              event.target.value,
+                                            ),
                                         }
                                       : current,
                                   )
@@ -5800,24 +6887,32 @@ Retorne SOMENTE JSON válido:
 
                         <div className="rounded-xl border border-slate-200 bg-white p-4">
                           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                            <p className="text-sm font-medium text-slate-900">Desenho aproximado do terreno</p>
+                            <p className="text-sm font-medium text-slate-900">
+                              Desenho aproximado do terreno
+                            </p>
                             {terrenoPreview ? (
                               <div className="text-right">
                                 {terrenoPreview.areaInformada ? (
                                   <div className="text-xs text-slate-600">
                                     Área informada:{" "}
-                                    {terrenoPreview.areaInformada.toLocaleString("pt-BR", {
-                                      maximumFractionDigits: 2,
-                                    })}{" "}
+                                    {terrenoPreview.areaInformada.toLocaleString(
+                                      "pt-BR",
+                                      {
+                                        maximumFractionDigits: 2,
+                                      },
+                                    )}{" "}
                                     m²
                                   </div>
                                 ) : null}
                                 {terrenoPreview.areaCalculada ? (
                                   <div className="text-xs text-rose-600">
                                     Cálculo informativo:{" "}
-                                    {terrenoPreview.areaCalculada.toLocaleString("pt-BR", {
-                                      maximumFractionDigits: 2,
-                                    })}{" "}
+                                    {terrenoPreview.areaCalculada.toLocaleString(
+                                      "pt-BR",
+                                      {
+                                        maximumFractionDigits: 2,
+                                      },
+                                    )}{" "}
                                     m²
                                   </div>
                                 ) : null}
@@ -5839,11 +6934,20 @@ Retorne SOMENTE JSON válido:
                                   stroke="rgb(220, 38, 38)"
                                   strokeWidth={2}
                                 />
-                                {[terrenoPreview.corners.A, terrenoPreview.corners.B, terrenoPreview.corners.C, terrenoPreview.corners.D].map(
-                                  (corner, index) => (
-                                    <circle key={index} cx={corner.x} cy={corner.y} r={3} fill="rgb(220, 38, 38)" />
-                                  ),
-                                )}
+                                {[
+                                  terrenoPreview.corners.A,
+                                  terrenoPreview.corners.B,
+                                  terrenoPreview.corners.C,
+                                  terrenoPreview.corners.D,
+                                ].map((corner, index) => (
+                                  <circle
+                                    key={index}
+                                    cx={corner.x}
+                                    cy={corner.y}
+                                    r={3}
+                                    fill="rgb(220, 38, 38)"
+                                  />
+                                ))}
                                 {terrenoPreview.fundo ? (
                                   <text
                                     x={terrenoPreview.labels.top.x}
@@ -5851,7 +6955,8 @@ Retorne SOMENTE JSON válido:
                                     textAnchor="middle"
                                     className="fill-slate-700 text-[11px] font-medium"
                                   >
-                                    Fundo: {formatMetersValue(terrenoPreview.fundo)}
+                                    Fundo:{" "}
+                                    {formatMetersValue(terrenoPreview.fundo)}
                                   </text>
                                 ) : null}
                                 {terrenoPreview.frente ? (
@@ -5861,7 +6966,8 @@ Retorne SOMENTE JSON válido:
                                     textAnchor="middle"
                                     className="fill-slate-700 text-[11px] font-medium"
                                   >
-                                    Frente: {formatMetersValue(terrenoPreview.frente)}
+                                    Frente:{" "}
+                                    {formatMetersValue(terrenoPreview.frente)}
                                   </text>
                                 ) : null}
                                 {terrenoPreview.lateral1 ? (
@@ -5871,7 +6977,8 @@ Retorne SOMENTE JSON válido:
                                     textAnchor="middle"
                                     className="fill-slate-700 text-[11px] font-medium"
                                   >
-                                    L1: {formatMetersValue(terrenoPreview.lateral1)}
+                                    L1:{" "}
+                                    {formatMetersValue(terrenoPreview.lateral1)}
                                   </text>
                                 ) : null}
                                 {terrenoPreview.lateral2 ? (
@@ -5881,17 +6988,20 @@ Retorne SOMENTE JSON válido:
                                     textAnchor="middle"
                                     className="fill-slate-700 text-[11px] font-medium"
                                   >
-                                    L2: {formatMetersValue(terrenoPreview.lateral2)}
+                                    L2:{" "}
+                                    {formatMetersValue(terrenoPreview.lateral2)}
                                   </text>
                                 ) : null}
                               </svg>
                               <p className="mt-2 text-xs text-slate-500">
-                                Ilustração proporcional com base nas medidas preenchidas.
+                                Ilustração proporcional com base nas medidas
+                                preenchidas.
                               </p>
                             </>
                           ) : (
                             <p className="text-sm text-slate-500">
-                              Preencha ao menos frente/fundo e uma lateral para calcular área e visualizar o desenho.
+                              Preencha ao menos frente/fundo e uma lateral para
+                              calcular área e visualizar o desenho.
                             </p>
                           )}
                         </div>
@@ -5904,7 +7014,9 @@ Retorne SOMENTE JSON válido:
               {activeBlock === 4 ? (
                 <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <div>
-                    <label className="mb-2 block text-sm text-slate-700">Tipo de negociação</label>
+                    <label className="mb-2 block text-sm text-slate-700">
+                      Tipo de negociação
+                    </label>
                     <div className="flex flex-wrap gap-2">
                       {TIPO_NEGOCIACAO_OPTIONS.map((option) => {
                         const selected = form.tipo_negociacao === option.value;
@@ -5912,7 +7024,9 @@ Retorne SOMENTE JSON válido:
                           <button
                             key={option.value}
                             type="button"
-                            onClick={() => updateForm("tipo_negociacao", option.value)}
+                            onClick={() =>
+                              updateForm("tipo_negociacao", option.value)
+                            }
                             className={`rounded-full border px-3 py-1.5 text-sm transition ${
                               selected
                                 ? "border-[var(--primary-scarlet)] bg-rose-50 text-[var(--primary-scarlet)]"
@@ -5929,14 +7043,21 @@ Retorne SOMENTE JSON válido:
                   <div className="grid gap-3 md:grid-cols-2">
                     {hasVendaNegociacao ? (
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Valor de venda</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Valor de venda
+                        </label>
                         <div className="relative">
                           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
                             R$
                           </span>
                           <input
                             value={form.preco_venda}
-                            onChange={(event) => updateForm("preco_venda", formatCurrencyInput(event.target.value))}
+                            onChange={(event) =>
+                              updateForm(
+                                "preco_venda",
+                                formatCurrencyInput(event.target.value),
+                              )
+                            }
                             className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                             placeholder="850.000"
                           />
@@ -5946,14 +7067,21 @@ Retorne SOMENTE JSON válido:
 
                     {hasAluguelNegociacao ? (
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Valor de aluguel</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Valor de aluguel
+                        </label>
                         <div className="relative">
                           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
                             R$
                           </span>
                           <input
                             value={form.preco_locacao}
-                            onChange={(event) => updateForm("preco_locacao", formatCurrencyInput(event.target.value))}
+                            onChange={(event) =>
+                              updateForm(
+                                "preco_locacao",
+                                formatCurrencyInput(event.target.value),
+                              )
+                            }
                             className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                             placeholder="4.500"
                           />
@@ -5962,17 +7090,26 @@ Retorne SOMENTE JSON válido:
                     ) : null}
                   </div>
 
-                  <div className={`grid gap-3 ${hasEmpreendimentoAssociado ? "md:grid-cols-2" : ""}`}>
+                  <div
+                    className={`grid gap-3 ${hasEmpreendimentoAssociado ? "md:grid-cols-2" : ""}`}
+                  >
                     {hasEmpreendimentoAssociado ? (
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Valor do condomínio</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Valor do condomínio
+                        </label>
                         <div className="relative">
                           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
                             R$
                           </span>
                           <input
                             value={form.condominio}
-                            onChange={(event) => updateForm("condominio", formatCurrencyInput(event.target.value))}
+                            onChange={(event) =>
+                              updateForm(
+                                "condominio",
+                                formatCurrencyInput(event.target.value),
+                              )
+                            }
                             className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                             placeholder="850"
                           />
@@ -5980,14 +7117,21 @@ Retorne SOMENTE JSON válido:
                       </div>
                     ) : null}
                     <div>
-                      <label className="mb-1 block text-sm text-slate-700">Valor do IPTU</label>
+                      <label className="mb-1 block text-sm text-slate-700">
+                        Valor do IPTU
+                      </label>
                       <div className="relative">
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
                           R$
                         </span>
                         <input
                           value={form.iptu}
-                          onChange={(event) => updateForm("iptu", formatCurrencyInput(event.target.value))}
+                          onChange={(event) =>
+                            updateForm(
+                              "iptu",
+                              formatCurrencyInput(event.target.value),
+                            )
+                          }
                           className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                           placeholder="1.200"
                         />
@@ -5997,7 +7141,10 @@ Retorne SOMENTE JSON válido:
                           type="checkbox"
                           checked={form.iptu_periodicidade === "MENSAL"}
                           onChange={(event) =>
-                            updateForm("iptu_periodicidade", event.target.checked ? "MENSAL" : "ANUAL")
+                            updateForm(
+                              "iptu_periodicidade",
+                              event.target.checked ? "MENSAL" : "ANUAL",
+                            )
                           }
                           className="h-4 w-4 rounded border-slate-300 text-[var(--primary-scarlet)] focus:ring-[var(--primary-scarlet)]"
                         />
@@ -6008,10 +7155,14 @@ Retorne SOMENTE JSON válido:
 
                   {hasAluguelNegociacao ? (
                     <div>
-                      <label className="mb-1 block text-sm text-slate-700">Comissão aluguel</label>
+                      <label className="mb-1 block text-sm text-slate-700">
+                        Comissão aluguel
+                      </label>
                       <input
                         value={form.comissao_locacao}
-                        onChange={(event) => updateForm("comissao_locacao", event.target.value)}
+                        onChange={(event) =>
+                          updateForm("comissao_locacao", event.target.value)
+                        }
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                         placeholder="Ex: Primeiro aluguel"
                       />
@@ -6021,15 +7172,23 @@ Retorne SOMENTE JSON válido:
                   {hasVendaNegociacao ? (
                     <div className="grid gap-3 md:grid-cols-2">
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Comissão de venda (%)</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Comissão de venda (%)
+                        </label>
                         <div className="relative">
                           <input
                             value={form.comissao_venda_percentual}
                             onChange={(event) =>
-                              updateForm("comissao_venda_percentual", sanitizePercentInput(event.target.value))
+                              updateForm(
+                                "comissao_venda_percentual",
+                                sanitizePercentInput(event.target.value),
+                              )
                             }
                             onBlur={(event) =>
-                              updateForm("comissao_venda_percentual", normalizePercentInput(event.target.value))
+                              updateForm(
+                                "comissao_venda_percentual",
+                                normalizePercentInput(event.target.value),
+                              )
                             }
                             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                             placeholder="6,00"
@@ -6048,7 +7207,9 @@ Retorne SOMENTE JSON válido:
                         </p>
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Mínimo aceito em mãos</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Mínimo aceito em mãos
+                        </label>
                         <div className="relative">
                           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
                             R$
@@ -6056,7 +7217,10 @@ Retorne SOMENTE JSON válido:
                           <input
                             value={form.minimo_aceito_em_maos}
                             onChange={(event) =>
-                              updateForm("minimo_aceito_em_maos", formatCurrencyInput(event.target.value))
+                              updateForm(
+                                "minimo_aceito_em_maos",
+                                formatCurrencyInput(event.target.value),
+                              )
                             }
                             className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                             placeholder="780.000"
@@ -6079,7 +7243,9 @@ Retorne SOMENTE JSON válido:
                               return {
                                 ...current,
                                 aceita_permuta: nextChecked,
-                                descricao_permuta: nextChecked ? current.descricao_permuta : "",
+                                descricao_permuta: nextChecked
+                                  ? current.descricao_permuta
+                                  : "",
                               };
                             })
                           }
@@ -6090,7 +7256,9 @@ Retorne SOMENTE JSON válido:
                       {form.aceita_permuta ? (
                         <textarea
                           value={form.descricao_permuta}
-                          onChange={(event) => updateForm("descricao_permuta", event.target.value)}
+                          onChange={(event) =>
+                            updateForm("descricao_permuta", event.target.value)
+                          }
                           rows={3}
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                           placeholder="Descreva o tipo de permuta aceita."
@@ -6101,15 +7269,24 @@ Retorne SOMENTE JSON válido:
 
                   <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div>
-                      <label className="mb-2 block text-sm text-slate-700">Modelo comercial</label>
+                      <label className="mb-2 block text-sm text-slate-700">
+                        Modelo comercial
+                      </label>
                       <div className="grid gap-2 md:grid-cols-3">
                         <button
                           type="button"
                           onClick={() =>
                             setForm((current) => {
                               if (!current) return current;
-                              const nextMode = current.modelo_captacao === "PARCERIA" ? "" : "PARCERIA";
-                              if (nextMode !== "PARCERIA") return { ...current, modelo_captacao: nextMode };
+                              const nextMode =
+                                current.modelo_captacao === "PARCERIA"
+                                  ? ""
+                                  : "PARCERIA";
+                              if (nextMode !== "PARCERIA")
+                                return {
+                                  ...current,
+                                  modelo_captacao: nextMode,
+                                };
                               return {
                                 ...current,
                                 modelo_captacao: nextMode,
@@ -6137,7 +7314,9 @@ Retorne SOMENTE JSON válido:
                           }`}
                         >
                           <span className="inline-flex items-center gap-2">
-                            {isCaptacaoParceria ? <Check size={16} weight="bold" /> : null}
+                            {isCaptacaoParceria ? (
+                              <Check size={16} weight="bold" />
+                            ) : null}
                             <span>Captação parceria</span>
                           </span>
                         </button>
@@ -6147,11 +7326,15 @@ Retorne SOMENTE JSON válido:
                             setForm((current) => {
                               if (!current) return current;
                               const nextMode =
-                                current.modelo_captacao === "CAPTACAO_SEM_EXCLUSIVIDADE"
+                                current.modelo_captacao ===
+                                "CAPTACAO_SEM_EXCLUSIVIDADE"
                                   ? ""
                                   : "CAPTACAO_SEM_EXCLUSIVIDADE";
                               if (nextMode !== "CAPTACAO_SEM_EXCLUSIVIDADE") {
-                                return { ...current, modelo_captacao: nextMode };
+                                return {
+                                  ...current,
+                                  modelo_captacao: nextMode,
+                                };
                               }
                               return {
                                 ...current,
@@ -6179,7 +7362,9 @@ Retorne SOMENTE JSON válido:
                           }`}
                         >
                           <span className="inline-flex items-center gap-2">
-                            {isMinhaCaptacaoSemExclusividade ? <Check size={16} weight="bold" /> : null}
+                            {isMinhaCaptacaoSemExclusividade ? (
+                              <Check size={16} weight="bold" />
+                            ) : null}
                             <span>Minha captação sem exclusividade</span>
                           </span>
                         </button>
@@ -6188,8 +7373,15 @@ Retorne SOMENTE JSON válido:
                           onClick={() =>
                             setForm((current) => {
                               if (!current) return current;
-                              const nextMode = current.modelo_captacao === "EXCLUSIVIDADE" ? "" : "EXCLUSIVIDADE";
-                              if (nextMode !== "EXCLUSIVIDADE") return { ...current, modelo_captacao: nextMode };
+                              const nextMode =
+                                current.modelo_captacao === "EXCLUSIVIDADE"
+                                  ? ""
+                                  : "EXCLUSIVIDADE";
+                              if (nextMode !== "EXCLUSIVIDADE")
+                                return {
+                                  ...current,
+                                  modelo_captacao: nextMode,
+                                };
                               return {
                                 ...current,
                                 modelo_captacao: nextMode,
@@ -6208,7 +7400,10 @@ Retorne SOMENTE JSON válido:
                           }`}
                         >
                           <span className="inline-flex items-center gap-2">
-                            <Crown size={16} weight={isMinhaExclusividade ? "fill" : "regular"} />
+                            <Crown
+                              size={16}
+                              weight={isMinhaExclusividade ? "fill" : "regular"}
+                            />
                             <span>Minha captação com exclusividade</span>
                           </span>
                         </button>
@@ -6218,29 +7413,48 @@ Retorne SOMENTE JSON válido:
                     {isCaptacaoParceria ? (
                       <div className="grid gap-3 md:grid-cols-3">
                         <div>
-                          <label className="mb-1 block text-sm text-slate-700">Nome do corretor</label>
+                          <label className="mb-1 block text-sm text-slate-700">
+                            Nome do corretor
+                          </label>
                           <input
                             value={form.corretor_parceiro_nome}
-                            onChange={(event) => updateForm("corretor_parceiro_nome", event.target.value)}
+                            onChange={(event) =>
+                              updateForm(
+                                "corretor_parceiro_nome",
+                                event.target.value,
+                              )
+                            }
                             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                           />
                         </div>
                         <div>
-                          <label className="mb-1 block text-sm text-slate-700">Telefone</label>
+                          <label className="mb-1 block text-sm text-slate-700">
+                            Telefone
+                          </label>
                           <input
                             value={form.corretor_parceiro_telefone}
                             onChange={(event) =>
-                              updateForm("corretor_parceiro_telefone", formatPhoneDisplay(event.target.value))
+                              updateForm(
+                                "corretor_parceiro_telefone",
+                                formatPhoneDisplay(event.target.value),
+                              )
                             }
                             placeholder="(11) 99999-0000"
                             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                           />
                         </div>
                         <div>
-                          <label className="mb-1 block text-sm text-slate-700">Email</label>
+                          <label className="mb-1 block text-sm text-slate-700">
+                            Email
+                          </label>
                           <input
                             value={form.corretor_parceiro_email}
-                            onChange={(event) => updateForm("corretor_parceiro_email", event.target.value)}
+                            onChange={(event) =>
+                              updateForm(
+                                "corretor_parceiro_email",
+                                event.target.value,
+                              )
+                            }
                             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                           />
                         </div>
@@ -6249,32 +7463,53 @@ Retorne SOMENTE JSON válido:
 
                     {isMinhaCaptacaoSemExclusividade || isMinhaExclusividade ? (
                       <div className="space-y-2">
-                        <p className="text-xs text-slate-600">Dados do proprietário do imóvel.</p>
+                        <p className="text-xs text-slate-600">
+                          Dados do proprietário do imóvel.
+                        </p>
                         <div className="grid gap-3 md:grid-cols-3">
                           <div>
-                            <label className="mb-1 block text-sm text-slate-700">Nome do proprietário</label>
+                            <label className="mb-1 block text-sm text-slate-700">
+                              Nome do proprietário
+                            </label>
                             <input
                               value={form.proprietario_nome}
-                              onChange={(event) => updateForm("proprietario_nome", event.target.value)}
+                              onChange={(event) =>
+                                updateForm(
+                                  "proprietario_nome",
+                                  event.target.value,
+                                )
+                              }
                               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                             />
                           </div>
                           <div>
-                            <label className="mb-1 block text-sm text-slate-700">Telefone</label>
+                            <label className="mb-1 block text-sm text-slate-700">
+                              Telefone
+                            </label>
                             <input
                               value={form.proprietario_telefone}
                               onChange={(event) =>
-                                updateForm("proprietario_telefone", formatPhoneDisplay(event.target.value))
+                                updateForm(
+                                  "proprietario_telefone",
+                                  formatPhoneDisplay(event.target.value),
+                                )
                               }
                               placeholder="(11) 99999-0000"
                               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                             />
                           </div>
                           <div>
-                            <label className="mb-1 block text-sm text-slate-700">Email</label>
+                            <label className="mb-1 block text-sm text-slate-700">
+                              Email
+                            </label>
                             <input
                               value={form.proprietario_email}
-                              onChange={(event) => updateForm("proprietario_email", event.target.value)}
+                              onChange={(event) =>
+                                updateForm(
+                                  "proprietario_email",
+                                  event.target.value,
+                                )
+                              }
                               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                             />
                           </div>
@@ -6292,19 +7527,30 @@ Retorne SOMENTE JSON válido:
                             <label className="block text-sm text-slate-700">
                               Aceita parceria com outros corretores
                             </label>
-                            <InfoTooltip text={EXCLUSIVIDADE_TOOLTIP.aceitaParceriaSemExclusividade} />
+                            <InfoTooltip
+                              text={
+                                EXCLUSIVIDADE_TOOLTIP.aceitaParceriaSemExclusividade
+                              }
+                            />
                           </div>
                           <select
                             value={form.aceita_parceria_status}
                             onChange={(event) =>
                               setForm((current) => {
                                 if (!current) return current;
-                                const nextStatus = isAceitaParceriaStatus(event.target.value)
+                                const nextStatus = isAceitaParceriaStatus(
+                                  event.target.value,
+                                )
                                   ? event.target.value
                                   : "";
-                                const isAtiva = nextStatus === "SIM" || nextStatus === "SOB_ANALISE";
+                                const isAtiva =
+                                  nextStatus === "SIM" ||
+                                  nextStatus === "SOB_ANALISE";
                                 if (isAtiva) {
-                                  return { ...current, aceita_parceria_status: nextStatus };
+                                  return {
+                                    ...current,
+                                    aceita_parceria_status: nextStatus,
+                                  };
                                 }
                                 return {
                                   ...current,
@@ -6326,11 +7572,13 @@ Retorne SOMENTE JSON válido:
                         </div>
                         {isParceriaSemExclusividadeAtiva ? (
                           <p className="text-xs text-slate-600">
-                            Defina a divisão da comissão para substituir a regra textual.
+                            Defina a divisão da comissão para substituir a regra
+                            textual.
                           </p>
                         ) : (
                           <p className="text-xs text-slate-500">
-                            Selecione Sim ou Sob analise para configurar parceria.
+                            Selecione Sim ou Sob analise para configurar
+                            parceria.
                           </p>
                         )}
                       </div>
@@ -6339,14 +7587,20 @@ Retorne SOMENTE JSON válido:
                     {isMinhaExclusividade ? (
                       <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
                         <div>
-                          <p className="text-xs text-slate-600">Dados da exclusividade do imóvel.</p>
+                          <p className="text-xs text-slate-600">
+                            Dados da exclusividade do imóvel.
+                          </p>
                         </div>
 
                         <div className="grid gap-3 md:grid-cols-1">
                           <div>
                             <div className="mb-1 flex items-center gap-1">
-                              <label className="block text-sm text-slate-700">Vencimento da exclusividade</label>
-                              <InfoTooltip text={EXCLUSIVIDADE_TOOLTIP.vencimento} />
+                              <label className="block text-sm text-slate-700">
+                                Vencimento da exclusividade
+                              </label>
+                              <InfoTooltip
+                                text={EXCLUSIVIDADE_TOOLTIP.vencimento}
+                              />
                             </div>
                             <input
                               type="date"
@@ -6355,9 +7609,16 @@ Retorne SOMENTE JSON válido:
                                 setForm((current) => {
                                   if (!current) return current;
                                   const nextDate = event.target.value;
-                                  const hasMin = nextDate >= minBolsaoExclusividadeIsoDate;
-                                  if (!current.disponibilizar_no_bolsao_parceria || hasMin) {
-                                    return { ...current, exclusividade_data_vencimento: nextDate };
+                                  const hasMin =
+                                    nextDate >= minBolsaoExclusividadeIsoDate;
+                                  if (
+                                    !current.disponibilizar_no_bolsao_parceria ||
+                                    hasMin
+                                  ) {
+                                    return {
+                                      ...current,
+                                      exclusividade_data_vencimento: nextDate,
+                                    };
                                   }
                                   return {
                                     ...current,
@@ -6370,20 +7631,33 @@ Retorne SOMENTE JSON válido:
                                   };
                                 })
                               }
-                              min={form.disponibilizar_no_bolsao_parceria ? minBolsaoExclusividadeIsoDate : todayIsoDate}
+                              min={
+                                form.disponibilizar_no_bolsao_parceria
+                                  ? minBolsaoExclusividadeIsoDate
+                                  : todayIsoDate
+                              }
                               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                             />
                             <p className="mt-1 text-xs text-slate-500">
-                              Se disponibilizar no bolsão, o vencimento deve ter no mínimo{" "}
-                              {BOLSAO_EXCLUSIVIDADE_MIN_DIAS} dias a partir de hoje (mínimo:{" "}
-                              {formatIsoDateToPtBr(minBolsaoExclusividadeIsoDate)}).
+                              Se disponibilizar no bolsão, o vencimento deve ter
+                              no mínimo {BOLSAO_EXCLUSIVIDADE_MIN_DIAS} dias a
+                              partir de hoje (mínimo:{" "}
+                              {formatIsoDateToPtBr(
+                                minBolsaoExclusividadeIsoDate,
+                              )}
+                              ).
                             </p>
                           </div>
                         </div>
 
                         <textarea
                           value={form.exclusividade_observacoes}
-                          onChange={(event) => updateForm("exclusividade_observacoes", event.target.value)}
+                          onChange={(event) =>
+                            updateForm(
+                              "exclusividade_observacoes",
+                              event.target.value,
+                            )
+                          }
                           rows={3}
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                           placeholder="Observações da exclusividade"
@@ -6393,12 +7667,19 @@ Retorne SOMENTE JSON válido:
                           <input
                             type="checkbox"
                             checked={form.aceite_corretor_exclusivo}
-                            onChange={(event) => updateForm("aceite_corretor_exclusivo", event.target.checked)}
+                            onChange={(event) =>
+                              updateForm(
+                                "aceite_corretor_exclusivo",
+                                event.target.checked,
+                              )
+                            }
                             className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[var(--primary-scarlet)] focus:ring-[var(--primary-scarlet)]"
                           />
                           <span className="inline-flex items-center gap-1">
                             Eu assumo que sou o corretor exclusivo desse imóvel
-                            <InfoTooltip text={EXCLUSIVIDADE_TOOLTIP.aceiteCorretor} />
+                            <InfoTooltip
+                              text={EXCLUSIVIDADE_TOOLTIP.aceiteCorretor}
+                            />
                           </span>
                         </label>
 
@@ -6411,26 +7692,36 @@ Retorne SOMENTE JSON válido:
                               <label className="block text-sm text-slate-700">
                                 Aceita parceria com outros corretores
                               </label>
-                              <InfoTooltip text={EXCLUSIVIDADE_TOOLTIP.aceitaParceria} />
+                              <InfoTooltip
+                                text={EXCLUSIVIDADE_TOOLTIP.aceitaParceria}
+                              />
                             </div>
                             <select
                               value={form.aceita_parceria_status}
                               onChange={(event) =>
                                 setForm((current) => {
                                   if (!current) return current;
-                                  const nextStatus = isAceitaParceriaStatus(event.target.value)
+                                  const nextStatus = isAceitaParceriaStatus(
+                                    event.target.value,
+                                  )
                                     ? event.target.value
                                     : "";
-                                  const isAtiva = nextStatus === "SIM" || nextStatus === "SOB_ANALISE";
+                                  const isAtiva =
+                                    nextStatus === "SIM" ||
+                                    nextStatus === "SOB_ANALISE";
                                   if (isAtiva) {
-                                    return { ...current, aceita_parceria_status: nextStatus };
+                                    return {
+                                      ...current,
+                                      aceita_parceria_status: nextStatus,
+                                    };
                                   }
                                   return {
                                     ...current,
                                     aceita_parceria_status: nextStatus,
                                     disponibilizar_no_bolsao_parceria: false,
                                     exclusividade_comissao_minha_percentual: "",
-                                    exclusividade_comissao_parceiro_percentual: "",
+                                    exclusividade_comissao_parceiro_percentual:
+                                      "",
                                     bolsao_permitir_mudanca_preco: false,
                                     bolsao_permitir_download_midia_kit: false,
                                     bolsao_somente_visitas_agendadas: false,
@@ -6452,46 +7743,75 @@ Retorne SOMENTE JSON válido:
                           {isParceriaExclusividadeAtiva ? (
                             <>
                               <p className="text-xs text-slate-600">
-                                Defina a divisão da comissão para substituir a regra textual.
+                                Defina a divisão da comissão para substituir a
+                                regra textual.
                               </p>
                               <div className="grid gap-3 md:grid-cols-2">
                                 <div>
                                   <div className="mb-1 flex items-center gap-1">
-                                    <label className="block text-sm text-slate-700">Minha comissão (%)</label>
-                                    <InfoTooltip text={EXCLUSIVIDADE_TOOLTIP.minhaComissao} />
+                                    <label className="block text-sm text-slate-700">
+                                      Minha comissão (%)
+                                    </label>
+                                    <InfoTooltip
+                                      text={EXCLUSIVIDADE_TOOLTIP.minhaComissao}
+                                    />
                                   </div>
                                   <div className="relative">
                                     <input
-                                      value={form.exclusividade_comissao_minha_percentual}
+                                      value={
+                                        form.exclusividade_comissao_minha_percentual
+                                      }
                                       onChange={(event) =>
                                         setForm((current) => {
                                           if (!current) return current;
-                                          const nextMinha = sanitizePercentInput(event.target.value);
-                                          const parsed = parseOptionalPercent(nextMinha);
+                                          const nextMinha =
+                                            sanitizePercentInput(
+                                              event.target.value,
+                                            );
+                                          const parsed =
+                                            parseOptionalPercent(nextMinha);
                                           const nextParceiro =
                                             parsed.ok && parsed.value != null
-                                              ? numberToPercentInput(Math.max(0, 100 - parsed.value))
+                                              ? numberToPercentInput(
+                                                  Math.max(
+                                                    0,
+                                                    100 - parsed.value,
+                                                  ),
+                                                )
                                               : "";
                                           return {
                                             ...current,
-                                            exclusividade_comissao_minha_percentual: nextMinha,
-                                            exclusividade_comissao_parceiro_percentual: nextParceiro,
+                                            exclusividade_comissao_minha_percentual:
+                                              nextMinha,
+                                            exclusividade_comissao_parceiro_percentual:
+                                              nextParceiro,
                                           };
                                         })
                                       }
                                       onBlur={(event) =>
                                         setForm((current) => {
                                           if (!current) return current;
-                                          const normalized = normalizePercentInput(event.target.value);
-                                          const parsed = parseOptionalPercent(normalized);
+                                          const normalized =
+                                            normalizePercentInput(
+                                              event.target.value,
+                                            );
+                                          const parsed =
+                                            parseOptionalPercent(normalized);
                                           const nextParceiro =
                                             parsed.ok && parsed.value != null
-                                              ? numberToPercentInput(Math.max(0, 100 - parsed.value))
+                                              ? numberToPercentInput(
+                                                  Math.max(
+                                                    0,
+                                                    100 - parsed.value,
+                                                  ),
+                                                )
                                               : "";
                                           return {
                                             ...current,
-                                            exclusividade_comissao_minha_percentual: normalized,
-                                            exclusividade_comissao_parceiro_percentual: nextParceiro,
+                                            exclusividade_comissao_minha_percentual:
+                                              normalized,
+                                            exclusividade_comissao_parceiro_percentual:
+                                              nextParceiro,
                                           };
                                         })
                                       }
@@ -6506,7 +7826,9 @@ Retorne SOMENTE JSON válido:
                                     Ganho estimado:{" "}
                                     <span className="font-medium text-slate-700">
                                       {ganhoEstimadoExclusividadeMinha != null
-                                        ? formatCurrencyValue(ganhoEstimadoExclusividadeMinha)
+                                        ? formatCurrencyValue(
+                                            ganhoEstimadoExclusividadeMinha,
+                                          )
                                         : hasVendaNegociacao
                                           ? "informe valor/comissão de venda e percentual"
                                           : "disponível quando houver venda"}
@@ -6515,8 +7837,14 @@ Retorne SOMENTE JSON válido:
                                 </div>
                                 <div>
                                   <div className="mb-1 flex items-center gap-1">
-                                    <label className="block text-sm text-slate-700">Comissão parceiro (%)</label>
-                                    <InfoTooltip text={EXCLUSIVIDADE_TOOLTIP.parceiroComissaoAutomatica} />
+                                    <label className="block text-sm text-slate-700">
+                                      Comissão parceiro (%)
+                                    </label>
+                                    <InfoTooltip
+                                      text={
+                                        EXCLUSIVIDADE_TOOLTIP.parceiroComissaoAutomatica
+                                      }
+                                    />
                                   </div>
                                   <div className="relative">
                                     <input
@@ -6533,8 +7861,11 @@ Retorne SOMENTE JSON válido:
                                   <p className="mt-1 text-xs text-slate-500">
                                     Ganho estimado parceiro:{" "}
                                     <span className="font-medium text-slate-700">
-                                      {ganhoEstimadoExclusividadeParceiro != null
-                                        ? formatCurrencyValue(ganhoEstimadoExclusividadeParceiro)
+                                      {ganhoEstimadoExclusividadeParceiro !=
+                                      null
+                                        ? formatCurrencyValue(
+                                            ganhoEstimadoExclusividadeParceiro,
+                                          )
                                         : hasVendaNegociacao
                                           ? "informe valor/comissão de venda e percentual"
                                           : "disponível quando houver venda"}
@@ -6548,19 +7879,26 @@ Retorne SOMENTE JSON válido:
                                   <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">
                                     Bolsão de Exclusividade
                                   </p>
-                                  <InfoTooltip text={EXCLUSIVIDADE_TOOLTIP.bolsao} />
+                                  <InfoTooltip
+                                    text={EXCLUSIVIDADE_TOOLTIP.bolsao}
+                                  />
                                 </div>
                                 <p className="mt-1 text-xs text-rose-700/90">
-                                  Ative para liberar este imóvel no bolsão com regras para parceiros.
+                                  Ative para liberar este imóvel no bolsão com
+                                  regras para parceiros.
                                 </p>
                                 <p className="mt-1 text-xs font-medium text-rose-700/90">
-                                  Exigência: vencimento da exclusividade com no mínimo{" "}
-                                  {BOLSAO_EXCLUSIVIDADE_MIN_DIAS} dias a partir de hoje.
+                                  Exigência: vencimento da exclusividade com no
+                                  mínimo {BOLSAO_EXCLUSIVIDADE_MIN_DIAS} dias a
+                                  partir de hoje.
                                 </p>
                                 {!hasVencimentoMinimoParaBolsao ? (
                                   <p className="mt-1 text-xs text-rose-700">
                                     Defina o vencimento a partir de{" "}
-                                    {formatIsoDateToPtBr(minBolsaoExclusividadeIsoDate)} para habilitar.
+                                    {formatIsoDateToPtBr(
+                                      minBolsaoExclusividadeIsoDate,
+                                    )}{" "}
+                                    para habilitar.
                                   </p>
                                 ) : null}
                                 <button
@@ -6570,24 +7908,33 @@ Retorne SOMENTE JSON válido:
                                     setForm((current) => {
                                       if (!current) return current;
                                       if (!hasVencimentoMinimoParaBolsao) {
-                                        return { ...current, disponibilizar_no_bolsao_parceria: false };
+                                        return {
+                                          ...current,
+                                          disponibilizar_no_bolsao_parceria: false,
+                                        };
                                       }
-                                      const nextEnabled = !current.disponibilizar_no_bolsao_parceria;
+                                      const nextEnabled =
+                                        !current.disponibilizar_no_bolsao_parceria;
                                       return {
                                         ...current,
-                                        disponibilizar_no_bolsao_parceria: nextEnabled,
-                                        bolsao_permitir_mudanca_preco: nextEnabled
-                                          ? current.bolsao_permitir_mudanca_preco
-                                          : false,
-                                        bolsao_permitir_download_midia_kit: nextEnabled
-                                          ? current.bolsao_permitir_download_midia_kit
-                                          : false,
-                                        bolsao_somente_visitas_agendadas: nextEnabled
-                                          ? current.bolsao_somente_visitas_agendadas
-                                          : false,
-                                        bolsao_somente_visitas_com_minha_presenca: nextEnabled
-                                          ? current.bolsao_somente_visitas_com_minha_presenca
-                                          : false,
+                                        disponibilizar_no_bolsao_parceria:
+                                          nextEnabled,
+                                        bolsao_permitir_mudanca_preco:
+                                          nextEnabled
+                                            ? current.bolsao_permitir_mudanca_preco
+                                            : false,
+                                        bolsao_permitir_download_midia_kit:
+                                          nextEnabled
+                                            ? current.bolsao_permitir_download_midia_kit
+                                            : false,
+                                        bolsao_somente_visitas_agendadas:
+                                          nextEnabled
+                                            ? current.bolsao_somente_visitas_agendadas
+                                            : false,
+                                        bolsao_somente_visitas_com_minha_presenca:
+                                          nextEnabled
+                                            ? current.bolsao_somente_visitas_com_minha_presenca
+                                            : false,
                                       };
                                     })
                                   }
@@ -6611,49 +7958,78 @@ Retorne SOMENTE JSON válido:
                                   <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
                                     <input
                                       type="checkbox"
-                                      checked={form.bolsao_permitir_mudanca_preco}
+                                      checked={
+                                        form.bolsao_permitir_mudanca_preco
+                                      }
                                       onChange={(event) =>
-                                        updateForm("bolsao_permitir_mudanca_preco", event.target.checked)
+                                        updateForm(
+                                          "bolsao_permitir_mudanca_preco",
+                                          event.target.checked,
+                                        )
                                       }
                                       className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[var(--primary-scarlet)] focus:ring-[var(--primary-scarlet)]"
                                     />
                                     <span className="inline-flex items-center gap-1">
                                       Permitir mudança de preço
-                                      <InfoTooltip text={EXCLUSIVIDADE_TOOLTIP.regraMudancaPreco} />
+                                      <InfoTooltip
+                                        text={
+                                          EXCLUSIVIDADE_TOOLTIP.regraMudancaPreco
+                                        }
+                                      />
                                     </span>
                                   </label>
                                   <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
                                     <input
                                       type="checkbox"
-                                      checked={form.bolsao_permitir_download_midia_kit}
+                                      checked={
+                                        form.bolsao_permitir_download_midia_kit
+                                      }
                                       onChange={(event) =>
-                                        updateForm("bolsao_permitir_download_midia_kit", event.target.checked)
+                                        updateForm(
+                                          "bolsao_permitir_download_midia_kit",
+                                          event.target.checked,
+                                        )
                                       }
                                       className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[var(--primary-scarlet)] focus:ring-[var(--primary-scarlet)]"
                                     />
                                     <span className="inline-flex items-center gap-1">
                                       Permitir download do Midia Kit
-                                      <InfoTooltip text={EXCLUSIVIDADE_TOOLTIP.regraDownloadMidiaKit} />
+                                      <InfoTooltip
+                                        text={
+                                          EXCLUSIVIDADE_TOOLTIP.regraDownloadMidiaKit
+                                        }
+                                      />
                                     </span>
                                   </label>
                                   <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
                                     <input
                                       type="checkbox"
-                                      checked={form.bolsao_somente_visitas_agendadas}
+                                      checked={
+                                        form.bolsao_somente_visitas_agendadas
+                                      }
                                       onChange={(event) =>
-                                        updateForm("bolsao_somente_visitas_agendadas", event.target.checked)
+                                        updateForm(
+                                          "bolsao_somente_visitas_agendadas",
+                                          event.target.checked,
+                                        )
                                       }
                                       className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[var(--primary-scarlet)] focus:ring-[var(--primary-scarlet)]"
                                     />
                                     <span className="inline-flex items-center gap-1">
                                       Somente visitas agendadas
-                                      <InfoTooltip text={EXCLUSIVIDADE_TOOLTIP.regraSomenteAgendada} />
+                                      <InfoTooltip
+                                        text={
+                                          EXCLUSIVIDADE_TOOLTIP.regraSomenteAgendada
+                                        }
+                                      />
                                     </span>
                                   </label>
                                   <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
                                     <input
                                       type="checkbox"
-                                      checked={form.bolsao_somente_visitas_com_minha_presenca}
+                                      checked={
+                                        form.bolsao_somente_visitas_com_minha_presenca
+                                      }
                                       onChange={(event) =>
                                         updateForm(
                                           "bolsao_somente_visitas_com_minha_presenca",
@@ -6664,7 +8040,11 @@ Retorne SOMENTE JSON válido:
                                     />
                                     <span className="inline-flex items-center gap-1">
                                       Somente visitas com minha presença
-                                      <InfoTooltip text={EXCLUSIVIDADE_TOOLTIP.regraComPresenca} />
+                                      <InfoTooltip
+                                        text={
+                                          EXCLUSIVIDADE_TOOLTIP.regraComPresenca
+                                        }
+                                      />
                                     </span>
                                   </label>
                                 </div>
@@ -6672,7 +8052,8 @@ Retorne SOMENTE JSON válido:
                             </>
                           ) : (
                             <p className="text-xs text-slate-500">
-                              Selecione Sim ou Sob analise para configurar parceria e bolsao.
+                              Selecione Sim ou Sob analise para configurar
+                              parceria e bolsao.
                             </p>
                           )}
                         </div>
@@ -6682,7 +8063,8 @@ Retorne SOMENTE JSON válido:
                     {shouldShowComissaoParceria ? (
                       <div className="space-y-3">
                         <p className="text-xs text-slate-600">
-                          Percentuais sobre o ganho da comissão de venda. Exemplo de mercado: 50/50.
+                          Percentuais sobre o ganho da comissão de venda.
+                          Exemplo de mercado: 50/50.
                         </p>
                         <div className="grid gap-3 md:grid-cols-2">
                           <div>
@@ -6695,32 +8077,44 @@ Retorne SOMENTE JSON válido:
                                 onChange={(event) =>
                                   setForm((current) => {
                                     if (!current) return current;
-                                    const nextMinha = sanitizePercentInput(event.target.value);
-                                    const parsed = parseOptionalPercent(nextMinha);
+                                    const nextMinha = sanitizePercentInput(
+                                      event.target.value,
+                                    );
+                                    const parsed =
+                                      parseOptionalPercent(nextMinha);
                                     const nextParceiro =
                                       parsed.ok && parsed.value != null
-                                        ? numberToPercentInput(Math.max(0, 100 - parsed.value))
+                                        ? numberToPercentInput(
+                                            Math.max(0, 100 - parsed.value),
+                                          )
                                         : "";
                                     return {
                                       ...current,
                                       comissao_captador_percentual: nextMinha,
-                                      comissao_vendedor_percentual: nextParceiro,
+                                      comissao_vendedor_percentual:
+                                        nextParceiro,
                                     };
                                   })
                                 }
                                 onBlur={(event) =>
                                   setForm((current) => {
                                     if (!current) return current;
-                                    const normalized = normalizePercentInput(event.target.value);
-                                    const parsed = parseOptionalPercent(normalized);
+                                    const normalized = normalizePercentInput(
+                                      event.target.value,
+                                    );
+                                    const parsed =
+                                      parseOptionalPercent(normalized);
                                     const nextParceiro =
                                       parsed.ok && parsed.value != null
-                                        ? numberToPercentInput(Math.max(0, 100 - parsed.value))
+                                        ? numberToPercentInput(
+                                            Math.max(0, 100 - parsed.value),
+                                          )
                                         : "";
                                     return {
                                       ...current,
                                       comissao_captador_percentual: normalized,
-                                      comissao_vendedor_percentual: nextParceiro,
+                                      comissao_vendedor_percentual:
+                                        nextParceiro,
                                     };
                                   })
                                 }
@@ -6779,10 +8173,12 @@ Retorne SOMENTE JSON válido:
               {activeBlock === 5 ? (
                 <div className="space-y-6">
                   <header>
-                    <h3 className="text-2xl font-semibold text-slate-900">Etapa 5: Detalhes dos Ambientes</h3>
+                    <h3 className="text-2xl font-semibold text-slate-900">
+                      Etapa 5: Detalhes dos Ambientes
+                    </h3>
                     <p className="mt-1 text-sm text-slate-600">
-                      Enriqueça seu anúncio: quanto mais detalhes informados, melhor seu anúncio é percebido
-                      pelo mercado.
+                      Enriqueça seu anúncio: quanto mais detalhes informados,
+                      melhor seu anúncio é percebido pelo mercado.
                     </p>
                   </header>
 
@@ -6794,13 +8190,19 @@ Retorne SOMENTE JSON válido:
                   ) : null}
 
                   <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <h4 className="text-base font-medium text-slate-900">Dormitórios</h4>
+                    <h4 className="text-base font-medium text-slate-900">
+                      Dormitórios
+                    </h4>
                     <div>
-                      <label className="mb-1 block text-sm text-slate-700">Quantidade de dormitórios</label>
+                      <label className="mb-1 block text-sm text-slate-700">
+                        Quantidade de dormitórios
+                      </label>
                       <input
                         value={qtdDormitoriosDetalhe}
                         onChange={(event) =>
-                          setQtdDormitoriosDetalhe(event.target.value.replace(/\D/g, "").slice(0, 2))
+                          setQtdDormitoriosDetalhe(
+                            event.target.value.replace(/\D/g, "").slice(0, 2),
+                          )
                         }
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2 md:w-44"
                         placeholder="0"
@@ -6814,16 +8216,25 @@ Retorne SOMENTE JSON válido:
                             key={ambienteItem.local_id}
                             className="rounded-xl border border-slate-200 bg-white p-4"
                           >
-                            <p className="mb-3 text-sm font-medium text-slate-900">Dormitório {index + 1}</p>
+                            <p className="mb-3 text-sm font-medium text-slate-900">
+                              Dormitório {index + 1}
+                            </p>
                             <div className="grid gap-3 md:grid-cols-2">
                               <div>
-                                <label className="mb-1 block text-sm text-slate-700">Área útil (m²)</label>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Área útil (m²)
+                                </label>
                                 <input
                                   value={ambienteItem.area_m2}
                                   onChange={(event) =>
                                     setDormitoriosDetalhe((current) =>
                                       current.map((row, rowIndex) =>
-                                        rowIndex === index ? { ...row, area_m2: event.target.value } : row,
+                                        rowIndex === index
+                                          ? {
+                                              ...row,
+                                              area_m2: event.target.value,
+                                            }
+                                          : row,
                                       ),
                                     )
                                   }
@@ -6832,7 +8243,9 @@ Retorne SOMENTE JSON válido:
                                 />
                               </div>
                               <div>
-                                <label className="mb-1 block text-sm text-slate-700">Tipo de piso</label>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Tipo de piso
+                                </label>
                                 <select
                                   value={ambienteItem.tipo_piso}
                                   onChange={(event) =>
@@ -6841,7 +8254,9 @@ Retorne SOMENTE JSON válido:
                                         rowIndex === index
                                           ? {
                                               ...row,
-                                              tipo_piso: isAmbientePiso(event.target.value)
+                                              tipo_piso: isAmbientePiso(
+                                                event.target.value,
+                                              )
                                                 ? event.target.value
                                                 : "",
                                             }
@@ -6853,7 +8268,10 @@ Retorne SOMENTE JSON válido:
                                 >
                                   <option value="">Selecione</option>
                                   {AMBIENTE_PISO_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
                                       {option.label}
                                     </option>
                                   ))}
@@ -6869,7 +8287,8 @@ Retorne SOMENTE JSON válido:
                                   setDormitoriosDetalhe((current) =>
                                     current.map((row, rowIndex) => {
                                       if (rowIndex !== index) return row;
-                                      if (!row.eh_suite) return { ...row, eh_suite: true };
+                                      if (!row.eh_suite)
+                                        return { ...row, eh_suite: true };
                                       return {
                                         ...row,
                                         eh_suite: false,
@@ -6897,7 +8316,10 @@ Retorne SOMENTE JSON válido:
                                   setDormitoriosDetalhe((current) =>
                                     current.map((row, rowIndex) => {
                                       if (rowIndex === index) {
-                                        return { ...row, suite_principal: !row.suite_principal };
+                                        return {
+                                          ...row,
+                                          suite_principal: !row.suite_principal,
+                                        };
                                       }
                                       return { ...row, suite_principal: false };
                                     }),
@@ -6916,11 +8338,19 @@ Retorne SOMENTE JSON válido:
                             {ambienteItem.eh_suite ? (
                               <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
                                 <div className="flex flex-wrap gap-2">
-                                  {([
-                                    { key: "banheiro_armarios", label: "Banheiro com armários" },
-                                    { key: "banheiro_pia_dupla", label: "Pia dupla" },
-                                    { key: "banheiro_box", label: "Box" },
-                                  ] as const).map((option) => {
+                                  {(
+                                    [
+                                      {
+                                        key: "banheiro_armarios",
+                                        label: "Banheiro com armários",
+                                      },
+                                      {
+                                        key: "banheiro_pia_dupla",
+                                        label: "Pia dupla",
+                                      },
+                                      { key: "banheiro_box", label: "Box" },
+                                    ] as const
+                                  ).map((option) => {
                                     const selected = ambienteItem[option.key];
                                     return (
                                       <button
@@ -6931,7 +8361,11 @@ Retorne SOMENTE JSON válido:
                                           setDormitoriosDetalhe((current) =>
                                             current.map((row, rowIndex) =>
                                               rowIndex === index
-                                                ? { ...row, [option.key]: !row[option.key] }
+                                                ? {
+                                                    ...row,
+                                                    [option.key]:
+                                                      !row[option.key],
+                                                  }
                                                 : row,
                                             ),
                                           )
@@ -6951,14 +8385,22 @@ Retorne SOMENTE JSON válido:
                             ) : null}
 
                             <div className="mt-3 flex flex-wrap gap-2">
-                              {([
-                                { key: "ar_condicionado", label: "Ar-condicionado" },
-                                { key: "closet", label: "Closet" },
-                                { key: "armarios_planejados", label: "Armários planejados" },
-                                { key: "tem_cama", label: "Tem cama" },
-                                { key: "tem_tv", label: "Tem TV" },
-                                { key: "tem_varanda", label: "Varanda" },
-                              ] as const).map((option) => {
+                              {(
+                                [
+                                  {
+                                    key: "ar_condicionado",
+                                    label: "Ar-condicionado",
+                                  },
+                                  { key: "closet", label: "Closet" },
+                                  {
+                                    key: "armarios_planejados",
+                                    label: "Armários planejados",
+                                  },
+                                  { key: "tem_cama", label: "Tem cama" },
+                                  { key: "tem_tv", label: "Tem TV" },
+                                  { key: "tem_varanda", label: "Varanda" },
+                                ] as const
+                              ).map((option) => {
                                 const selected = ambienteItem[option.key];
                                 return (
                                   <button
@@ -6968,7 +8410,12 @@ Retorne SOMENTE JSON válido:
                                     onClick={() =>
                                       setDormitoriosDetalhe((current) =>
                                         current.map((row, rowIndex) =>
-                                          rowIndex === index ? { ...row, [option.key]: !row[option.key] } : row,
+                                          rowIndex === index
+                                            ? {
+                                                ...row,
+                                                [option.key]: !row[option.key],
+                                              }
+                                            : row,
                                         ),
                                       )
                                     }
@@ -6985,10 +8432,13 @@ Retorne SOMENTE JSON válido:
                             </div>
 
                             <div className="mt-3">
-                              <label className="mb-2 block text-sm text-slate-700">Persiana</label>
+                              <label className="mb-2 block text-sm text-slate-700">
+                                Persiana
+                              </label>
                               <div className="flex flex-wrap gap-2">
                                 {PERSIANA_TIPO_OPTIONS.map((option) => {
-                                  const selected = ambienteItem.persiana_tipo === option.value;
+                                  const selected =
+                                    ambienteItem.persiana_tipo === option.value;
                                   return (
                                     <button
                                       key={option.value}
@@ -7001,7 +8451,10 @@ Retorne SOMENTE JSON válido:
                                               ? {
                                                   ...row,
                                                   persiana_tipo:
-                                                    row.persiana_tipo === option.value ? "" : option.value,
+                                                    row.persiana_tipo ===
+                                                    option.value
+                                                      ? ""
+                                                      : option.value,
                                                 }
                                               : row,
                                           ),
@@ -7026,13 +8479,19 @@ Retorne SOMENTE JSON válido:
                   </div>
 
                   <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <h4 className="text-base font-medium text-slate-900">Cozinhas</h4>
+                    <h4 className="text-base font-medium text-slate-900">
+                      Cozinhas
+                    </h4>
                     <div>
-                      <label className="mb-1 block text-sm text-slate-700">Quantidade de cozinhas</label>
+                      <label className="mb-1 block text-sm text-slate-700">
+                        Quantidade de cozinhas
+                      </label>
                       <input
                         value={qtdCozinhasDetalhe}
                         onChange={(event) =>
-                          setQtdCozinhasDetalhe(event.target.value.replace(/\D/g, "").slice(0, 2))
+                          setQtdCozinhasDetalhe(
+                            event.target.value.replace(/\D/g, "").slice(0, 2),
+                          )
                         }
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2 md:w-44"
                         placeholder="0"
@@ -7046,16 +8505,25 @@ Retorne SOMENTE JSON válido:
                             key={ambienteItem.local_id}
                             className="rounded-xl border border-slate-200 bg-white p-4"
                           >
-                            <p className="mb-3 text-sm font-medium text-slate-900">Cozinha {index + 1}</p>
+                            <p className="mb-3 text-sm font-medium text-slate-900">
+                              Cozinha {index + 1}
+                            </p>
                             <div className="grid gap-3 md:grid-cols-4">
                               <div>
-                                <label className="mb-1 block text-sm text-slate-700">Área útil (m²)</label>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Área útil (m²)
+                                </label>
                                 <input
                                   value={ambienteItem.area_m2}
                                   onChange={(event) =>
                                     setCozinhasDetalhe((current) =>
                                       current.map((row, rowIndex) =>
-                                        rowIndex === index ? { ...row, area_m2: event.target.value } : row,
+                                        rowIndex === index
+                                          ? {
+                                              ...row,
+                                              area_m2: event.target.value,
+                                            }
+                                          : row,
                                       ),
                                     )
                                   }
@@ -7064,7 +8532,9 @@ Retorne SOMENTE JSON válido:
                                 />
                               </div>
                               <div>
-                                <label className="mb-1 block text-sm text-slate-700">Tipo de cozinha</label>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Tipo de cozinha
+                                </label>
                                 <select
                                   value={ambienteItem.tipo_cozinha}
                                   onChange={(event) =>
@@ -7073,7 +8543,9 @@ Retorne SOMENTE JSON válido:
                                         rowIndex === index
                                           ? {
                                               ...row,
-                                              tipo_cozinha: isCozinhaTipo(event.target.value)
+                                              tipo_cozinha: isCozinhaTipo(
+                                                event.target.value,
+                                              )
                                                 ? event.target.value
                                                 : "",
                                             }
@@ -7085,14 +8557,19 @@ Retorne SOMENTE JSON válido:
                                 >
                                   <option value="">Selecione</option>
                                   {COZINHA_TIPO_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
                                       {option.label}
                                     </option>
                                   ))}
                                 </select>
                               </div>
                               <div>
-                                <label className="mb-1 block text-sm text-slate-700">Tipo de piso</label>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Tipo de piso
+                                </label>
                                 <select
                                   value={ambienteItem.tipo_piso}
                                   onChange={(event) =>
@@ -7101,7 +8578,9 @@ Retorne SOMENTE JSON válido:
                                         rowIndex === index
                                           ? {
                                               ...row,
-                                              tipo_piso: isAmbientePiso(event.target.value)
+                                              tipo_piso: isAmbientePiso(
+                                                event.target.value,
+                                              )
                                                 ? event.target.value
                                                 : "",
                                             }
@@ -7113,7 +8592,10 @@ Retorne SOMENTE JSON válido:
                                 >
                                   <option value="">Selecione</option>
                                   {AMBIENTE_PISO_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
                                       {option.label}
                                     </option>
                                   ))}
@@ -7122,13 +8604,18 @@ Retorne SOMENTE JSON válido:
                             </div>
 
                             <div className="mt-3 flex flex-wrap gap-2">
-                              {([
-                                { key: "armarios_planejados", label: "Armários planejados" },
-                                { key: "fogao", label: "Fogão" },
-                                { key: "forno", label: "Forno" },
-                                { key: "geladeira", label: "Geladeira" },
-                                { key: "microondas", label: "Micro-ondas" },
-                              ] as const).map((option) => {
+                              {(
+                                [
+                                  {
+                                    key: "armarios_planejados",
+                                    label: "Armários planejados",
+                                  },
+                                  { key: "fogao", label: "Fogão" },
+                                  { key: "forno", label: "Forno" },
+                                  { key: "geladeira", label: "Geladeira" },
+                                  { key: "microondas", label: "Micro-ondas" },
+                                ] as const
+                              ).map((option) => {
                                 const selected = ambienteItem[option.key];
                                 return (
                                   <button
@@ -7138,7 +8625,12 @@ Retorne SOMENTE JSON válido:
                                     onClick={() =>
                                       setCozinhasDetalhe((current) =>
                                         current.map((row, rowIndex) =>
-                                          rowIndex === index ? { ...row, [option.key]: !row[option.key] } : row,
+                                          rowIndex === index
+                                            ? {
+                                                ...row,
+                                                [option.key]: !row[option.key],
+                                              }
+                                            : row,
                                         ),
                                       )
                                     }
@@ -7156,7 +8648,9 @@ Retorne SOMENTE JSON válido:
 
                             <div className="mt-3">
                               <div className="md:max-w-md">
-                                <label className="mb-1 block text-sm text-slate-700">Tipo de bancada</label>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Tipo de bancada
+                                </label>
                                 <select
                                   value={ambienteItem.tipo_bancada}
                                   onChange={(event) =>
@@ -7165,7 +8659,9 @@ Retorne SOMENTE JSON válido:
                                         rowIndex === index
                                           ? {
                                               ...row,
-                                              tipo_bancada: isCozinhaBancada(event.target.value)
+                                              tipo_bancada: isCozinhaBancada(
+                                                event.target.value,
+                                              )
                                                 ? event.target.value
                                                 : "",
                                             }
@@ -7177,7 +8673,10 @@ Retorne SOMENTE JSON válido:
                                 >
                                   <option value="">Selecione</option>
                                   {COZINHA_BANCADA_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
                                       {option.label}
                                     </option>
                                   ))}
@@ -7191,12 +8690,20 @@ Retorne SOMENTE JSON válido:
                   </div>
 
                   <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <h4 className="text-base font-medium text-slate-900">Salas</h4>
+                    <h4 className="text-base font-medium text-slate-900">
+                      Salas
+                    </h4>
                     <div>
-                      <label className="mb-1 block text-sm text-slate-700">Quantidade de salas</label>
+                      <label className="mb-1 block text-sm text-slate-700">
+                        Quantidade de salas
+                      </label>
                       <input
                         value={qtdSalasDetalhe}
-                        onChange={(event) => setQtdSalasDetalhe(event.target.value.replace(/\D/g, "").slice(0, 2))}
+                        onChange={(event) =>
+                          setQtdSalasDetalhe(
+                            event.target.value.replace(/\D/g, "").slice(0, 2),
+                          )
+                        }
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2 md:w-44"
                         placeholder="0"
                       />
@@ -7209,16 +8716,25 @@ Retorne SOMENTE JSON válido:
                             key={ambienteItem.local_id}
                             className="rounded-xl border border-slate-200 bg-white p-4"
                           >
-                            <p className="mb-3 text-sm font-medium text-slate-900">Sala {index + 1}</p>
+                            <p className="mb-3 text-sm font-medium text-slate-900">
+                              Sala {index + 1}
+                            </p>
                             <div className="grid gap-3 md:grid-cols-4">
                               <div>
-                                <label className="mb-1 block text-sm text-slate-700">Área da sala (m²)</label>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Área da sala (m²)
+                                </label>
                                 <input
                                   value={ambienteItem.area_m2}
                                   onChange={(event) =>
                                     setSalasDetalhe((current) =>
                                       current.map((row, rowIndex) =>
-                                        rowIndex === index ? { ...row, area_m2: event.target.value } : row,
+                                        rowIndex === index
+                                          ? {
+                                              ...row,
+                                              area_m2: event.target.value,
+                                            }
+                                          : row,
                                       ),
                                     )
                                   }
@@ -7227,7 +8743,9 @@ Retorne SOMENTE JSON válido:
                                 />
                               </div>
                               <div>
-                                <label className="mb-1 block text-sm text-slate-700">Tipo de sala</label>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Tipo de sala
+                                </label>
                                 <select
                                   value={ambienteItem.tipo_sala}
                                   onChange={(event) =>
@@ -7236,7 +8754,9 @@ Retorne SOMENTE JSON válido:
                                         rowIndex === index
                                           ? {
                                               ...row,
-                                              tipo_sala: isSalaTipo(event.target.value)
+                                              tipo_sala: isSalaTipo(
+                                                event.target.value,
+                                              )
                                                 ? event.target.value
                                                 : "",
                                             }
@@ -7248,14 +8768,19 @@ Retorne SOMENTE JSON válido:
                                 >
                                   <option value="">Selecione</option>
                                   {SALA_TIPO_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
                                       {option.label}
                                     </option>
                                   ))}
                                 </select>
                               </div>
                               <div>
-                                <label className="mb-1 block text-sm text-slate-700">Layout</label>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Layout
+                                </label>
                                 <select
                                   value={ambienteItem.layout}
                                   onChange={(event) =>
@@ -7264,7 +8789,9 @@ Retorne SOMENTE JSON válido:
                                         rowIndex === index
                                           ? {
                                               ...row,
-                                              layout: isSalaLayout(event.target.value)
+                                              layout: isSalaLayout(
+                                                event.target.value,
+                                              )
                                                 ? event.target.value
                                                 : "",
                                             }
@@ -7276,14 +8803,19 @@ Retorne SOMENTE JSON válido:
                                 >
                                   <option value="">Selecione</option>
                                   {SALA_LAYOUT_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
                                       {option.label}
                                     </option>
                                   ))}
                                 </select>
                               </div>
                               <div>
-                                <label className="mb-1 block text-sm text-slate-700">Tipo de piso</label>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Tipo de piso
+                                </label>
                                 <select
                                   value={ambienteItem.tipo_piso}
                                   onChange={(event) =>
@@ -7292,7 +8824,9 @@ Retorne SOMENTE JSON válido:
                                         rowIndex === index
                                           ? {
                                               ...row,
-                                              tipo_piso: isAmbientePiso(event.target.value)
+                                              tipo_piso: isAmbientePiso(
+                                                event.target.value,
+                                              )
                                                 ? event.target.value
                                                 : "",
                                             }
@@ -7304,7 +8838,10 @@ Retorne SOMENTE JSON válido:
                                 >
                                   <option value="">Selecione</option>
                                   {AMBIENTE_PISO_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
                                       {option.label}
                                     </option>
                                   ))}
@@ -7337,10 +8874,15 @@ Retorne SOMENTE JSON válido:
                             </div>
 
                             <div className="mt-3">
-                              <label className="mb-2 block text-sm text-slate-700">Diferenciais</label>
+                              <label className="mb-2 block text-sm text-slate-700">
+                                Diferenciais
+                              </label>
                               <div className="flex flex-wrap gap-2">
                                 {SALA_DIFERENCIAL_OPTIONS.map((option) => {
-                                  const selected = ambienteItem.diferenciais.includes(option.value);
+                                  const selected =
+                                    ambienteItem.diferenciais.includes(
+                                      option.value,
+                                    );
                                   return (
                                     <button
                                       key={option.value}
@@ -7349,17 +8891,26 @@ Retorne SOMENTE JSON válido:
                                         setSalasDetalhe((current) =>
                                           current.map((row, rowIndex) => {
                                             if (rowIndex !== index) return row;
-                                            if (row.diferenciais.includes(option.value)) {
+                                            if (
+                                              row.diferenciais.includes(
+                                                option.value,
+                                              )
+                                            ) {
                                               return {
                                                 ...row,
-                                                diferenciais: row.diferenciais.filter(
-                                                  (value) => value !== option.value,
-                                                ),
+                                                diferenciais:
+                                                  row.diferenciais.filter(
+                                                    (value) =>
+                                                      value !== option.value,
+                                                  ),
                                               };
                                             }
                                             return {
                                               ...row,
-                                              diferenciais: [...row.diferenciais, option.value],
+                                              diferenciais: [
+                                                ...row.diferenciais,
+                                                option.value,
+                                              ],
                                             };
                                           }),
                                         )
@@ -7384,13 +8935,19 @@ Retorne SOMENTE JSON válido:
 
                   {varandasDetalhe.length > 0 ? (
                     <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <h4 className="text-base font-medium text-slate-900">Varandas</h4>
+                      <h4 className="text-base font-medium text-slate-900">
+                        Varandas
+                      </h4>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-700">Quantidade de varandas</label>
+                        <label className="mb-1 block text-sm text-slate-700">
+                          Quantidade de varandas
+                        </label>
                         <input
                           value={qtdVarandasDetalhe}
                           onChange={(event) =>
-                            setQtdVarandasDetalhe(event.target.value.replace(/\D/g, "").slice(0, 2))
+                            setQtdVarandasDetalhe(
+                              event.target.value.replace(/\D/g, "").slice(0, 2),
+                            )
                           }
                           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2 md:w-44"
                           placeholder="0"
@@ -7402,16 +8959,25 @@ Retorne SOMENTE JSON válido:
                             key={ambienteItem.local_id}
                             className="rounded-xl border border-slate-200 bg-white p-4"
                           >
-                            <p className="mb-3 text-sm font-medium text-slate-900">Varanda {index + 1}</p>
+                            <p className="mb-3 text-sm font-medium text-slate-900">
+                              Varanda {index + 1}
+                            </p>
                             <div className="grid gap-3 md:grid-cols-3">
                               <div>
-                                <label className="mb-1 block text-sm text-slate-700">Área útil (m²)</label>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Área útil (m²)
+                                </label>
                                 <input
                                   value={ambienteItem.area_m2}
                                   onChange={(event) =>
                                     setVarandasDetalhe((current) =>
                                       current.map((row, rowIndex) =>
-                                        rowIndex === index ? { ...row, area_m2: event.target.value } : row,
+                                        rowIndex === index
+                                          ? {
+                                              ...row,
+                                              area_m2: event.target.value,
+                                            }
+                                          : row,
                                       ),
                                     )
                                   }
@@ -7420,7 +8986,9 @@ Retorne SOMENTE JSON válido:
                                 />
                               </div>
                               <div>
-                                <label className="mb-1 block text-sm text-slate-700">Tipo de varanda</label>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Tipo de varanda
+                                </label>
                                 <select
                                   value={ambienteItem.tipo_varanda}
                                   onChange={(event) =>
@@ -7429,63 +8997,7 @@ Retorne SOMENTE JSON válido:
                                         rowIndex === index
                                           ? {
                                               ...row,
-                                              tipo_varanda: isVarandaTipo(event.target.value)
-                                                ? event.target.value
-                                                : "",
-                                            }
-                                          : row,
-                                      ),
-                                    )
-                                  }
-                                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
-                                >
-                                  <option value="">Selecione</option>
-                                  {VARANDA_TIPO_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="mb-1 block text-sm text-slate-700">Tipo de piso</label>
-                                <select
-                                  value={ambienteItem.tipo_piso}
-                                  onChange={(event) =>
-                                    setVarandasDetalhe((current) =>
-                                      current.map((row, rowIndex) =>
-                                        rowIndex === index
-                                          ? {
-                                              ...row,
-                                              tipo_piso: isAmbientePiso(event.target.value)
-                                                ? event.target.value
-                                                : "",
-                                            }
-                                          : row,
-                                      ),
-                                    )
-                                  }
-                                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
-                                >
-                                  <option value="">Selecione</option>
-                                  {AMBIENTE_PISO_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="mb-1 block text-sm text-slate-700">Churrasqueira</label>
-                                <select
-                                  value={ambienteItem.churrasqueira_tipo}
-                                  onChange={(event) =>
-                                    setVarandasDetalhe((current) =>
-                                      current.map((row, rowIndex) =>
-                                        rowIndex === index
-                                          ? {
-                                              ...row,
-                                              churrasqueira_tipo: isVarandaChurrasqueira(
+                                              tipo_varanda: isVarandaTipo(
                                                 event.target.value,
                                               )
                                                 ? event.target.value
@@ -7498,25 +9010,106 @@ Retorne SOMENTE JSON válido:
                                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
                                 >
                                   <option value="">Selecione</option>
-                                  {VARANDA_CHURRASQUEIRA_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
+                                  {VARANDA_TIPO_OPTIONS.map((option) => (
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
                                       {option.label}
                                     </option>
                                   ))}
                                 </select>
                               </div>
+                              <div>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Tipo de piso
+                                </label>
+                                <select
+                                  value={ambienteItem.tipo_piso}
+                                  onChange={(event) =>
+                                    setVarandasDetalhe((current) =>
+                                      current.map((row, rowIndex) =>
+                                        rowIndex === index
+                                          ? {
+                                              ...row,
+                                              tipo_piso: isAmbientePiso(
+                                                event.target.value,
+                                              )
+                                                ? event.target.value
+                                                : "",
+                                            }
+                                          : row,
+                                      ),
+                                    )
+                                  }
+                                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
+                                >
+                                  <option value="">Selecione</option>
+                                  {AMBIENTE_PISO_OPTIONS.map((option) => (
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="mb-1 block text-sm text-slate-700">
+                                  Churrasqueira
+                                </label>
+                                <select
+                                  value={ambienteItem.churrasqueira_tipo}
+                                  onChange={(event) =>
+                                    setVarandasDetalhe((current) =>
+                                      current.map((row, rowIndex) =>
+                                        rowIndex === index
+                                          ? {
+                                              ...row,
+                                              churrasqueira_tipo:
+                                                isVarandaChurrasqueira(
+                                                  event.target.value,
+                                                )
+                                                  ? event.target.value
+                                                  : "",
+                                            }
+                                          : row,
+                                      ),
+                                    )
+                                  }
+                                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2"
+                                >
+                                  <option value="">Selecione</option>
+                                  {VARANDA_CHURRASQUEIRA_OPTIONS.map(
+                                    (option) => (
+                                      <option
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        {option.label}
+                                      </option>
+                                    ),
+                                  )}
+                                </select>
+                              </div>
                             </div>
 
                             <div className="mt-3 flex flex-wrap gap-2">
-                              {([
-                                { key: "bancada", label: "Bancada" },
-                                { key: "fechada_com_vidro", label: "Fechada com vidro" },
-                                { key: "ilha", label: "Ilha" },
-                                { key: "fogao", label: "Fogão" },
-                                { key: "frigobar", label: "Frigobar" },
-                                { key: "chopeira", label: "Chopeira" },
-                                { key: "tem_tv", label: "TV" },
-                              ] as const).map((option) => {
+                              {(
+                                [
+                                  { key: "bancada", label: "Bancada" },
+                                  {
+                                    key: "fechada_com_vidro",
+                                    label: "Fechada com vidro",
+                                  },
+                                  { key: "ilha", label: "Ilha" },
+                                  { key: "fogao", label: "Fogão" },
+                                  { key: "frigobar", label: "Frigobar" },
+                                  { key: "chopeira", label: "Chopeira" },
+                                  { key: "tem_tv", label: "TV" },
+                                ] as const
+                              ).map((option) => {
                                 const selected = ambienteItem[option.key];
                                 return (
                                   <button
@@ -7526,7 +9119,12 @@ Retorne SOMENTE JSON válido:
                                     onClick={() =>
                                       setVarandasDetalhe((current) =>
                                         current.map((row, rowIndex) =>
-                                          rowIndex === index ? { ...row, [option.key]: !row[option.key] } : row,
+                                          rowIndex === index
+                                            ? {
+                                                ...row,
+                                                [option.key]: !row[option.key],
+                                              }
+                                            : row,
                                         ),
                                       )
                                     }
@@ -7543,10 +9141,13 @@ Retorne SOMENTE JSON válido:
                             </div>
 
                             <div className="mt-3">
-                              <label className="mb-2 block text-sm text-slate-700">Persiana</label>
+                              <label className="mb-2 block text-sm text-slate-700">
+                                Persiana
+                              </label>
                               <div className="flex flex-wrap gap-2">
                                 {PERSIANA_TIPO_OPTIONS.map((option) => {
-                                  const selected = ambienteItem.persiana_tipo === option.value;
+                                  const selected =
+                                    ambienteItem.persiana_tipo === option.value;
                                   return (
                                     <button
                                       key={option.value}
@@ -7559,7 +9160,8 @@ Retorne SOMENTE JSON válido:
                                               ? {
                                                   ...row,
                                                   persiana_tipo:
-                                                    row.persiana_tipo === option.value
+                                                    row.persiana_tipo ===
+                                                    option.value
                                                       ? ""
                                                       : option.value,
                                                 }
@@ -7590,9 +9192,12 @@ Retorne SOMENTE JSON válido:
               {activeBlock === 6 ? (
                 <div className="space-y-6">
                   <header>
-                    <h3 className="text-2xl font-semibold text-slate-900">Etapa 6: características do imóvel</h3>
+                    <h3 className="text-2xl font-semibold text-slate-900">
+                      Etapa 6: características do imóvel
+                    </h3>
                     <p className="mt-1 text-sm text-slate-600">
-                      Selecione os diferenciais da unidade. Isso melhora filtros, descrição e percepção do anúncio.
+                      Selecione os diferenciais da unidade. Isso melhora
+                      filtros, descrição e percepção do anúncio.
                     </p>
                   </header>
 
@@ -7604,8 +9209,10 @@ Retorne SOMENTE JSON válido:
                             Características do empreendimento associado
                           </h4>
                           <p className="mt-1 text-sm text-slate-600">
-                            {empreendimentoAssociadoNome} • {empreendimentoCaracteristicasAssociadas.length}{" "}
-                            {empreendimentoCaracteristicasAssociadas.length === 1
+                            {empreendimentoAssociadoNome} •{" "}
+                            {empreendimentoCaracteristicasAssociadas.length}{" "}
+                            {empreendimentoCaracteristicasAssociadas.length ===
+                            1
                               ? "característica"
                               : "características"}
                           </p>
@@ -7613,7 +9220,9 @@ Retorne SOMENTE JSON válido:
                         {empreendimentoCaracteristicasAssociadas.length > 0 ? (
                           <button
                             type="button"
-                            onClick={() => setShowEmpreendimentoCaracteristicasModal(true)}
+                            onClick={() =>
+                              setShowEmpreendimentoCaracteristicasModal(true)
+                            }
                             className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:border-slate-400"
                           >
                             Ver todas
@@ -7628,14 +9237,16 @@ Retorne SOMENTE JSON válido:
                         </div>
                       ) : empreendimentoCaracteristicasAssociadas.length > 0 ? (
                         <div className="mt-3 flex flex-wrap gap-2">
-                          {empreendimentoCaracteristicasAssociadasPreview.map((catalogItem) => (
-                            <span
-                              key={catalogItem.id}
-                              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700"
-                            >
-                              {catalogItem.label_pt}
-                            </span>
-                          ))}
+                          {empreendimentoCaracteristicasAssociadasPreview.map(
+                            (catalogItem) => (
+                              <span
+                                key={catalogItem.id}
+                                className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700"
+                              >
+                                {catalogItem.label_pt}
+                              </span>
+                            ),
+                          )}
                           {empreendimentoCaracteristicasAssociadasExtras > 0 ? (
                             <span className="rounded-full border border-slate-300 bg-slate-900 px-3 py-1.5 text-xs font-medium text-white">
                               + {empreendimentoCaracteristicasAssociadasExtras}
@@ -7644,7 +9255,8 @@ Retorne SOMENTE JSON válido:
                         </div>
                       ) : (
                         <p className="mt-3 text-sm text-slate-500">
-                          Este empreendimento não possui características cadastradas.
+                          Este empreendimento não possui características
+                          cadastradas.
                         </p>
                       )}
                     </div>
@@ -7653,12 +9265,14 @@ Retorne SOMENTE JSON válido:
                   <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                       <p className="text-sm text-slate-600">
-                        Tipo de uso atual: <strong>{tipoUsoLabel}</strong> • {caracteristicasSelecionadas.length}{" "}
-                        selecionada(s)
+                        Tipo de uso atual: <strong>{tipoUsoLabel}</strong> •{" "}
+                        {caracteristicasSelecionadas.length} selecionada(s)
                       </p>
                       <input
                         value={caracteristicaQuery}
-                        onChange={(event) => setCaracteristicaQuery(event.target.value)}
+                        onChange={(event) =>
+                          setCaracteristicaQuery(event.target.value)
+                        }
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none ring-[var(--primary-scarlet)] transition focus:ring-2 md:w-80"
                         placeholder="Buscar característica..."
                       />
@@ -7672,7 +9286,9 @@ Retorne SOMENTE JSON válido:
                     ) : (
                       <div className="grid gap-2 md:grid-cols-5">
                         {caracteristicasFiltradas.map((catalogItem) => {
-                          const active = caracteristicasSelecionadas.includes(catalogItem.chave);
+                          const active = caracteristicasSelecionadas.includes(
+                            catalogItem.chave,
+                          );
                           return (
                             <button
                               key={catalogItem.id}
@@ -7680,7 +9296,9 @@ Retorne SOMENTE JSON válido:
                               onClick={() =>
                                 setCaracteristicasSelecionadas((current) => {
                                   if (current.includes(catalogItem.chave)) {
-                                    return current.filter((value) => value !== catalogItem.chave);
+                                    return current.filter(
+                                      (value) => value !== catalogItem.chave,
+                                    );
                                   }
                                   return [...current, catalogItem.chave];
                                 })
@@ -7696,7 +9314,9 @@ Retorne SOMENTE JSON válido:
                           );
                         })}
                         {caracteristicasFiltradas.length === 0 ? (
-                          <p className="text-sm text-slate-500">Nenhuma característica encontrada.</p>
+                          <p className="text-sm text-slate-500">
+                            Nenhuma característica encontrada.
+                          </p>
                         ) : null}
                       </div>
                     )}
@@ -7707,16 +9327,21 @@ Retorne SOMENTE JSON válido:
               {activeBlock === 7 ? (
                 <div className="space-y-6">
                   <header>
-                    <h3 className="text-2xl font-semibold text-slate-900">Etapa 7: descrição do anúncio</h3>
+                    <h3 className="text-2xl font-semibold text-slate-900">
+                      Etapa 7: descrição do anúncio
+                    </h3>
                     <p className="mt-1 text-sm text-slate-600">
-                      Escreva uma descrição clara dos destaques do imóvel para elevar a conversão do anúncio.
+                      Escreva uma descrição clara dos destaques do imóvel para
+                      elevar a conversão do anúncio.
                     </p>
                   </header>
                   <LongTextAykaEditor
                     label="Descrição"
                     value={form.descricao}
                     onChange={(value) =>
-                      setForm((current) => (current ? { ...current, descricao: value } : current))
+                      setForm((current) =>
+                        current ? { ...current, descricao: value } : current,
+                      )
                     }
                     maxChars={MAX_DESCRICAO_IMOVEL_CHARS}
                     plainTextLength={descricaoImovelPlain.length}
@@ -7753,8 +9378,8 @@ Retorne SOMENTE JSON válido:
                       Organize suas imagens e preencha metadados em cada card.
                     </p>
                     <p className="mt-2 text-xs text-slate-500">
-                      Regras: máximo 15MB por imagem e resolução mínima de 800x600 px. A otimização para
-                      1920px é feita no envio.
+                      Regras: máximo 15MB por imagem e resolução mínima de
+                      800x600 px. A otimização para 1920px é feita no envio.
                     </p>
                   </header>
 
@@ -7766,8 +9391,11 @@ Retorne SOMENTE JSON válido:
                             Imagens já cadastradas no empreendimento
                           </h4>
                           <p className="mt-1 text-xs text-slate-600">
-                            {empreendimentoAssociadoNome} • {imagensEmpreendimentoRelacionadas.length}{" "}
-                            {imagensEmpreendimentoRelacionadas.length === 1 ? "imagem" : "imagens"}
+                            {empreendimentoAssociadoNome} •{" "}
+                            {imagensEmpreendimentoRelacionadas.length}{" "}
+                            {imagensEmpreendimentoRelacionadas.length === 1
+                              ? "imagem"
+                              : "imagens"}
                           </p>
                         </div>
                         <p className="text-xs font-medium text-slate-700">
@@ -7788,7 +9416,9 @@ Retorne SOMENTE JSON válido:
                               className="h-[100px] w-[100px] shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white"
                             >
                               <img
-                                src={buildThumbUrl(mediaItem.url) ?? mediaItem.url}
+                                src={
+                                  buildThumbUrl(mediaItem.url) ?? mediaItem.url
+                                }
                                 alt="Imagem do empreendimento"
                                 draggable={false}
                                 loading="lazy"
@@ -7805,17 +9435,19 @@ Retorne SOMENTE JSON válido:
                         </div>
                       ) : (
                         <p className="mt-3 text-xs text-slate-500">
-                          Este empreendimento ainda não possui imagens na galeria.
+                          Este empreendimento ainda não possui imagens na
+                          galeria.
                         </p>
                       )}
 
                       <p className="mt-3 text-xs text-slate-600">
-                        Alguns portais limitam o número total de imagens por anúncio. Nesse total, somamos
-                        as imagens do imóvel e do empreendimento.
+                        Alguns portais limitam o número total de imagens por
+                        anúncio. Nesse total, somamos as imagens do imóvel e do
+                        empreendimento.
                       </p>
                       <p className="mt-1 text-xs font-medium text-slate-700">
-                        Ordem preferencial de exibição: imagens do imóvel primeiro, depois as do
-                        empreendimento.
+                        Ordem preferencial de exibição: imagens do imóvel
+                        primeiro, depois as do empreendimento.
                       </p>
                     </div>
                   ) : null}
@@ -7826,7 +9458,9 @@ Retorne SOMENTE JSON válido:
                     multiple
                     accept="image/*,.heic,.heif"
                     onChange={(event) => {
-                      void appendMidiaImovelFiles(Array.from(event.target.files ?? []));
+                      void appendMidiaImovelFiles(
+                        Array.from(event.target.files ?? []),
+                      );
                       event.currentTarget.value = "";
                     }}
                     className="sr-only"
@@ -7834,29 +9468,35 @@ Retorne SOMENTE JSON válido:
 
                   <div
                     onDragEnter={(event) => {
-                      const isFileDrag = event.dataTransfer.types?.includes("Files");
+                      const isFileDrag =
+                        event.dataTransfer.types?.includes("Files");
                       if (!isFileDrag) return;
                       event.preventDefault();
                       setIsMidiaImovelDragActive(true);
                     }}
                     onDragOver={(event) => {
-                      const isFileDrag = event.dataTransfer.types?.includes("Files");
+                      const isFileDrag =
+                        event.dataTransfer.types?.includes("Files");
                       if (!isFileDrag) return;
                       event.preventDefault();
                       setIsMidiaImovelDragActive(true);
                     }}
                     onDragLeave={(event) => {
-                      const isFileDrag = event.dataTransfer.types?.includes("Files");
+                      const isFileDrag =
+                        event.dataTransfer.types?.includes("Files");
                       if (!isFileDrag) return;
                       event.preventDefault();
                       setIsMidiaImovelDragActive(false);
                     }}
                     onDrop={(event) => {
-                      const isFileDrag = event.dataTransfer.types?.includes("Files");
+                      const isFileDrag =
+                        event.dataTransfer.types?.includes("Files");
                       if (!isFileDrag) return;
                       event.preventDefault();
                       setIsMidiaImovelDragActive(false);
-                      void appendMidiaImovelFiles(Array.from(event.dataTransfer.files ?? []));
+                      void appendMidiaImovelFiles(
+                        Array.from(event.dataTransfer.files ?? []),
+                      );
                     }}
                     className={`rounded-xl border border-dashed p-5 text-center transition ${
                       isMidiaImovelDragActive
@@ -7867,8 +9507,12 @@ Retorne SOMENTE JSON válido:
                     <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600">
                       <UploadSimple size={20} />
                     </div>
-                    <p className="text-sm text-slate-700">Arraste imagens para cá</p>
-                    <p className="mt-1 text-xs text-slate-500">JPG, JPEG, PNG, WEBP estático, HEIC e HEIF</p>
+                    <p className="text-sm text-slate-700">
+                      Arraste imagens para cá
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      JPG, JPEG, PNG, WEBP estático, HEIC e HEIF
+                    </p>
                     <button
                       type="button"
                       onClick={() => imageInputRef.current?.click()}
@@ -7884,20 +9528,26 @@ Retorne SOMENTE JSON válido:
                   {uploadingMidiaImovel ? (
                     <div className="rounded-xl border border-[var(--primary-scarlet)]/30 bg-[var(--primary-scarlet)]/5 p-4">
                       <div className="flex items-center gap-3">
-                        <CircleNotch size={28} className="animate-spin text-[var(--primary-scarlet)]" />
+                        <CircleNotch
+                          size={28}
+                          className="animate-spin text-[var(--primary-scarlet)]"
+                        />
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-[var(--primary-scarlet)]">
                             Enviando imagens...
                           </p>
                           <p className="text-xs text-slate-600">
-                            Progresso do envio: {uploadingMidiaImovelPercent ?? 0}%
+                            Progresso do envio:{" "}
+                            {uploadingMidiaImovelPercent ?? 0}%
                           </p>
                         </div>
                       </div>
                       <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-white/80">
                         <div
                           className="h-full rounded-full bg-[var(--primary-scarlet)] transition-all"
-                          style={{ width: `${uploadingMidiaImovelPercent ?? 0}%` }}
+                          style={{
+                            width: `${uploadingMidiaImovelPercent ?? 0}%`,
+                          }}
                         />
                       </div>
                     </div>
@@ -7918,29 +9568,35 @@ Retorne SOMENTE JSON válido:
                           : ""
                       }`}
                       onDragEnter={(event) => {
-                        const isFileDrag = event.dataTransfer.types?.includes("Files");
+                        const isFileDrag =
+                          event.dataTransfer.types?.includes("Files");
                         if (!isFileDrag) return;
                         event.preventDefault();
                         setIsMidiaImovelDragActive(true);
                       }}
                       onDragOver={(event) => {
-                        const isFileDrag = event.dataTransfer.types?.includes("Files");
+                        const isFileDrag =
+                          event.dataTransfer.types?.includes("Files");
                         if (!isFileDrag) return;
                         event.preventDefault();
                         setIsMidiaImovelDragActive(true);
                       }}
                       onDragLeave={(event) => {
-                        const isFileDrag = event.dataTransfer.types?.includes("Files");
+                        const isFileDrag =
+                          event.dataTransfer.types?.includes("Files");
                         if (!isFileDrag) return;
                         event.preventDefault();
                         setIsMidiaImovelDragActive(false);
                       }}
                       onDrop={(event) => {
-                        const isFileDrag = event.dataTransfer.types?.includes("Files");
+                        const isFileDrag =
+                          event.dataTransfer.types?.includes("Files");
                         if (!isFileDrag) return;
                         event.preventDefault();
                         setIsMidiaImovelDragActive(false);
-                        void appendMidiaImovelFiles(Array.from(event.dataTransfer.files ?? []));
+                        void appendMidiaImovelFiles(
+                          Array.from(event.dataTransfer.files ?? []),
+                        );
                         setDropTargetMidiaImovelId(null);
                       }}
                     >
@@ -7948,14 +9604,16 @@ Retorne SOMENTE JSON válido:
                         <article
                           key={mediaItem.id}
                           onDragEnter={(event) => {
-                            const isFileDrag = event.dataTransfer.types?.includes("Files");
+                            const isFileDrag =
+                              event.dataTransfer.types?.includes("Files");
                             if (isFileDrag) {
                               event.preventDefault();
                               return;
                             }
-                            const hasInternalDrag = event.dataTransfer.types?.includes(
-                              "application/x-corretor-image-id",
-                            );
+                            const hasInternalDrag =
+                              event.dataTransfer.types?.includes(
+                                "application/x-corretor-image-id",
+                              );
                             if (!hasInternalDrag) return;
                             event.preventDefault();
                             if (dropTargetMidiaImovelId !== mediaItem.id) {
@@ -7963,14 +9621,16 @@ Retorne SOMENTE JSON válido:
                             }
                           }}
                           onDragOver={(event) => {
-                            const isFileDrag = event.dataTransfer.types?.includes("Files");
+                            const isFileDrag =
+                              event.dataTransfer.types?.includes("Files");
                             if (isFileDrag) {
                               event.preventDefault();
                               return;
                             }
-                            const hasInternalDrag = event.dataTransfer.types?.includes(
-                              "application/x-corretor-image-id",
-                            );
+                            const hasInternalDrag =
+                              event.dataTransfer.types?.includes(
+                                "application/x-corretor-image-id",
+                              );
                             if (!hasInternalDrag) return;
                             event.preventDefault();
                             event.stopPropagation();
@@ -7982,14 +9642,18 @@ Retorne SOMENTE JSON válido:
                           onDrop={(event) => {
                             event.stopPropagation();
                             event.preventDefault();
-                            const isFileDrag = event.dataTransfer.types?.includes("Files");
+                            const isFileDrag =
+                              event.dataTransfer.types?.includes("Files");
                             if (isFileDrag) {
-                              void appendMidiaImovelFiles(Array.from(event.dataTransfer.files ?? []));
+                              void appendMidiaImovelFiles(
+                                Array.from(event.dataTransfer.files ?? []),
+                              );
                               return;
                             }
                             const dragId =
-                              event.dataTransfer.getData("application/x-corretor-image-id") ||
-                              event.dataTransfer.getData("text/plain");
+                              event.dataTransfer.getData(
+                                "application/x-corretor-image-id",
+                              ) || event.dataTransfer.getData("text/plain");
                             if (!dragId) return;
                             moveMidiaImovelToTarget(dragId, mediaItem.id);
                             setDropTargetMidiaImovelId(null);
@@ -8004,8 +9668,14 @@ Retorne SOMENTE JSON válido:
                             draggable
                             onDragStart={(event) => {
                               event.dataTransfer.effectAllowed = "move";
-                              event.dataTransfer.setData("application/x-corretor-image-id", mediaItem.id);
-                              event.dataTransfer.setData("text/plain", mediaItem.id);
+                              event.dataTransfer.setData(
+                                "application/x-corretor-image-id",
+                                mediaItem.id,
+                              );
+                              event.dataTransfer.setData(
+                                "text/plain",
+                                mediaItem.id,
+                              );
                             }}
                             onDragEnd={() => {
                               setDropTargetMidiaImovelId(null);
@@ -8015,7 +9685,9 @@ Retorne SOMENTE JSON válido:
                             {mediaItem.isHeic ? (
                               <div className="flex h-full w-full items-center justify-center bg-slate-200 px-4 text-center">
                                 <div>
-                                  <p className="text-sm font-medium text-slate-700">Preview indisponível</p>
+                                  <p className="text-sm font-medium text-slate-700">
+                                    Preview indisponível
+                                  </p>
                                   <p className="mt-1 text-xs text-slate-500">
                                     HEIC/HEIF será convertido no processamento.
                                   </p>
@@ -8023,7 +9695,11 @@ Retorne SOMENTE JSON válido:
                               </div>
                             ) : (
                               <img
-                                src={mediaItem.thumbUrl || buildThumbUrl(mediaItem.previewUrl) || mediaItem.previewUrl}
+                                src={
+                                  mediaItem.thumbUrl ||
+                                  buildThumbUrl(mediaItem.previewUrl) ||
+                                  mediaItem.previewUrl
+                                }
                                 alt={mediaItem.alt || mediaItem.fileName}
                                 draggable={false}
                                 loading="lazy"
@@ -8040,21 +9716,32 @@ Retorne SOMENTE JSON válido:
                           </div>
                           <div className="space-y-3 p-3">
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-slate-800">{mediaItem.fileName}</p>
-                              <p className="text-xs text-slate-500">{formatBytes(mediaItem.sizeBytes)}</p>
+                              <p className="truncate text-sm font-medium text-slate-800">
+                                {mediaItem.fileName}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {formatBytes(mediaItem.sizeBytes)}
+                              </p>
                             </div>
                             <div className="flex items-center justify-between gap-2">
                               <button
                                 type="button"
-                                disabled={deletingMidiaImovelIds.includes(mediaItem.id)}
+                                disabled={deletingMidiaImovelIds.includes(
+                                  mediaItem.id,
+                                )}
                                 onClick={() => {
                                   void removeMidiaImovelById(mediaItem.id);
                                 }}
                                 className="cursor-pointer rounded-md p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                                 aria-label="Remover imagem"
                               >
-                                {deletingMidiaImovelIds.includes(mediaItem.id) ? (
-                                  <CircleNotch size={16} className="animate-spin" />
+                                {deletingMidiaImovelIds.includes(
+                                  mediaItem.id,
+                                ) ? (
+                                  <CircleNotch
+                                    size={16}
+                                    className="animate-spin"
+                                  />
                                 ) : (
                                   <Trash size={16} />
                                 )}
@@ -8067,10 +9754,18 @@ Retorne SOMENTE JSON válido:
                                   min={1}
                                   max={midiasImovel.length}
                                   defaultValue={index + 1}
-                                  onBlur={(event) => applyMidiaImovelOrder(mediaItem.id, event.target.value)}
+                                  onBlur={(event) =>
+                                    applyMidiaImovelOrder(
+                                      mediaItem.id,
+                                      event.target.value,
+                                    )
+                                  }
                                   onKeyDown={(event) => {
                                     if (event.key === "Enter") {
-                                      applyMidiaImovelOrder(mediaItem.id, event.currentTarget.value);
+                                      applyMidiaImovelOrder(
+                                        mediaItem.id,
+                                        event.currentTarget.value,
+                                      );
                                       event.currentTarget.blur();
                                     }
                                   }}
@@ -8079,7 +9774,9 @@ Retorne SOMENTE JSON válido:
                               </label>
                               <button
                                 type="button"
-                                onClick={() => setEditingMidiaImovelId(mediaItem.id)}
+                                onClick={() =>
+                                  setEditingMidiaImovelId(mediaItem.id)
+                                }
                                 className="cursor-pointer rounded-md p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
                                 aria-label="Editar imagem"
                               >
@@ -8088,7 +9785,9 @@ Retorne SOMENTE JSON válido:
                             </div>
                             <button
                               type="button"
-                              onClick={() => setEditingMidiaImovelId(mediaItem.id)}
+                              onClick={() =>
+                                setEditingMidiaImovelId(mediaItem.id)
+                              }
                               className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-left text-xs text-slate-600 hover:bg-slate-100"
                             >
                               {mediaItem.caracteristica
@@ -8102,7 +9801,9 @@ Retorne SOMENTE JSON válido:
                   ) : null}
 
                   {!loadingMidiasImovel && midiasImovel.length === 0 ? (
-                    <p className="text-sm text-slate-500">Nenhuma imagem adicionada.</p>
+                    <p className="text-sm text-slate-500">
+                      Nenhuma imagem adicionada.
+                    </p>
                   ) : null}
 
                   {rejectedMidiasImovel.length > 0 ? (
@@ -8134,9 +9835,13 @@ Retorne SOMENTE JSON válido:
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm text-slate-800">{mediaItem.fileName}</p>
+                              <p className="truncate text-sm text-slate-800">
+                                {mediaItem.fileName}
+                              </p>
                               <div className="mt-2 flex flex-wrap gap-1">
-                                {mediaItem.reasons.includes("TAMANHO_PEQUENO") ? (
+                                {mediaItem.reasons.includes(
+                                  "TAMANHO_PEQUENO",
+                                ) ? (
                                   <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
                                     Tamanho Pequeno
                                   </span>
@@ -8146,7 +9851,9 @@ Retorne SOMENTE JSON válido:
                                     Acima de 15MB
                                   </span>
                                 ) : null}
-                                {mediaItem.reasons.includes("FORMATO_INVALIDO") ? (
+                                {mediaItem.reasons.includes(
+                                  "FORMATO_INVALIDO",
+                                ) ? (
                                   <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-700">
                                     Formato inválido
                                   </span>
@@ -8177,23 +9884,31 @@ Retorne SOMENTE JSON válido:
                   </header>
 
                   <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                    O primeiro vídeo da lista será priorizado para apresentação nos portais de anúncios. A
-                    exibição final depende das regras e limitações de cada portal.
+                    O primeiro vídeo da lista será priorizado para apresentação
+                    nos portais de anúncios. A exibição final depende das regras
+                    e limitações de cada portal.
                   </div>
 
                   <div className="flex gap-2">
                     <input
                       value={youtubeUrlInput}
-                      onChange={(event) => setYoutubeUrlInput(event.target.value)}
+                      onChange={(event) =>
+                        setYoutubeUrlInput(event.target.value)
+                      }
                       placeholder="https://www.youtube.com/watch?v=..."
                       className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
                     />
                     <button
                       type="button"
-                      disabled={addingYoutube || youtubeVideos.length >= MAX_YOUTUBE_VIDEOS}
+                      disabled={
+                        addingYoutube ||
+                        youtubeVideos.length >= MAX_YOUTUBE_VIDEOS
+                      }
                       onClick={async () => {
                         if (youtubeVideos.length >= MAX_YOUTUBE_VIDEOS) {
-                          setBlockError(`Você pode adicionar no máximo ${MAX_YOUTUBE_VIDEOS} vídeos.`);
+                          setBlockError(
+                            `Você pode adicionar no máximo ${MAX_YOUTUBE_VIDEOS} vídeos.`,
+                          );
                           return;
                         }
                         const normalized = normalizeYouTubeUrl(youtubeUrlInput);
@@ -8203,16 +9918,32 @@ Retorne SOMENTE JSON válido:
                         }
                         const videoId = getYouTubeVideoId(normalized);
                         if (!videoId) {
-                          setBlockError("Não foi possível identificar o vídeo do YouTube.");
+                          setBlockError(
+                            "Não foi possível identificar o vídeo do YouTube.",
+                          );
                           return;
                         }
                         setBlockError(null);
                         setAddingYoutube(true);
                         const title = await fetchYouTubeTitle(normalized);
                         setYoutubeVideos((current) => {
-                          if (current.some((videoItem) => videoItem.url === normalized)) return current;
-                          if (current.length >= MAX_YOUTUBE_VIDEOS) return current;
-                          return [...current, { id: crypto.randomUUID(), url: normalized, videoId, title }];
+                          if (
+                            current.some(
+                              (videoItem) => videoItem.url === normalized,
+                            )
+                          )
+                            return current;
+                          if (current.length >= MAX_YOUTUBE_VIDEOS)
+                            return current;
+                          return [
+                            ...current,
+                            {
+                              id: crypto.randomUUID(),
+                              url: normalized,
+                              videoId,
+                              title,
+                            },
+                          ];
                         });
                         setYoutubeUrlInput("");
                         setAddingYoutube(false);
@@ -8226,7 +9957,10 @@ Retorne SOMENTE JSON válido:
                   {youtubeVideos.length > 0 ? (
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                       {youtubeVideos.map((videoItem, index) => (
-                        <div key={videoItem.id} className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                        <div
+                          key={videoItem.id}
+                          className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+                        >
                           <div className="relative aspect-video bg-slate-200">
                             <iframe
                               src={`https://www.youtube-nocookie.com/embed/${videoItem.videoId}?rel=0&modestbranding=1`}
@@ -8241,7 +9975,9 @@ Retorne SOMENTE JSON válido:
                             <p className="line-clamp-2 text-sm font-medium text-slate-800">
                               {videoItem.title ?? "Título não disponível"}
                             </p>
-                            <p className="truncate text-xs text-slate-500">{videoItem.url}</p>
+                            <p className="truncate text-xs text-slate-500">
+                              {videoItem.url}
+                            </p>
                             <div className="flex items-center justify-between gap-1">
                               <span className="rounded-md bg-slate-200 px-2 py-0.5 text-xs text-slate-600">
                                 Ordem {index + 1}
@@ -8285,7 +10021,10 @@ Retorne SOMENTE JSON válido:
                                   type="button"
                                   onClick={() =>
                                     setYoutubeVideos((current) =>
-                                      current.filter((currentVideo) => currentVideo.id !== videoItem.id),
+                                      current.filter(
+                                        (currentVideo) =>
+                                          currentVideo.id !== videoItem.id,
+                                      ),
                                     )
                                   }
                                   className="cursor-pointer rounded-md p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
@@ -8300,15 +10039,18 @@ Retorne SOMENTE JSON válido:
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-slate-500">Nenhum vídeo adicionado.</p>
+                    <p className="text-sm text-slate-500">
+                      Nenhum vídeo adicionado.
+                    </p>
                   )}
                 </div>
               ) : null}
 
               {![2, 3, 4, 5, 6, 7, 8, 9].includes(activeBlock) ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                  Este bloco será migrado para CRUD independente na próxima entrega. Nesta versão, foi priorizada a base
-                  dos blocos principais.
+                  Este bloco será migrado para CRUD independente na próxima
+                  entrega. Nesta versão, foi priorizada a base dos blocos
+                  principais.
                 </div>
               ) : null}
             </>
@@ -8321,9 +10063,12 @@ Retorne SOMENTE JSON válido:
           <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h4 className="text-lg text-slate-900">Características do empreendimento</h4>
+                <h4 className="text-lg text-slate-900">
+                  Características do empreendimento
+                </h4>
                 <p className="text-sm text-slate-600">
-                  {empreendimentoAssociadoNome} • {empreendimentoCaracteristicasAssociadas.length}{" "}
+                  {empreendimentoAssociadoNome} •{" "}
+                  {empreendimentoCaracteristicasAssociadas.length}{" "}
                   {empreendimentoCaracteristicasAssociadas.length === 1
                     ? "característica"
                     : "características"}
@@ -8356,7 +10101,9 @@ Retorne SOMENTE JSON válido:
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">Nenhuma característica cadastrada no empreendimento.</p>
+              <p className="text-sm text-slate-500">
+                Nenhuma característica cadastrada no empreendimento.
+              </p>
             )}
           </div>
         </div>
@@ -8377,11 +10124,20 @@ Retorne SOMENTE JSON válido:
               </button>
             </div>
             {(() => {
-              const current = midiasImovel.find((mediaItem) => mediaItem.id === editingMidiaImovelId);
-              if (!current) return <p className="text-sm text-slate-500">Imagem não encontrada.</p>;
+              const current = midiasImovel.find(
+                (mediaItem) => mediaItem.id === editingMidiaImovelId,
+              );
+              if (!current)
+                return (
+                  <p className="text-sm text-slate-500">
+                    Imagem não encontrada.
+                  </p>
+                );
               return (
                 <div className="space-y-3">
-                  <p className="truncate text-sm text-slate-700">{current.fileName}</p>
+                  <p className="truncate text-sm text-slate-700">
+                    {current.fileName}
+                  </p>
                   <label className="block">
                     <span className="mb-1 inline-flex items-center gap-1 text-xs text-slate-600">
                       Legenda
@@ -8392,7 +10148,9 @@ Retorne SOMENTE JSON válido:
                       onChange={(event) =>
                         setMidiasImovel((mediaItems) =>
                           mediaItems.map((mediaItem) =>
-                            mediaItem.id === current.id ? { ...mediaItem, legenda: event.target.value } : mediaItem,
+                            mediaItem.id === current.id
+                              ? { ...mediaItem, legenda: event.target.value }
+                              : mediaItem,
                           ),
                         )
                       }
@@ -8411,7 +10169,10 @@ Retorne SOMENTE JSON válido:
                         setMidiasImovel((mediaItems) =>
                           mediaItems.map((mediaItem) =>
                             mediaItem.id === current.id
-                              ? { ...mediaItem, caracteristica: event.target.value }
+                              ? {
+                                  ...mediaItem,
+                                  caracteristica: event.target.value,
+                                }
                               : mediaItem,
                           ),
                         )
@@ -8419,14 +10180,21 @@ Retorne SOMENTE JSON válido:
                       className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                     >
                       <option value="">Selecionar característica</option>
-                      {caracteristicasSelecionadasOptions.map((caracteristica) => (
-                        <option key={caracteristica.id} value={caracteristica.chave}>
-                          {caracteristica.label_pt}
-                        </option>
-                      ))}
+                      {caracteristicasSelecionadasOptions.map(
+                        (caracteristica) => (
+                          <option
+                            key={caracteristica.id}
+                            value={caracteristica.chave}
+                          >
+                            {caracteristica.label_pt}
+                          </option>
+                        ),
+                      )}
                     </select>
                     {loadingCaracteristicasCatalogo ? (
-                      <p className="mt-1 text-xs text-slate-500">Atualizando características...</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Atualizando características...
+                      </p>
                     ) : null}
                   </label>
                   <label className="block">
@@ -8439,7 +10207,9 @@ Retorne SOMENTE JSON válido:
                       onChange={(event) =>
                         setMidiasImovel((mediaItems) =>
                           mediaItems.map((mediaItem) =>
-                            mediaItem.id === current.id ? { ...mediaItem, alt: event.target.value } : mediaItem,
+                            mediaItem.id === current.id
+                              ? { ...mediaItem, alt: event.target.value }
+                              : mediaItem,
                           ),
                         )
                       }
@@ -8458,9 +10228,12 @@ Retorne SOMENTE JSON válido:
       {showLocationEditConfirmModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4">
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
-            <h3 className="text-xl font-semibold text-slate-900">Editar localização do imóvel</h3>
+            <h3 className="text-xl font-semibold text-slate-900">
+              Editar localização do imóvel
+            </h3>
             <p className="mt-2 text-sm text-slate-600">
-              Ao alterar o endereço, a URL pública do imóvel poderá ser atualizada para refletir a nova localização.
+              Ao alterar o endereço, a URL pública do imóvel poderá ser
+              atualizada para refletir a nova localização.
             </p>
             <p className="mt-2 text-sm text-slate-600">
               Confirma o desbloqueio da edição de endereço?
@@ -8493,10 +10266,14 @@ Retorne SOMENTE JSON válido:
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-xl font-semibold text-slate-900">Excluir imóvel</h3>
+                <h3 className="text-xl font-semibold text-slate-900">
+                  Excluir imóvel
+                </h3>
                 <p className="mt-1 text-sm text-slate-600">
-                  O imóvel será removido imediatamente da sua base e dos registros públicos. A limpeza de mídias,
-                  vínculos e arquivos restantes será processada em segundo plano. Esta ação não pode ser desfeita.
+                  O imóvel será removido imediatamente da sua base e dos
+                  registros públicos. A limpeza de mídias, vínculos e arquivos
+                  restantes será processada em segundo plano. Esta ação não pode
+                  ser desfeita.
                 </p>
               </div>
               <button
@@ -8517,7 +10294,9 @@ Retorne SOMENTE JSON válido:
               </span>
               <input
                 value={deleteImovelConfirmText}
-                onChange={(event) => setDeleteImovelConfirmText(event.target.value)}
+                onChange={(event) =>
+                  setDeleteImovelConfirmText(event.target.value)
+                }
                 placeholder="excluir"
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
               />
@@ -8536,7 +10315,10 @@ Retorne SOMENTE JSON válido:
               </button>
               <button
                 type="button"
-                disabled={savingStatus || deleteImovelConfirmText.trim().toLowerCase() !== "excluir"}
+                disabled={
+                  savingStatus ||
+                  deleteImovelConfirmText.trim().toLowerCase() !== "excluir"
+                }
                 onClick={() => {
                   setDeleteImovelConfirmText("");
                   setShowDeleteImovelModal(false);
@@ -8608,19 +10390,25 @@ Retorne SOMENTE JSON válido:
         </div>
       ) : null}
 
-      <div className={`sticky bottom-4 z-40 mt-8 ${hasPendingChanges && saveNudgeActive ? "wobble-hor-bottom" : ""}`}>
+      <div
+        className={`sticky bottom-4 z-40 mt-8 ${hasPendingChanges && saveNudgeActive ? "wobble-hor-bottom" : ""}`}
+      >
         <div className="flex items-center justify-between gap-3 rounded-full border border-slate-200 bg-white/95 px-5 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur">
           <p
             className={`text-sm font-medium ${
               hasPendingChanges ? "text-amber-700" : "text-slate-500"
             }`}
           >
-            {hasPendingChanges ? "Alterações pendentes para salvar." : "Sem alterações pendentes."}
+            {hasPendingChanges
+              ? "Alterações pendentes para salvar."
+              : "Sem alterações pendentes."}
           </p>
           <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled={Boolean(savingBlock) || savingStatus || !hasPendingChanges}
+              disabled={
+                Boolean(savingBlock) || savingStatus || !hasPendingChanges
+              }
               onClick={handleDiscardChanges}
               className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
             >
@@ -8628,7 +10416,9 @@ Retorne SOMENTE JSON válido:
             </button>
             <button
               type="button"
-              disabled={Boolean(savingBlock) || savingStatus || !hasPendingChanges}
+              disabled={
+                Boolean(savingBlock) || savingStatus || !hasPendingChanges
+              }
               onClick={() => void handleSaveFromFooter(false)}
               className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
             >
@@ -8636,7 +10426,9 @@ Retorne SOMENTE JSON válido:
             </button>
             <button
               type="button"
-              disabled={Boolean(savingBlock) || savingStatus || !hasPendingChanges}
+              disabled={
+                Boolean(savingBlock) || savingStatus || !hasPendingChanges
+              }
               onClick={() => void handleSaveFromFooter(true)}
               className="rounded-full bg-[var(--primary-scarlet)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >

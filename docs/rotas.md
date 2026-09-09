@@ -7,6 +7,7 @@
 ## 1) Portal Público (corretor.one)
 
 ### Principais
+
 - **/** — Página inicial (valor do produto, CTAs, corretores em destaque, imóveis em destaque, depoimentos)
 - **/imoveis/** — Listagem de imóveis de todos os corretores
 - **/corretores/** — Listagem de corretores
@@ -15,6 +16,7 @@
 - **/artigos/[slug]/** — Artigo (item)
 
 ### Usuário do Portal (público + logado)
+
 - **/entrar/** — Login do portal
 - **/criar-conta/** — Cadastro do portal
 - **/conta/** — Meu perfil
@@ -26,10 +28,12 @@
   - **Por corretor**: preferências específicas por corretor
 
 ### Institucionais
+
 - **/termos** — Termos de uso
 - **/privacidade** — Política de privacidade
 
 ### Imobiliárias (futuro — fora do portal)
+
 - O domínio **corretor.one** permanece **exclusivo para corretores**.
 - Imobiliárias podem ter **portais próprios** (fora do corretor.one), sem rotas públicas no portal.
 
@@ -44,19 +48,23 @@
 - **/[nickname]/logo-white.png** — Logo público do corretor (white para marca d’água)
 
 ### Empreendimentos
+
 - **/[nickname]/empreendimentos/** — Listagem de empreendimentos
 - **/[nickname]/[slugEmpreendimento]/** — Página do empreendimento
 
 ### Captação
+
 - **/[nickname]/anuncie/** — Página de captação (captar imóveis)
 
 ### Imóveis (público)
+
 - **/[nickname]/imoveis/** — Estoque / listagem de imóveis do corretor
-- **/[nickname]/imoveis/[slugBusca]/** — Landing SEO de busca canônica do corretor *(ex.: venda-apartamento-sao-paulo-santana-3-dormitorios; refinamentos como preço, condomínio e IPTU ficam em query string com canonical para a base)*
+- **/[nickname]/imoveis/[slugBusca]/** — Landing SEO de busca canônica do corretor _(ex.: venda-apartamento-sao-paulo-santana-3-dormitorios; refinamentos como preço, condomínio e IPTU ficam em query string com canonical para a base)_
 - **/[nickname]/venda/[slugImovel]/** — Imóvel à venda
 - **/[nickname]/aluguel/[slugImovel]/** — Imóvel para locação
 
 ### Landing Pages e Conteúdo
+
 - **/[nickname]/[slug]/** — Resolvedor público compartilhado: empreendimento ou página de captura publicada
 - **/[nickname]/artigos/** — Artigos do corretor (listagem paginada em blocos de 30 via `?pagina=N`)
 - **/[nickname]/artigos/[slug]/** — Artigo do corretor (item)
@@ -66,29 +74,34 @@
 ## 3) App (Autenticado — app.corretor.one)
 
 ### Core
+
 - **/entrar** — Login
 - **/criar-conta** — Cadastro
 - **/recuperar-senha** — Recuperar senha
 - **/onboarding** — Wizard inicial
 - **/** — Home (resumo)
-- **/perfil** — Meu perfil *(dados públicos, bio, números de autoridade, contatos, CRECI, redes sociais e provas sociais)*
+- **/perfil** — Meu perfil _(dados públicos, bio, números de autoridade, contatos, CRECI, redes sociais e provas sociais)_
 - **/configuracoes** — Configurações
 - **/assinatura** — Plano e cobrança
 
 ### App — Imóveis
+
 - **/imoveis** — Lista
 - **/imoveis/novo** — Criar
 - **/imoveis/[id]** — **Edição + Preview** (tela de edição + bloco de resumo + botão p/ página pública)
 
 ### App — Empreendimentos
+
 - **/empreendimentos** — Lista
 - **/empreendimentos/novo** — Criar
 - **/empreendimentos/[id]** — **Edição + Preview**
 
 ### App — Mídia
+
 - **/midia** — Biblioteca
 
 ### App — CRM (Negócios)
+
 - **/negocios** — Leads (lista + busca + filtros + ações)
 - **/negocios/funil** — Pipeline (Kanban)
 - **/negocios/[id]** — Oportunidade (abas: negociação, jurídico, atividades, timeline; com cards de partes e propostas dentro de negociação)
@@ -98,49 +111,60 @@
 - **/negocios/calendario** — Calendário
 
 ### App — Leads (opcional / alias)
+
 - **/leads** — Lista (pode ser alias de /negocios)
 - **/leads/novo** — Criar manual
 - **/leads/[id]** — Detalhe
 
 ### App — Listas/Seleções
+
 - **/listas** — Lista
 - **/listas/nova** — Criar
 - **/listas/[id]** — Detalhe
 - **/listas/[id]/editar** — Editar
 
 ### App — Marketing
+
 #### Criativos
+
+- **/criativos** — Central de Criativos; aceita `?imovel=[id]` para iniciar o fluxo com um imóvel publicado pré-selecionado
 - **/templates** — Biblioteca de templates disponíveis
 - **/posts** — Histórico de criativos gerados
 - **/posts/[id]** — Preview, download e compartilhamento
 
 #### Páginas de Captura
+
 - **/paginas-captura** — Listagem e métricas essenciais
 - **/paginas-captura/nova** — Criação a partir de um tipo/preset
 - **/paginas-captura/[id]** — Editor por blocos, SEO, publicação e preview
 
 #### Email Marketing
+
 - **/campanhas/email** — Lista de campanhas
 - **/campanhas/email/nova** — Criar campanha (fluxo guiado)
 - **/campanhas/email/[id]** — Detalhe + métricas
 
 #### WhatsApp (disparo em massa)
+
 - **/campanhas/whatsapp** — Lista de disparos
 - **/campanhas/whatsapp/nova** — Criar disparo
 - **/campanhas/whatsapp/[id]** — Status + métricas
 
 #### Público / Audiência
+
 - **/audiencia/seguidores** — Seguidores captados
 - **/audiencia/listas** — Listas segmentadas
 - **/audiencia/listas/[id]** — Gerenciar contatos da lista
 
 #### Relatórios
+
 - **/relatorios** — Central de relatórios de Marketing
   - **Tráfego (MVP):** visitantes, sessões, visualizações, conversões, first touch, last non-direct, assistências, canais, campanhas e recursos públicos
   - **E-mail (futuro):** entregas, aberturas, cliques e conversões
   - **WhatsApp (futuro):** disparos, entregas, respostas e conversões
 
 #### Ayka
+
 - **/ayka** — Saldo, consumo e histórico
 - **/ayka/comprar** — Comprar créditos avulsos
 - **/ayka/gamificacao** — Recompensas (futuro)
@@ -152,42 +176,52 @@
 - **admin.corretor.one/** — Dashboard
 
 ### Papéis
+
 - **ADM** — gestão de corretores, planos, financeiro, suporte, visão global
 - **MARKETING** — artigos do portal, landing pages institucionais, templates
 
 ### Admin — Corretores
+
 - **/corretores**
 - **/corretores/[id]**
 
 ### Admin — Imóveis
+
 - **/imoveis**
 - **/imoveis/[id]**
 
 ### Admin — Templates
+
 - **/templates**
 - **/templates/novo**
 - **/templates/[id]**
 
 ### Admin — Conteúdo Portal
+
 - **/artigos** — Listagem paginada; 20 itens por padrão, com opções de 20, 30, 40, 50 ou 100
 - **/artigos/novo**
 - **/artigos/[id]**
 - **/lps**
 
 ### Admin — Leads (auditoria)
+
 - **/leads**
 
 ### Admin — Planos & Assinaturas
+
 - **/planos**
 - **/assinaturas**
 
 ### Admin — Suporte
+
 - **/suporte**
 
 ### Admin — Logs / Auditoria
+
 - **/auditoria**
 
 ### Admin — Ayka
+
 - **/ayka/custos**
 - **/ayka/catalogo**
 - **/ayka/recompensas**
