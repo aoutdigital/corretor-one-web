@@ -127,7 +127,8 @@
 
 #### Criativos
 
-- **/criativos** — Central de Criativos; aceita `?imovel=[id]` para iniciar o fluxo com um imóvel publicado pré-selecionado
+- **/criativos** — Central de Criativos em `Objetivo > Modelo > Criativo`; aceita `?imovel=[id]`, `?etapa=[objetivo|template|editor]` e `?rascunho=[id]`
+- **/api/criativos/drafts** — cria, atualiza, lista e recupera rascunhos privados da Central de Criativos
 - **/templates** — Biblioteca de templates disponíveis
 - **/posts** — Histórico de criativos gerados
 - **/posts/[id]** — Preview, download e compartilhamento

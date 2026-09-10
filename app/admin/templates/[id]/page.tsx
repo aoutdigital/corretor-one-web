@@ -6,6 +6,9 @@ import { AdminShell } from "@/app/admin/_components/admin-shell";
 import { apiFetchWithAuth } from "@/lib/client/auth-api";
 import {
   buildPropertyEssentialHtml,
+  buildPropertyDualHtml,
+  buildPropertyEditorialHtml,
+  buildPropertyJourneyHtml,
   CREATIVE_DIMENSIONS,
   type CreativeFormat,
   type CreativeFormatConfig,
@@ -18,6 +21,7 @@ type Detail = {
   id: string;
   nome: string;
   version: number;
+  renderer_key: string;
   draft_config: CreativeTemplateConfig;
   config: CreativeTemplateConfig;
 };
@@ -251,15 +255,23 @@ export default function TemplateEditor() {
               />
             </div>
           </details>
-          {textElements.map(([key, label]) => (
-            <TypographyPanel
-              key={key}
-              label={label}
-              styleKey={key}
-              value={current.typography[key]}
-              onChange={(values) => updateText(key, values)}
-            />
-          ))}
+          {textElements
+            .concat(
+              ["property-dual-02", "property-editorial-03"].includes(
+                data.renderer_key,
+              )
+                ? [["highlight", "Tag de destaque"]]
+                : [],
+            )
+            .map(([key, label]) => (
+              <TypographyPanel
+                key={key}
+                label={label}
+                styleKey={key}
+                value={current.typography[key]}
+                onChange={(values) => updateText(key, values)}
+              />
+            ))}
           <details className="rounded-2xl bg-white p-5 shadow-sm">
             <summary className="cursor-pointer font-bold">Aparência</summary>
             <div className="mt-5 space-y-4">
@@ -304,7 +316,11 @@ export default function TemplateEditor() {
         </section>
         <section className="rounded-2xl bg-white p-5 shadow-sm xl:sticky xl:top-5 xl:self-start">
           <h2 className="mb-4 font-bold">Preview exato</h2>
-          <TemplatePreview format={format} config={data.draft_config} />
+          <TemplatePreview
+            format={format}
+            config={data.draft_config}
+            rendererKey={data.renderer_key}
+          />
         </section>
       </div>
     </AdminShell>
@@ -554,9 +570,11 @@ function Color({
 function TemplatePreview({
   format,
   config,
+  rendererKey,
 }: {
   format: CreativeFormat;
   config: CreativeTemplateConfig;
+  rendererKey: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -580,6 +598,13 @@ function TemplatePreview({
       price: "R$ 2.480.000",
       code: "ONE-1001-0001",
       imageUrl: `${origin}/images/corretor-one-criar-conta.jpeg`,
+      secondaryImageUrl: `${origin}/images/corretor-one-criar-conta.jpeg`,
+      carouselImages: Array.from(
+        { length: 4 },
+        () => `${origin}/images/corretor-one-criar-conta.jpeg`,
+      ),
+      features: ["Varanda integrada", "Lazer completo", "Planta inteligente"],
+      highlight: "Exclusividade",
       stats: [
         { kind: "AREA", value: "168", label: "m² úteis" },
         { kind: "BED", value: "3", label: "Dormitórios" },
@@ -602,6 +627,7 @@ function TemplatePreview({
       titleMode: "FULL",
     },
     format,
+    colorTheme: "PETROL",
     templateConfig: config,
   };
   return (
@@ -612,7 +638,15 @@ function TemplatePreview({
     >
       <iframe
         title="Preview do template"
-        srcDoc={buildPropertyEssentialHtml(payload)}
+        srcDoc={
+          rendererKey === "property-dual-02"
+            ? buildPropertyDualHtml(payload)
+            : rendererKey === "property-editorial-03"
+              ? buildPropertyEditorialHtml(payload)
+              : rendererKey === "property-journey-carousel-01"
+                ? buildPropertyJourneyHtml(payload)
+                : buildPropertyEssentialHtml(payload)
+        }
         className="pointer-events-none absolute left-0 top-0 border-0"
         style={{
           width: dimensions.width,

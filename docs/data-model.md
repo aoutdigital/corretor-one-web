@@ -7,12 +7,13 @@
 ## 0) Referências & Geo
 
 ### referencia_localidades (cache IBGE — UF/Cidades)
+
 - id (uuid, PK)
-- tipo (text, enum REF_LOCALIDADE_TIPO) *(UF | CIDADE)*
+- tipo (text, enum REF_LOCALIDADE_TIPO) _(UF | CIDADE)_
 - codigo_ibge (int, unique)
 - uf (text, enum UF, nullable)
 - nome (text)
-- preposicao_em (text, enum PREPOSICAO_EM) *(em | no | na, default em)*
+- preposicao_em (text, enum PREPOSICAO_EM) _(em | no | na, default em)_
 - payload (jsonb)
 - updated_at (timestamptz)
 
@@ -21,10 +22,11 @@
 ---
 
 ### referencia_bairros (catálogo de bairros para preposição)
+
 - id (uuid, PK)
 - bairro (text)
 - bairro_normalizado (text, unique)
-- preposicao_em (text, enum PREPOSICAO_EM) *(em | no | na, default em)*
+- preposicao_em (text, enum PREPOSICAO_EM) _(em | no | na, default em)_
 - ativo (boolean, default true)
 - created_at (timestamptz)
 - updated_at (timestamptz)
@@ -34,11 +36,13 @@
 ---
 
 ### geolocacoes (Google Maps — endereço normalizado)
+
 - id (uuid, PK)
 - place_id (text, unique)
 - address_json (jsonb)
 
 Campos normalizados:
+
 - logradouro (text)
 - numero (text)
 - bairro (text)
@@ -49,6 +53,7 @@ Campos normalizados:
 - lng (numeric)
 
 Display:
+
 - endereco_formatado (text)
 
 - created_at (timestamptz)
@@ -61,9 +66,11 @@ Display:
 ## 1) Auth & Equipe
 
 ### auth.users (Supabase)
+
 - padrão Supabase
 
 ### admin_users (interno — equipe Corretor.one)
+
 - id (uuid, PK = auth.users.id)
 - nome (text)
 - email (text, unique)
@@ -76,6 +83,7 @@ Display:
 - updated_at (timestamptz)
 
 Regras:
+
 - apenas registros `ATIVO` podem acessar o Admin;
 - apenas `ADM` pode criar, alterar papel ou suspender usuários internos;
 - um usuário não pode suspender ou rebaixar a própria conta;
@@ -84,6 +92,7 @@ Regras:
 ---
 
 ### admin_audit_logs (auditoria interna imutável)
+
 - id (uuid, PK)
 - admin_user_id (uuid, FK admin_users.id)
 - acao (text)
@@ -101,12 +110,13 @@ Regra: registros não podem ser alterados ou removidos pela aplicação.
 ---
 
 ### verificacoes_contato (OTP — email/whatsapp)
+
 - id (uuid, PK)
-- user_tipo (text, enum USER_TIPO) *(PORTAL | CORRETOR)*
-- user_id (uuid) *(FK portal_users.id ou profiles.id conforme user_tipo)*
-- canal (text, enum CANAL_CONTATO) *(EMAIL | WHATSAPP)*
-- destino (text) *(email ou telefone_e164)*
-- codigo_hash (text) *(hash do código)*
+- user_tipo (text, enum USER_TIPO) _(PORTAL | CORRETOR)_
+- user_id (uuid) _(FK portal_users.id ou profiles.id conforme user_tipo)_
+- canal (text, enum CANAL_CONTATO) _(EMAIL | WHATSAPP)_
+- destino (text) _(email ou telefone_e164)_
+- codigo_hash (text) _(hash do código)_
 - expira_em (timestamptz)
 - tentativas (int, default 0)
 - status (text, enum STATUS_VERIFICACAO)
@@ -119,6 +129,7 @@ Regra: registros não podem ser alterados ou removidos pela aplicação.
 ## 2) Portal (Usuários finais)
 
 ### portal_users
+
 - id (uuid, PK = auth.users.id)
 - nome (text)
 - sobrenome (text)
@@ -129,10 +140,12 @@ Regra: registros não podem ser alterados ou removidos pela aplicação.
 - status (text, enum STATUS_PORTAL_USER, default ATIVO)
 
 Preferências/consentimentos:
+
 - canais (text[], enum CANAL_CONTATO)
 - aceite_marketing_em (timestamptz, nullable)
 
 Verificações:
+
 - email_verificado_em (timestamptz, nullable)
 - whatsapp_verificado_em (timestamptz, nullable)
 
@@ -144,6 +157,7 @@ Regra: portal_user **não pode** ser corretor (mutuamente exclusivo com profiles
 ---
 
 ### user_favoritos
+
 - id (uuid, PK)
 - user_id (uuid, FK portal_users.id)
 - imovel_id (uuid, FK imoveis.id)
@@ -152,41 +166,48 @@ Regra: portal_user **não pode** ser corretor (mutuamente exclusivo com profiles
 ---
 
 ### user_follows
+
 - id (uuid, PK)
 - user_id (uuid, FK portal_users.id)
 - corretor_id (uuid, FK profiles.id)
 - created_at (timestamptz)
 
 Constraints:
+
 - unique(user_id, corretor_id)
 
 Índices:
+
 - user_id (minha lista)
 - corretor_id (contagem)
 
 ---
 
 ### user_briefings
+
 - id (uuid, PK)
 - user_id (uuid, FK portal_users.id)
-- escopo (text, enum ESCOPO_BRIEFING) *(GERAL | CORRETOR)*
+- escopo (text, enum ESCOPO_BRIEFING) _(GERAL | CORRETOR)_
 - corretor_id (uuid, FK profiles.id, nullable)
 
 Bloco 1 — Objetivo e Negócio
+
 - objetivolead (text[], enum OBJETIVO_LEAD, nullable)
 - tipouso (text, enum TIPO_USO, nullable)
 - tipoimovel (text[], enum TIPO_IMOVEL_PORTAL, nullable)
 - categoriaimovel (text[], enum CATEGORIA_IMOVEL, nullable)
-- subcategoriaimovel (text[], nullable) *(tokens da UI de tipologia: ex. PADRAO, GARDEN, SOBRADO)*
+- subcategoriaimovel (text[], nullable) _(tokens da UI de tipologia: ex. PADRAO, GARDEN, SOBRADO)_
 - construcao (text[], enum TIPO_CONSTRUCAO, nullable)
-- tiponegociacao (text[], enum TIPO_NEGOCIACAO, nullable) *(derivado para match/compatibilidade)*
+- tiponegociacao (text[], enum TIPO_NEGOCIACAO, nullable) _(derivado para match/compatibilidade)_
 - intencao_compra (text, enum INTENCAO_COMPRA, nullable)
 
 Bloco 2 — Valores
+
 - valor_min (numeric, nullable)
 - valor_max (numeric, nullable)
 
 Bloco 3 — Residencial
+
 - area_util_min (numeric, nullable)
 - area_util_max (numeric, nullable)
 - quartos_min (int, nullable)
@@ -195,12 +216,14 @@ Bloco 3 — Residencial
 - caracteristicas_residenciais (text[], enum CARACTERISTICA_IMOVEL, nullable)
 
 Bloco 4 — Comercial
+
 - area_util_min_comercial (numeric, nullable)
 - area_util_max_comercial (numeric, nullable)
 - vagas_min_comercial (int, nullable)
 - caracteristicas_comerciais (text[], enum CARACTERISTICA_COMERCIAL, nullable)
 
 Localização
+
 - geolocacao_id (uuid, FK geolocacoes.id, nullable)
 - localizacao_texto (text, nullable)
 - lat (numeric, nullable)
@@ -208,18 +231,22 @@ Localização
 - raio_km (numeric, nullable)
 
 Complemento
+
 - texto_livre (text, nullable)
 
 Conteúdo e canal
+
 - conteudos (text[], enum TIPO_CONTEUDO, nullable)
 - canais (text[], enum CANAL_CONTATO, nullable)
 
 Controle
+
 - ativo (bool, default true)
 - created_at (timestamptz)
 - updated_at (timestamptz)
 
 Regras:
+
 - check: (escopo='GERAL' AND corretor_id IS NULL) OR (escopo='CORRETOR' AND corretor_id IS NOT NULL)
 - unique(user_id, escopo) quando escopo=GERAL
 - unique(user_id, corretor_id) quando escopo=CORRETOR
@@ -229,10 +256,12 @@ Regras:
 ## 3) Corretores (Profiles)
 
 ### profiles
+
 - id (uuid, PK = auth.users.id)
-- corretor_one_registro (int, unique, not null, default sequence iniciando em 1001) *(registro numérico interno Corretor.one usado para compor código de imóvel)*
+- corretor_one_registro (int, unique, not null, default sequence iniciando em 1001) _(registro numérico interno Corretor.one usado para compor código de imóvel)_
 
 Identidade
+
 - primeiro_nome (text)
 - sobrenome (text)
 - genero (text, enum GENERO, nullable)
@@ -241,57 +270,68 @@ Identidade
 - whatsapp (text, nullable)
 
 Verificações
+
 - email_verificado_em (timestamptz, nullable)
 - whatsapp_verificado_em (timestamptz, nullable)
 
 Perfil público
-- nickname (text, unique) *(slug /[nickname], imutável, max 35, ^[a-z0-9]{1,35}$, sem . e _, sem acentos; bloqueio substrings: corret, imob, imov, aparta, casa)*
+
+- nickname (text, unique) _(slug /[nickname], imutável, max 35, ^[a-z0-9]{1,35}$, sem . e \_, sem acentos; bloqueio substrings: corret, imob, imov, aparta, casa)_
 - avatar_url (text, nullable)
 - imagem_capa_url (text, nullable)
-- logo_nickname_url (text, nullable) *(logo público do corretor com nickname, versão padrão)*
-- logo_nickname_white_url (text, nullable) *(logo público do corretor com nickname, versão branca para marca d'água)*
-- frase_impacto (text, nullable) *(máx. 90 caracteres; frase curta exibida como headline da seção Sobre no perfil público)*
-- bio (text, nullable) *(rich text sanitizado; limite editorial de 650 caracteres em texto legível)*
+- logo_nickname_url (text, nullable) _(logo público do corretor com nickname, versão padrão)_
+- logo_nickname_white_url (text, nullable) _(logo público do corretor com nickname, versão branca para marca d'água)_
+- frase_impacto (text, nullable) _(máx. 90 caracteres; frase curta exibida como headline da seção Sobre no perfil público)_
+- bio (text, nullable) _(rich text sanitizado; limite editorial de 650 caracteres em texto legível)_
 
 Atuação
+
 - uf (text, enum UF)
 - cidades_foco (text[], nullable)
 
 CRECI (PF)
+
 - creci_uf (text, enum UF)
-- creci_numero (text) *(1–6 dígitos)*
+- creci_numero (text) _(1–6 dígitos)_
 - creci_sufixo (text, default 'F')
 - creci_documento_midia_id (uuid, FK midia.id, nullable)
 - creci_aprovacao (bool, default false)
 
 Constraints CRECI:
+
 - unique(creci_uf, creci_numero, creci_sufixo)
 - check: creci_numero ^[0-9]{1,6}$
 - check: creci_sufixo='F'
 
 Segmentos/Portfólio
+
 - imoveis_residenciais (bool, default true)
 - imoveis_comerciais (bool, default false)
 - imoveis_industriais (bool, default false)
 
 Posicionamento
+
 - imoveis_alto_padrao (bool, default false)
 - imoveis_luxo (bool, default false)
 - imoveis_medio_padrao (bool, default false)
 - imoveis_baixa_renda (bool, default false)
 
 Redes sociais
+
 - instagram, linkedin, pinterest, tiktok, twitter, youtube (text, nullable)
 
 Plano/assinatura
+
 - plano_id (uuid, FK planos.id)
 - status (text, enum STATUS_USUARIO, default PENDENTE)
 
 Multi-tenant (futuro)
+
 - imobiliaria_id (uuid, FK imobiliarias.id, nullable)
 - papel_imobiliaria (text, enum PAPEL_IMOBILIARIA, nullable)
 
 Domínio personalizado (futuro)
+
 - dominio_custom (text, unique, nullable)
 - dominio_status (text, enum STATUS_DOMINIO, default NAO_CONFIGURADO)
 
@@ -301,26 +341,30 @@ Domínio personalizado (futuro)
 ---
 
 ### provas_sociais
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - midia_id (uuid, FK midia.id, nullable)
 
 Conteúdo:
+
 - tipo (text, enum PROVA_SOCIAL_TIPO)
 - titulo (text)
 - descricao (text, nullable)
 - depoimento (text, nullable)
-- cliente_nome_publico (text, nullable) *(nome curto, iniciais ou família; não exigir nome completo)*
+- cliente_nome_publico (text, nullable) _(nome curto, iniciais ou família; não exigir nome completo)_
 - localidade (text, nullable)
 - data_momento (date, nullable)
-- tags (text[], nullable) *(ex: Venda, Locação, Escritura)*
+- tags (text[], nullable) _(ex: Venda, Locação, Escritura)_
 
 Imagem pública:
+
 - imagem_url (text, nullable)
 - imagem_alt (text, nullable)
 - consentimento_imagem_confirmado (bool, default false)
 
 Publicação:
+
 - status (text, enum STATUS_PROVA_SOCIAL, default RASCUNHO)
 - ordem (int, default 0)
 - destaque (bool, default false)
@@ -332,6 +376,7 @@ Publicação:
 Índices: (owner_id, status, ordem), (owner_id, destaque), (publicado_em desc)
 
 Regras:
+
 - RLS por owner para CRUD no app.
 - Leitura pública apenas quando `status = PUBLICADO` e o `profiles.status = ATIVO`.
 - Se houver `imagem_url`, exigir `consentimento_imagem_confirmado = true` para publicar.
@@ -340,20 +385,23 @@ Regras:
 ---
 
 ### profile_authority_numbers
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 
 Conteúdo:
+
 - tipo (text, enum PROFILE_AUTHORITY_NUMBER_TYPE)
   - VGV_NEGOCIADO
   - IMOVEIS_VENDIDOS_ALUGADOS
   - CLIENTES_ATENDIDOS
   - ANOS_CARREIRA
-- valor (text) *(ex.: R$ 150M, 120, 18; o sinal `+` é aplicado pela UI pública quando exibido)*
-- rotulo (text) *(label pública fixa por tipo: Em VGV negociado, Imóveis comercializados, Clientes atendidos, Anos de carreira)*
-- descricao (text, nullable) *(reservado para uso futuro; não aparece no cadastro V1)*
+- valor (text) _(ex.: R$ 150M, 120, 18; o sinal `+` é aplicado pela UI pública quando exibido)_
+- rotulo (text) _(label pública fixa por tipo: Em VGV negociado, Imóveis comercializados, Clientes atendidos, Anos de carreira)_
+- descricao (text, nullable) _(reservado para uso futuro; não aparece no cadastro V1)_
 
 Publicação:
+
 - ordem (int, default 0)
 - visivel (bool, default true)
 
@@ -363,6 +411,7 @@ Publicação:
 Índices: (owner_id, ordem), (owner_id, visivel, ordem)
 
 Constraints:
+
 - unique(owner_id, tipo)
 - check: `valor` entre 1 e 24 caracteres
 - check: `rotulo` entre 1 e 80 caracteres
@@ -370,6 +419,7 @@ Constraints:
 - check: `ordem >= 0`
 
 Regras:
+
 - RLS por owner para CRUD no app.
 - Leitura pública apenas quando `visivel = true` e o `profiles.status = ATIVO`.
 - O produto permite os quatro tipos acima, mas a seção pública exibe no máximo 3 números para manter leitura editorial.
@@ -380,6 +430,7 @@ Regras:
 ## 4) Imóveis & Empreendimentos
 
 ### imoveis
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - imobiliaria_id (uuid, FK imobiliarias.id, nullable)
@@ -388,22 +439,25 @@ Regras:
 - empreendimento_tipologia_label (text, nullable)
 
 Identificação
-- codigo (text, nullable em rascunho) *(unique por owner_id quando preenchido; gerado automaticamente na publicação no padrão `ONE-<registro_corretor>-<sequencia_imovel>` ex.: `ONE-1001-0001`)*
-- slug_publico (text, nullable em rascunho) *(unique por owner_id quando preenchido; gerado automaticamente na publicação e recalculado quando campos de URL mudam no imóvel publicado)*
+
+- codigo (text, nullable em rascunho) _(unique por owner_id quando preenchido; gerado automaticamente na publicação no padrão `ONE-<registro_corretor>-<sequencia_imovel>` ex.: `ONE-1001-0001`)_
+- slug_publico (text, nullable em rascunho) _(unique por owner_id quando preenchido; gerado automaticamente na publicação e recalculado quando campos de URL mudam no imóvel publicado)_
 - titulo (text)
 - descricao (text)
 - descricao_curta (text, nullable)
 
 Classificação
+
 - finalidade (text, enum FINALIDADE)
 - tipo (text, enum TIPO_IMOVEL)
 - subtipo (text, enum SUBTIPO_IMOVEL, nullable)
 - status (text, enum STATUS_IMOVEL, default RASCUNHO)
-- step_rascunho (int, default 1, check 1..11) *(etapa atual do multistep para retomar rascunho)*
+- step_rascunho (int, default 1, check 1..11) _(etapa atual do multistep para retomar rascunho)_
 - exclusividade (bool, default false)
 - destaque (bool, default false)
 
 Valores
+
 - preco_venda (numeric, nullable)
 - preco_locacao (numeric, nullable)
 - comissao_locacao (text, nullable)
@@ -419,6 +473,7 @@ Valores
 - descricao_permuta (text, nullable)
 
 Parceria, captação e exclusividade
+
 - veio_do_bolsao (bool, default false)
 - captacao_corretor_parceiro (bool, default false)
 - corretor_parceiro_nome, corretor_parceiro_telefone, corretor_parceiro_email (text, nullable)
@@ -446,6 +501,7 @@ Parceria, captação e exclusividade
 - observacoes_gerais (text, nullable)
 
 Dimensões
+
 - area_util, area_total, area_terreno (numeric, nullable)
 - frente_metros, fundos_metros (numeric, nullable)
 - lateral_1_metros, lateral_2_metros (numeric, nullable)
@@ -453,6 +509,7 @@ Dimensões
 - salas, cozinhas (int, nullable)
 
 Detalhes das vagas
+
 - vaga_tamanhos (text[], enum VAGA_TAMANHO, nullable)
 - vaga_coberturas (text[], enum VAGA_COBERTURA, nullable)
 - vaga_tipos (text[], enum VAGA_TIPO, nullable)
@@ -464,28 +521,32 @@ Detalhes das vagas
 - ano_construcao (int, nullable)
 
 Localização (snapshot + FK)
+
 - geolocacao_id (uuid, FK geolocacoes.id)
 - logradouro, numero, bairro, cidade, cep (text)
-- bairro_comercial (text, nullable) *(região comercial de referência)*
+- bairro_comercial (text, nullable) _(região comercial de referência)_
 - estado (text, enum UF)
 - lat, lng (numeric)
 - address_json (jsonb)
 - endereco_complemento (text, nullable)
 - enderecovisualizacao (text, enum ENDERECO_VISUALIZACAO_IMOVEL, default END_SEM_COMPLEMENTO)
-- ocultar_numero_publico (bool, default false) *(legado / compatibilidade)*
-- mostrar_complemento_no_anuncio (bool, default false) *(legado / compatibilidade)*
+- ocultar_numero_publico (bool, default false) _(legado / compatibilidade)_
+- mostrar_complemento_no_anuncio (bool, default false) _(legado / compatibilidade)_
 
 Empreendimento (override)
+
 - usar_midias_empreendimento (bool, default true)
 - usar_caracteristicas_empreendimento (bool, default true)
 
 Características
+
 - caracteristicas (text[], enum CARACTERISTICA_IMOVEL)
 - vista (text, enum TIPO_VISTA, nullable)
 - posicao_solar (text, enum POSICAO_SOLAR, nullable)
 - estado_conservacao (text, enum ESTADO_CONSERVACAO, nullable)
 
 Operacional
+
 - placa_no_local (bool, default false)
 - chaves_na_mao (bool, default false)
 - permite_visita_imediata (bool, default false)
@@ -493,12 +554,14 @@ Operacional
 - integracao_externa_id (text, nullable)
 
 Publicação/SEO
+
 - publicado_em (timestamptz, nullable)
 - meta_title (text, nullable)
 - meta_description (text, nullable)
 - indexar_google (bool, default true)
 
 Controle
+
 - views_count (int, default 0)
 - favoritos_count (int, default 0)
 - created_at (timestamptz)
@@ -509,6 +572,7 @@ Controle
 ---
 
 ### imovel_ambientes
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - imovel_id (uuid, FK imoveis.id)
@@ -521,6 +585,7 @@ Controle
 - updated_at (timestamptz)
 
 Regras:
+
 - unique(imovel_id, tipo_ambiente, ordem)
 - unique parcial por ambiente principal: unique(imovel_id, tipo_ambiente) where principal=true
 - `dados` deve ser objeto json
@@ -529,6 +594,7 @@ Regras:
 ---
 
 ### empreendimentos
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - imobiliaria_id (uuid, FK imobiliarias.id, nullable)
@@ -543,6 +609,7 @@ Regras:
 - tipologias_comerciais (text[], enum TIPOLOGIA_COMERCIAL_EMPREENDIMENTO, default [])
 
 Regra de modelagem (empreendimentos residenciais):
+
 - `tipo_uso = RESIDENCIAL` usa `categoria_residencial` + `tipologias_residenciais` (1..N tipologias)
 - `tipo_uso = COMERCIAL` usa `categoria_comercial` + `tipologias_comerciais` (1..N tipologias)
 - `categoria_residencial`: `APARTAMENTOS` | `CASAS` | `TERRENOS`
@@ -551,37 +618,43 @@ Regra de modelagem (empreendimentos residenciais):
 - `categoria_imovel` em comercial também é preenchido por mapeamento legado para integrações antigas
 
 Localização (snapshot + FK)
+
 - geolocacao_id (uuid, FK geolocacoes.id)
 - logradouro, numero, bairro, cidade (text)
-- bairro_comercial (text, nullable) *(região comercial de referência)*
-- localizacao_contexto (jsonb, default `{}`) *(enriquecimento opcional da localização para texto comercial/IA: perfil da região, mobilidade, comércio/serviços, lazer/estilo de vida e resumo local)*
+- bairro_comercial (text, nullable) _(região comercial de referência)_
+- localizacao_contexto (jsonb, default `{}`) _(enriquecimento opcional da localização para texto comercial/IA: perfil da região, mobilidade, comércio/serviços, lazer/estilo de vida e resumo local)_
 - estado (text, enum UF)
 - cep (text, nullable)
 - lat, lng (numeric)
 - address_json (jsonb, nullable)
 
 Fase
+
 - fase (text, enum FASE_EMPREENDIMENTO, default ENTREGUE)
 - previsao_entrega_em (date, nullable)
 - estagio_obra (text, enum ESTAGIO_OBRA, nullable)
-- obra_percentuais (jsonb, nullable) *(ex.: fundacao/acabamento em percentual)*
+- obra_percentuais (jsonb, nullable) _(ex.: fundacao/acabamento em percentual)_
 
 Infos reutilizáveis
+
 - ano_construcao (int, nullable)
 - n_torres, n_andares, n_unidades (int, nullable)
 - qtd_elevadores, unidades_por_andar, unidades_terreo, unidades_cobertura (int, nullable)
 - construtora, incorporadora, administradora (text, nullable)
-- tipos_cadastro (jsonb, default []) *(legado/compatibilidade; fonte principal passou a ser tabela relacional `empreendimento_tipos`)*
+- tipos_cadastro (jsonb, default []) _(legado/compatibilidade; fonte principal passou a ser tabela relacional `empreendimento_tipos`)_
 
 Regra de aplicabilidade (estrutura vertical):
+
 - `qtd_elevadores`, `unidades_por_andar`, `unidades_terreo`, `unidades_cobertura` só podem ser preenchidos em:
   - `tipo_uso = RESIDENCIAL` com `categoria_residencial = APARTAMENTOS`
   - `tipo_uso = COMERCIAL` com `categoria_comercial = ESCRITORIO_CONJUNTO`
 
 Características do condomínio
+
 - caracteristicas (text[], enum CARACTERISTICA_EMPREENDIMENTO, nullable)
 
 Status
+
 - status (text, enum STATUS_EMPREENDIMENTO, default RASCUNHO)
   - fluxo no app: RASCUNHO -> PUBLICADO -> PAUSADO (sem ação de INATIVAR para empreendimentos)
 - publicado_em (timestamptz, nullable)
@@ -597,6 +670,7 @@ Regra: capa = primeira mídia por ordem (midia_relacoes.ordem)
 ---
 
 ### empreendimento_tipos
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - empreendimento_id (uuid, FK empreendimentos.id)
@@ -614,12 +688,14 @@ Regra: capa = primeira mídia por ordem (midia_relacoes.ordem)
 - updated_at (timestamptz)
 
 Regras:
+
 - unique(empreendimento_id, ordem)
 - valores numéricos não negativos
 
 ---
 
 ### empreendimento_tipos_plantas
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - empreendimento_id (uuid, FK empreendimentos.id)
@@ -632,6 +708,7 @@ Regras:
 - updated_at (timestamptz)
 
 Regras:
+
 - máximo de 3 imagens por tipo (ordem 0..2)
 - unique(empreendimento_tipo_id, ordem)
 - unique(empreendimento_tipo_id, midia_id)
@@ -639,20 +716,23 @@ Regras:
 ---
 
 ### empreendimento_rascunhos
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - etapa_atual (int, default 1, check 1..8)
 - titulo (text, nullable)
-- payload (jsonb) *(snapshot do multistep para autosave)*
+- payload (jsonb) _(snapshot do multistep para autosave)_
 - created_at (timestamptz)
 - updated_at (timestamptz)
 
 Regras:
+
 - limite de 5 rascunhos por corretor (regra de aplicação/API)
 
 ---
 
 ### imobiliarias (futuro)
+
 - id (uuid, PK)
 - nome_fantasia, razao_social, cnpj (text)
 - telefone, email (text)
@@ -663,6 +743,7 @@ Regras:
 - status (text, enum STATUS_IMOBILIARIA)
 
 Domínio (futuro)
+
 - dominio_custom (text, unique, nullable)
 - dominio_status (text, enum STATUS_DOMINIO, default NAO_CONFIGURADO)
 
@@ -674,25 +755,30 @@ Domínio (futuro)
 ## 5) Mídia
 
 ### midia
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - tipo (text, enum TIPO_MIDIA)
 
 Arquivo
+
 - storage_provider (text, enum STORAGE_PROVIDER, default SUPABASE)
 - storage_bucket (text)
 - storage_path (text)
 - url (text)
 
 Dimensões
+
 - largura, altura (int, nullable)
 - tamanho_bytes (bigint, nullable)
 
 SEO
+
 - alt, titulo, legenda (text, nullable)
 - caracteristica (text, nullable)
 
 IA
+
 - alt_gerado_em (timestamptz, nullable)
 - alt_origem (text, enum ALT_ORIGEM, default MANUAL)
 
@@ -702,6 +788,7 @@ IA
 ---
 
 ### midia_variantes
+
 - id (uuid, PK)
 - midia_id (uuid, FK midia.id)
 - tipo (text, enum VARIANTE_TIPO)
@@ -716,6 +803,7 @@ Constraint: unique(midia_id, tipo)
 ---
 
 ### midia_relacoes
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - ref_tipo (text, enum REF_TIPO)
@@ -731,6 +819,7 @@ Constraint: unique(ref_tipo, ref_id, midia_id)
 ---
 
 ### imovel_midia_publica
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - imovel_id (uuid, FK imoveis.id)
@@ -749,12 +838,14 @@ Constraint: unique(ref_tipo, ref_id, midia_id)
 Índices: (owner_id, imovel_id), (imovel_id, ordem, indice_publico), (slug_publico)
 
 Constraints:
+
 - unique(midia_relacao_id)
 - unique(imovel_id, indice_publico)
 - unique(imovel_id, midia_id)
 - unique(storage_provider, storage_bucket, storage_path)
 
 Regras:
+
 - Só recebe imagens do imóvel quando o imóvel está `PUBLICADO`.
 - URL pública da imagem usa o slug do imóvel + índice numérico (1..N).
 - As imagens públicas são geradas com marca d'água e atualizadas quando há publish/republish ou alteração da ordem.
@@ -763,6 +854,7 @@ Regras:
 ---
 
 ### empreendimento_midia_publica
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - empreendimento_id (uuid, FK empreendimentos.id)
@@ -781,12 +873,14 @@ Regras:
 Índices: (owner_id, empreendimento_id), (empreendimento_id, ordem, indice_publico), (slug_publico)
 
 Constraints:
+
 - unique(midia_relacao_id)
 - unique(empreendimento_id, indice_publico)
 - unique(empreendimento_id, midia_id)
 - unique(storage_provider, storage_bucket, storage_path)
 
 Regras:
+
 - Só recebe imagens do empreendimento quando o empreendimento está `PUBLICADO`.
 - URL pública da imagem usa o slug do empreendimento + índice numérico (1..N).
 - As imagens públicas são geradas com marca d'água e atualizadas quando há publish/republish ou alteração da ordem.
@@ -795,6 +889,7 @@ Regras:
 ---
 
 ### midia_delete_jobs
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - midia_id (uuid, nullable)
@@ -814,15 +909,17 @@ Regras:
 Constraint: unique(storage_provider, storage_bucket, storage_path)
 
 Regra:
+
 - Exclusão de mídia é assíncrona por fila.
 - UI remove imediatamente vínculo/registro; remoção física no storage é processada por worker/cron.
 
 ---
 
 ### imovel_delete_jobs
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
-- imovel_id (uuid) *(sem FK; o imóvel já pode ter sido removido da tabela principal quando o worker processar a fila)*
+- imovel_id (uuid) _(sem FK; o imóvel já pode ter sido removido da tabela principal quando o worker processar a fila)_
 - status (text, enum STATUS_IMOVEL_DELETE_JOB)
 - tentativas (int, default 0)
 - erro (text, nullable)
@@ -836,6 +933,7 @@ Regra:
 Constraint: unique(owner_id, imovel_id)
 
 Regra:
+
 - Exclusão de imóvel é assíncrona por fila.
 - O imóvel sai imediatamente da listagem e dos registros públicos; o worker limpa mídias e vínculos órfãos remanescentes.
 
@@ -844,11 +942,13 @@ Regra:
 ## 6) Contatos
 
 ### contatos
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - perfil (text, enum PERFIL_CONTATO)
 
 Campos
+
 - nome (text)
 - email (text, nullable)
 - email_lower (text, nullable)
@@ -863,20 +963,24 @@ Campos
 - updated_at (timestamptz)
 
 Regras (V1)
+
 - não permitir CPF e CNPJ juntos
 - se CNPJ, razao_social obrigatório
 
 Anti-duplicação (prioridade)
+
 - unique parcial: unique(owner_id, email_lower) quando email_lower IS NOT NULL
 - unique parcial: unique(owner_id, telefone1_e164) quando telefone1_e164 IS NOT NULL
 
 Reforço
+
 - unique parcial: unique(owner_id, cpf) quando cpf IS NOT NULL
 - unique parcial: unique(owner_id, cnpj) quando cnpj IS NOT NULL
 
 ---
 
 ### contato_empreendimentos
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - contato_id (uuid, FK contatos.id)
@@ -889,6 +993,7 @@ Constraint: unique(contato_id, empreendimento_id, papel)
 ---
 
 ### contato_imoveis
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - contato_id (uuid, FK contatos.id)
@@ -903,6 +1008,7 @@ Constraint: unique(contato_id, imovel_id, papel)
 ## 7) CRM
 
 ### leads
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - nome (text)
@@ -933,6 +1039,7 @@ Constraint: unique(contato_id, imovel_id, papel)
 - updated_at (timestamptz)
 
 Regras:
+
 - `motivo_desqualificacao` só pode existir quando `status = DESQUALIFICADO`
 - `aguardando_produto` é um sinal auxiliar operacional e não substitui o estágio comercial principal do lead
 - formulários públicos V1 gravam em `leads` e usam `form_payload` para contexto; o formulário de `curadoria` também cria ou complementa `lead_briefings` com os campos estruturados enviados pelo visitante
@@ -940,25 +1047,29 @@ Regras:
 ---
 
 ### lead_briefings
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - lead_id (uuid, FK leads.id)
 
 Bloco 1 — Objetivo e Negócio
+
 - objetivolead (text[], enum OBJETIVO_LEAD, nullable)
 - tipouso (text, enum TIPO_USO, nullable)
 - tipoimovel (text[], enum TIPO_IMOVEL_PORTAL, nullable)
 - categoriaimovel (text[], enum CATEGORIA_IMOVEL, nullable)
-- subcategoriaimovel (text[], nullable) *(tokens da UI de tipologia: ex. PADRAO, GARDEN, SOBRADO)*
+- subcategoriaimovel (text[], nullable) _(tokens da UI de tipologia: ex. PADRAO, GARDEN, SOBRADO)_
 - construcao (text[], enum TIPO_CONSTRUCAO, nullable)
-- tiponegociacao (text[], enum TIPO_NEGOCIACAO, nullable) *(derivado para match/compatibilidade)*
+- tiponegociacao (text[], enum TIPO_NEGOCIACAO, nullable) _(derivado para match/compatibilidade)_
 - intencao_compra (text, enum INTENCAO_COMPRA, nullable)
 
 Bloco 2 — Valores
+
 - valor_min (numeric, nullable)
 - valor_max (numeric, nullable)
 
 Bloco 3 — Residencial
+
 - area_util_min (numeric, nullable)
 - area_util_max (numeric, nullable)
 - quartos_min (int, nullable)
@@ -967,12 +1078,14 @@ Bloco 3 — Residencial
 - caracteristicas_residenciais (text[], enum CARACTERISTICA_IMOVEL, nullable)
 
 Bloco 4 — Comercial
+
 - area_util_min_comercial (numeric, nullable)
 - area_util_max_comercial (numeric, nullable)
 - vagas_min_comercial (int, nullable)
 - caracteristicas_comerciais (text[], enum CARACTERISTICA_COMERCIAL, nullable)
 
 Localização
+
 - geolocacao_id (uuid, FK geolocacoes.id, nullable)
 - localizacao_texto (text, nullable)
 - lat (numeric, nullable)
@@ -980,28 +1093,34 @@ Localização
 - raio_km (numeric, nullable)
 
 Complemento
+
 - texto_livre (text, nullable)
 
 Conteúdo e canal
+
 - conteudos (text[], enum TIPO_CONTEUDO, nullable)
 - canais (text[], enum CANAL_CONTATO, nullable)
 
 Controle
+
 - created_at (timestamptz)
 - updated_at (timestamptz)
 
 Regras:
+
 - unique(lead_id)
 - espelha o briefing do usuário do portal quando disponível, mas é uma cópia operacional do CRM, sem vínculo vivo com `portal_users`
 - pode ser semeado a partir de `user_briefings` no capture do lead, preservando edições futuras do corretor no CRM
 
 Índices:
+
 - owner_id
 - lead_id
 
 ---
 
 ### lead_imoveis
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - lead_id (uuid, FK leads.id)
@@ -1010,15 +1129,18 @@ Regras:
 - updated_at (timestamptz)
 
 Constraints:
+
 - unique(lead_id, imovel_id)
 
 Índices:
+
 - owner_id
 - lead_id
 
 ---
 
 ### lead_localizacoes_interesse
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - lead_id (uuid, FK leads.id)
@@ -1031,15 +1153,18 @@ Constraints:
 - updated_at (timestamptz)
 
 Regra:
+
 - check: geolocacao_id is not null OR localizacao_texto is not null OR (lat is not null AND lng is not null)
 
 Índices:
+
 - owner_id
 - lead_id
 
 ---
 
 ### negocios
+
 Base técnica das oportunidades do CRM.
 
 - id (uuid, PK)
@@ -1065,6 +1190,7 @@ Base técnica das oportunidades do CRM.
 - updated_at (timestamptz)
 
 Regras:
+
 - oportunidade pode nascer sem imóvel associado
 - `subfase_juridica` só pode existir quando `fase = JURIDICO`
 - `fase = JURIDICO` requer `imovel_id`
@@ -1074,6 +1200,7 @@ Regras:
 - para `modalidade = VENDA`, a soma de `financiamentovalor + recursopropriovalor + fgtsvalor + outrosrecursosvalor` deve fechar o valor da oportunidade
 
 Observações de transição:
+
 - `etapa` (ETAPA_NEGOCIO) é legado e deve ser substituído por `fase`
 - `valor_estimado` deve ser substituído por `valor`
 - `finalidade`, `empreendimento_id` e `lista_id` deixam de ser a base do fluxo principal de oportunidade
@@ -1082,6 +1209,7 @@ Observações de transição:
 ---
 
 ### propostas
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - lead_id (uuid, FK leads.id)
@@ -1098,6 +1226,7 @@ Observações de transição:
 - updated_at (timestamptz)
 
 Regras:
+
 - proposta é artefato comercial/documental de uma oportunidade
 - `negocio_id` deve ser obrigatório nas novas implementações
 - `lead_id` permanece como apoio de consulta, mas deve refletir o mesmo lead de `negocio_id`
@@ -1106,6 +1235,7 @@ Regras:
 ---
 
 ### negocio_partes
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - negocio_id (uuid, FK negocios.id)
@@ -1125,10 +1255,12 @@ Regras:
 - updated_at (timestamptz)
 
 Regras:
+
 - se `tipo_pessoa = JURIDICA`, `razao_social` e `cnpj` são obrigatórios
 - se `tipo_pessoa = FISICA`, `razao_social` e `cnpj` devem ficar nulos
 
 Índices:
+
 - owner_id
 - negocio_id
 - papel
@@ -1136,6 +1268,7 @@ Regras:
 ---
 
 ### negocio_parte_pessoas
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - negocio_parte_id (uuid, FK negocio_partes.id)
@@ -1155,6 +1288,7 @@ Regras:
 - updated_at (timestamptz)
 
 Regras:
+
 - pessoa física envolvida deve ter `nome_completo`, `email`, `telefone`, `cpf` e endereço completo
 - para partes com `tipo_pessoa = FISICA`, deve existir ao menos uma pessoa vinculada
 - para partes com `tipo_pessoa = JURIDICA`, esta tabela representa os responsáveis/representantes envolvidos na operação
@@ -1162,6 +1296,7 @@ Regras:
 ---
 
 ### negocio_corretores
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - negocio_id (uuid, FK negocios.id)
@@ -1175,25 +1310,28 @@ Regras:
 - updated_at (timestamptz)
 
 Regras:
+
 - representa os corretores que participam da divisão da comissão da oportunidade
 - quando o imóvel da oportunidade vier do bolsão com parceria, o corretor parceiro pode ser pré-vinculado (`vinculado_corretor_parceiro = true`)
 - `percentual_comissao`, quando preenchido, deve ficar entre 0 e 100
 - `valor_comissao`, quando preenchido, deve ser maior ou igual a 0
 
 Índices:
+
 - owner_id
 - negocio_id
 
 ---
 
 ### atividades
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
-- lead_id (uuid, FK leads.id) *(obrigatório)*
+- lead_id (uuid, FK leads.id) _(obrigatório)_
 - negocio_id (uuid, FK negocios.id, nullable)
 - categoria (text, enum CATEGORIA_ATIVIDADE)
 - modelo (text, enum MODELO_ATIVIDADE)
-- tipo (text, enum TIPO_ATIVIDADE) *(canal/formato da execução: ligação, WhatsApp, visita, tarefa interna etc.)*
+- tipo (text, enum TIPO_ATIVIDADE) _(canal/formato da execução: ligação, WhatsApp, visita, tarefa interna etc.)_
 - titulo (text)
 - descricao (text, nullable)
 - quando_em (timestamptz, nullable)
@@ -1209,6 +1347,7 @@ Observação de produto: categoria/modelo representam a intenção comercial da 
 ---
 
 ### timeline_eventos
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - lead_id (uuid, FK leads.id)
@@ -1223,6 +1362,7 @@ Observação de produto: categoria/modelo representam a intenção comercial da 
 ## 8) Listas/Seleções
 
 ### listas
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - titulo (text)
@@ -1238,6 +1378,7 @@ Observação de produto: categoria/modelo representam a intenção comercial da 
 ---
 
 ### lista_itens
+
 - id (uuid, PK)
 - lista_id (uuid, FK listas.id)
 - imovel_id (uuid, FK imoveis.id)
@@ -1249,10 +1390,12 @@ Observação de produto: categoria/modelo representam a intenção comercial da 
 ## 9) Marketing (Templates, Posts, Campanhas, Audiência)
 
 ### artigos
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 
 Publicação:
+
 - status (text, enum ARTIGO_STATUS, default RASCUNHO)
 - categoria (text, enum ARTIGO_CATEGORIA)
 - ordem_manual (int, default 1, maior que 0)
@@ -1260,16 +1403,18 @@ Publicação:
 - arquivado_em (timestamptz, nullable)
 
 Conteúdo editorial:
-- titulo (text) *(8-120 caracteres; único H1 da página pública)*
+
+- titulo (text) _(8-120 caracteres; único H1 da página pública)_
 - subtitulo (text, nullable, max 180)
 - resumo (text, nullable, max 260)
-- slug (text) *(único por owner; gerado automaticamente a partir do título, lowercase, sem acentos e sem caracteres especiais; não editável pelo corretor; colisões recebem sufixo numérico como `-2`, `-3`)*
+- slug (text) _(único por owner; gerado automaticamente a partir do título, lowercase, sem acentos e sem caracteres especiais; não editável pelo corretor; colisões recebem sufixo numérico como `-2`, `-3`)_
 - capa_midia_id (uuid, FK midia.id, nullable)
 - capa_url (text, nullable)
-- conteudo_blocos (jsonb) *(versionado; blocos controlados pelo Corretor.one; rich text sanitizado apenas no bloco de parágrafo)*
+- conteudo_blocos (jsonb) _(versionado; blocos controlados pelo Corretor.one; rich text sanitizado apenas no bloco de parágrafo)_
 - tags (text[], default '{}')
 
 SEO:
+
 - meta_title (text, nullable, max 70)
 - meta_description (text, nullable, max 180)
 - canonical_url (text, nullable)
@@ -1277,6 +1422,7 @@ SEO:
 - leitura_minutos (int, default 1)
 
 Categoria LOCAL:
+
 - local_nome (text, nullable)
 - local_categoria (text, nullable)
 - local_horario_funcionamento (text, nullable)
@@ -1293,6 +1439,7 @@ Categoria LOCAL:
 Índices: (owner_id, status, publicado_em desc), (owner_id, categoria), (owner_id, ordem_manual, publicado_em desc)
 
 Regras:
+
 - RLS por owner para CRUD no app.
 - Leitura pública apenas para `status = PUBLICADO` e corretor ativo.
 - Rascunho não é indexável e não entra em sitemap.
@@ -1308,11 +1455,13 @@ Regras:
 ---
 
 ### profile_artigos_config
+
 - owner_id (uuid, PK/FK profiles.id)
 - ordenacao_publica (text, enum ARTIGOS_ORDENACAO_PUBLICA, default PUBLICACAO_DESC)
 - updated_at (timestamptz)
 
 Regras:
+
 - CRUD no app apenas pelo dono do perfil.
 - Leitura pública permitida para aplicar a ordenação da listagem pública de artigos do corretor.
 - A listagem pública usa páginas de 30 artigos e preserva `ordenacao_publica`; a listagem autenticada usa paginação com 20 itens por padrão.
@@ -1320,6 +1469,7 @@ Regras:
 ---
 
 ### landing_pages
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - status (text, enum LANDING_PAGE_STATUS, default RASCUNHO)
@@ -1344,6 +1494,7 @@ Regras:
 Índices: (owner_id, status, updated_at desc), (owner_id, tipo), (owner_id, slug unique)
 
 Regras:
+
 - CRUD autenticado apenas pelo dono; leitura pública somente quando `status = PUBLICADO` e o corretor está ativo.
 - O slug ocupa o namespace direto `/{nickname}/{slug}` e deve existir em `profile_public_paths`.
 - Slugs de rotas do perfil são reservados e não podem ser usados.
@@ -1359,6 +1510,7 @@ Regras:
 ---
 
 ### profile_public_paths
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - slug (text)
@@ -1370,12 +1522,14 @@ Regras:
 Constraints: unique(owner_id, slug), unique(resource_type, resource_id)
 
 Regras:
+
 - Registro técnico sincronizado por trigger para empreendimentos e páginas de captura.
 - Resolve colisões entre recursos que compartilham `/{nickname}/{slug}`.
 
 ---
 
 ### landing_page_events
+
 - id (uuid, PK)
 - landing_page_id (uuid, FK landing_pages.id)
 - owner_id (uuid, FK profiles.id)
@@ -1394,6 +1548,7 @@ Regras: gravação pública somente por endpoint controlado; leitura apenas pelo
 > Compatibilidade: permanece durante a transição dos relatórios de LP. Novos eventos também usam o motor transversal abaixo.
 
 ### marketing_touchpoints
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - visitor_id (uuid)
@@ -1410,11 +1565,13 @@ Regras: gravação pública somente por endpoint controlado; leitura apenas pelo
 Índices: (owner_id, visitor_id, occurred_at), (owner_id, campaign, occurred_at), session_id.
 
 Regras:
+
 - Um touchpoint é criado no início da sessão ou quando surge uma nova origem/campanha externa; navegação interna não troca a origem.
 - Sessão expira após 30 minutos de inatividade; janela de atribuição do MVP é de 180 dias.
 - Acesso direto participa da jornada, mas não substitui o último touchpoint não direto.
 
 ### public_events
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - visitor_id (uuid)
@@ -1430,6 +1587,7 @@ Regras:
 Regras: preview e eventos do próprio `owner_id` são descartados pelo endpoint; visualizações repetidas de outros visitantes são preservadas.
 
 ### lead_attributions
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - lead_id (uuid, FK leads.id, unique)
@@ -1448,6 +1606,7 @@ Regras: o snapshot é congelado no envio do lead e preserva first touch, last to
 ---
 
 ### lead_empreendimentos
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - lead_id (uuid, FK leads.id)
@@ -1460,16 +1619,18 @@ Constraints: unique(lead_id, empreendimento_id)
 ---
 
 ### artigo_categoria_sugestoes
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - nome (text)
 - contexto (text, nullable)
-- status (text) *(PENDENTE | APROVADA | RECUSADA)*
+- status (text) _(PENDENTE | APROVADA | RECUSADA)_
 - created_at (timestamptz)
 
 ---
 
 ### templates (criativos — criados pela equipe)
+
 - id (uuid, PK)
 - nome (text)
 - tipo (text, enum TIPO_TEMPLATE)
@@ -1480,11 +1641,14 @@ Constraints: unique(lead_id, empreendimento_id)
 - mode (text, enum CREATIVE_TEMPLATE_MODE)
 - formatos (text[], enum CREATIVE_OUTPUT_FORMAT)
 - preview_url (text, nullable)
+- preview_vertical_url (text, nullable) _(preview 9:16 gerado na publicação)_
 - config (jsonb)
-- draft_config (jsonb, nullable) *(rascunho administrativo; não afeta gerações até publicação)*
+- preview_url, preview_vertical_url (text, nullable) _(snapshot visual da versão)_
+- draft_config (jsonb, nullable) _(rascunho administrativo; não afeta gerações até publicação)_
 - ativo (bool)
 
 ### template_versions (histórico publicado)
+
 - id (uuid, PK)
 - template_id (uuid, FK templates.id)
 - version (int)
@@ -1494,9 +1658,19 @@ Constraints: unique(lead_id, empreendimento_id)
 
 Constraint: unique(template_id, version)
 
+Renderers iniciais de imóvel:
+
+- `property-essential-01`: uma imagem e composição editorial.
+- `property-dual-02`: duas imagens em metades iguais; aceita mídia do imóvel ou do empreendimento associado, tag curta de destaque e preço real ou “Consulte o valor”.
+- `property-editorial-03`: uma imagem em tela cheia, máscaras superior/inferior, label livre, atributos textuais e seis temas escuros com tipografia branca.
+- `property-journey-carousel-01`: carrossel editorial 4:5 com oito slides recortados de uma composição panorâmica contínua de 8640 × 1350 px. Cada slide possui configuração própria de função, imagem, identificação, título e texto; slides de ambiente podem reutilizar título, área e características de `imovel_ambientes`. A ordem é editável e o preview simula navegação horizontal e indicadores do Instagram.
+
+Ao publicar uma versão pelo admin, o renderer gera previews imutáveis nos formatos `PORTRAIT` e `VERTICAL`, armazena as URLs no template e também no histórico da versão. A Central consome essas imagens prontas e não renderiza HTML por item na operação normal.
+
 ---
 
 ### posts (materiais gerados)
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - subject_type (text, enum PUBLIC_RESOURCE_TYPE)
@@ -1506,13 +1680,27 @@ Constraint: unique(template_id, version)
 - formato (text, enum CREATIVE_OUTPUT_FORMAT)
 - status (text, enum STATUS_POST)
 - resultado_url (text, nullable)
+- resultado_urls (text[], nullable) — conjunto ordenado dos slides quando `tipo = CAROUSEL`; `resultado_url` mantém a capa para compatibilidade.
 - storage_bucket, storage_path (text, nullable)
 - payload (jsonb) — snapshot imutável dos dados usados na renderização
+
+### creative_drafts (edições de criativos ainda não geradas)
+
+- id (uuid, PK)
+- owner_id (uuid, FK profiles.id)
+- objetivo (text, enum OBJETIVO_TEMPLATE)
+- template_id (uuid, FK templates.id)
+- subject_type (text, enum PUBLIC_RESOURCE_TYPE)
+- subject_id (uuid)
+- formato (text, enum CREATIVE_OUTPUT_FORMAT)
+- payload (jsonb) — escolhas editáveis de imagens, tags, preço e CTA
+- created_at, updated_at (timestamptz)
 - erro (text, nullable)
 - created_at (timestamptz)
 - updated_at (timestamptz)
 
 Regras MVP:
+
 - Apenas `STATIC`, renderizado internamente por HTML/CSS + Puppeteer.
 - Primeiro template: `property-essential-01`, híbrido, para imóvel publicado nos formatos SQUARE, PORTRAIT e VERTICAL.
 - Assinatura com `corretor.one/nickname`, foto, nome e CRECI é obrigatória e não editável.
@@ -1522,6 +1710,7 @@ Regras MVP:
 ---
 
 ### seguidores
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - nome (text)
@@ -1533,6 +1722,7 @@ Regras MVP:
 ---
 
 ### listas_contatos
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - nome (text)
@@ -1542,6 +1732,7 @@ Regras MVP:
 ---
 
 ### lista_contatos_itens
+
 - id (uuid, PK)
 - lista_id (uuid, FK listas_contatos.id)
 - seguidor_id (uuid, FK seguidores.id)
@@ -1549,6 +1740,7 @@ Regras MVP:
 ---
 
 ### campanhas
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - tipo (text, enum TIPO_CAMPANHA)
@@ -1566,6 +1758,7 @@ Regras MVP:
 ---
 
 ### campanha_itens
+
 - id (uuid, PK)
 - campanha_id (uuid, FK campanhas.id)
 - tipo_item (text, enum TIPO_ITEM_CAMPANHA)
@@ -1577,8 +1770,9 @@ Regras MVP:
 ## 10) Billing (Planos & Assinaturas)
 
 ### planos
+
 - id (uuid, PK)
-- nome (text) *(Grátis, Presença, Destaque, Autoridade)*
+- nome (text) _(Grátis, Presença, Destaque, Autoridade)_
 - slug (text, unique)
 - preco_mensal (numeric)
 - preco_anual (numeric, nullable)
@@ -1595,6 +1789,7 @@ Regras MVP:
 ---
 
 ### assinaturas
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - plano_id (uuid, FK planos.id)
@@ -1609,6 +1804,7 @@ Regras MVP:
 ## 11) Ayka (Créditos & Consumo)
 
 ### ayka_custos_acoes
+
 - id (uuid, PK)
 - acao_codigo (text, unique com modelo)
 - modelo (text, unique com acao_codigo)
@@ -1620,6 +1816,7 @@ Regras MVP:
 ---
 
 ### ayka_franquia_ciclos
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - assinatura_id (uuid, FK assinaturas.id)
@@ -1633,6 +1830,7 @@ Regras MVP:
 ---
 
 ### ayka_creditos_lotes
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - origem (text, enum AYKA_ORIGEM)
@@ -1645,11 +1843,13 @@ Regras MVP:
 - updated_at (timestamptz)
 
 Observação:
+
 - créditos avulsos usam `origem = AVULSO` e vencimento de 180 dias.
 
 ---
 
 ### ayka_movimentos
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - mov_tipo (text, enum AYKA_MOV_TIPO)
@@ -1669,12 +1869,13 @@ Observação:
 ## 12) Publicação em Background (Empreendimentos)
 
 ### empreendimento_publicacao_jobs
+
 - id (uuid, PK)
 - owner_id (uuid, FK profiles.id)
 - empreendimento_id (uuid, FK empreendimentos.id)
 - status (text, enum STATUS_PUBLICACAO_EMPREENDIMENTO_JOB)
 - tentativas (int, default 0)
-- payload (jsonb) *(imagens/vídeos para vínculo e ordenação)*
+- payload (jsonb) _(imagens/vídeos para vínculo e ordenação)_
 - erro (text, nullable)
 - started_at (timestamptz, nullable)
 - finished_at (timestamptz, nullable)

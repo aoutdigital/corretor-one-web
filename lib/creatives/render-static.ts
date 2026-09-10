@@ -1,5 +1,8 @@
 import {
   CREATIVE_DIMENSIONS,
+  buildPropertyDualHtml,
+  buildPropertyEditorialHtml,
+  buildPropertyJourneyHtml,
   buildPropertyEssentialHtml,
   type PropertyCreativePayload,
 } from "@/lib/creatives/static-template";
@@ -41,21 +44,50 @@ async function inlineAsset(url: string | null, required = false) {
 async function inlinePayloadAssets(
   payload: PropertyCreativePayload,
 ): Promise<PropertyCreativePayload> {
-  const [imageUrl, avatarUrl, logoUrl, logoWhiteUrl] = await Promise.all([
+  const [
+    imageUrl,
+    secondaryImageUrl,
+    carouselImages,
+    avatarUrl,
+    logoUrl,
+    logoWhiteUrl,
+  ] = await Promise.all([
     inlineAsset(payload.property.imageUrl, true),
+    inlineAsset(
+      payload.property.secondaryImageUrl ?? null,
+      Boolean(payload.property.secondaryImageUrl),
+    ),
+    Promise.all(
+      (payload.property.carouselImages ?? []).map(
+        (url) => inlineAsset(url, true) as Promise<string>,
+      ),
+    ),
     inlineAsset(payload.broker.avatarUrl),
     inlineAsset(payload.broker.logoUrl),
     inlineAsset(payload.broker.logoWhiteUrl),
   ]);
   return {
     ...payload,
-    property: { ...payload.property, imageUrl: imageUrl as string },
+    property: {
+      ...payload.property,
+      imageUrl: imageUrl as string,
+      secondaryImageUrl: secondaryImageUrl ?? undefined,
+      carouselImages,
+      carouselSlides: payload.property.carouselSlides?.map((slide) => ({
+        ...slide,
+        imageUrl:
+          carouselImages[
+            (payload.property.carouselImages ?? []).indexOf(slide.imageUrl)
+          ] ?? slide.imageUrl,
+      })),
+    },
     broker: { ...payload.broker, avatarUrl, logoUrl, logoWhiteUrl },
   };
 }
 
 export async function renderPropertyCreative(
   payload: PropertyCreativePayload,
+  rendererKey = "property-essential-01",
 ): Promise<Buffer> {
   const puppeteer = await import("puppeteer");
   const attempts = [
@@ -90,7 +122,22 @@ export async function renderPropertyCreative(
       deviceScaleFactor: 1,
     });
     await page.setContent(
-      buildPropertyEssentialHtml(inlinedPayload, await loadCreativeFonts()),
+      rendererKey === "property-dual-02"
+        ? buildPropertyDualHtml(inlinedPayload, await loadCreativeFonts())
+        : rendererKey === "property-editorial-03"
+          ? buildPropertyEditorialHtml(
+              inlinedPayload,
+              await loadCreativeFonts(),
+            )
+          : rendererKey === "property-journey-carousel-01"
+            ? buildPropertyJourneyHtml(
+                inlinedPayload,
+                await loadCreativeFonts(),
+              )
+            : buildPropertyEssentialHtml(
+                inlinedPayload,
+                await loadCreativeFonts(),
+              ),
       { waitUntil: "domcontentloaded", timeout: 10_000 },
     );
     await page.evaluate(async () => {
@@ -117,6 +164,89 @@ export async function renderPropertyCreative(
     return Buffer.from(
       await canvas.screenshot({ type: "png", omitBackground: false }),
     );
+  } finally {
+    await page.close();
+    await browser.close();
+  }
+}
+
+export async function renderPropertyCarousel(
+  payload: PropertyCreativePayload,
+  rendererKey = "property-journey-carousel-01",
+  slideCount = 8,
+): Promise<Buffer[]> {
+  const puppeteer = await import("puppeteer");
+  const attempts = [
+    ...(process.env.PUPPETEER_EXECUTABLE_PATH
+      ? [{ executablePath: process.env.PUPPETEER_EXECUTABLE_PATH }]
+      : []),
+    { channel: "chrome" as const },
+    {},
+  ];
+  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
+  for (const attempt of attempts) {
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        ...attempt,
+      });
+      break;
+    } catch {
+      // Tenta o próximo launcher disponível.
+    }
+  }
+  if (!browser)
+    throw new Error("Não foi possível iniciar o renderizador de imagens.");
+
+  const page = await browser.newPage();
+  try {
+    const inlinedPayload = await inlinePayloadAssets(payload);
+    const fonts = await loadCreativeFonts();
+    const dimensions = CREATIVE_DIMENSIONS.PORTRAIT;
+    await page.setViewport({
+      width: dimensions.width,
+      height: dimensions.height,
+      deviceScaleFactor: 1,
+    });
+    const results: Buffer[] = [];
+    for (let slide = 0; slide < slideCount; slide += 1) {
+      const html = buildPropertyJourneyHtml(
+        { ...inlinedPayload, format: "PORTRAIT", carouselSlide: slide },
+        fonts,
+      );
+      await page.setContent(html, {
+        waitUntil: "domcontentloaded",
+        timeout: 10_000,
+      });
+      await page.evaluate(async () => {
+        await Promise.race([
+          Promise.all([
+            document.fonts?.ready,
+            Promise.all(
+              [...document.images].map((image) =>
+                image.complete
+                  ? Promise.resolve()
+                  : new Promise<void>((resolve) => {
+                      image.onload = () => resolve();
+                      image.onerror = () => resolve();
+                    }),
+              ),
+            ),
+          ]),
+          new Promise((resolve) => setTimeout(resolve, 5_000)),
+        ]);
+      });
+      const canvas = await page.$(".canvas");
+      if (!canvas)
+        throw new Error(`Canvas do slide ${slide + 1} não encontrado.`);
+      results.push(
+        Buffer.from(
+          await canvas.screenshot({ type: "png", omitBackground: false }),
+        ),
+      );
+    }
+    return results;
   } finally {
     await page.close();
     await browser.close();
