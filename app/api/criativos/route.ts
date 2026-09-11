@@ -130,7 +130,7 @@ export async function GET(request: Request) {
     );
   const { admin, ownerId } = authenticated;
   const db = admin as unknown as Db;
-  const [templates, properties, media, developmentMedia, environments, profile, posts] =
+  const [templates, properties, media, developmentMedia, environments, profile, authority, posts] =
     await Promise.all([
       db
         .from("templates")
@@ -166,10 +166,16 @@ export async function GET(request: Request) {
       db
         .from("profiles")
         .select(
-          "id,nickname,primeiro_nome,sobrenome,avatar_url,logo_nickname_url,logo_nickname_white_url,creci_uf,creci_numero",
+          "id,nickname,primeiro_nome,sobrenome,avatar_url,logo_nickname_url,logo_nickname_white_url,creci_uf,creci_numero,frase_impacto",
         )
         .eq("id", ownerId)
         .maybeSingle(),
+      db
+        .from("profile_authority_numbers")
+        .select("valor,rotulo,ordem")
+        .eq("owner_id", ownerId)
+        .eq("visivel", true)
+        .order("ordem"),
       db
         .from("posts")
         .select(
@@ -186,6 +192,7 @@ export async function GET(request: Request) {
     developmentMedia,
     environments,
     profile,
+    authority,
     posts,
   ].find((item) => item.error);
   if (failed?.error)
@@ -248,7 +255,10 @@ export async function GET(request: Request) {
     data: {
       templates: templates.data ?? [],
       properties: items,
-      profile: profile.data,
+      profile:
+        profile.data && !Array.isArray(profile.data)
+          ? { ...profile.data, authority_numbers: authority.data ?? [] }
+          : profile.data,
       posts: posts.data ?? [],
     },
   });
@@ -284,8 +294,17 @@ export async function POST(request: Request) {
         .slice(0, 6)
     : [];
   const carouselSlides = Array.isArray(input.carousel_slides)
-    ? input.carousel_slides.slice(0, 8).map((value) => {
+    ? input.carousel_slides.slice(0, 8).map((value, index) => {
         const slide = value && typeof value === "object" && !Array.isArray(value) ? (value as Row) : {};
+        if (index === 1)
+          return {
+            kind: "NUMBERS" as const,
+            imageUrl: "",
+            eyebrow: "Visão geral",
+            title: "",
+            text: "",
+            attributes: [],
+          };
         const requestedKind = text(slide.kind, 20);
         const kind = (["COVER", "NUMBERS", "ENVIRONMENT", "FEATURES", "LOCATION", "CONTACT"] as const).find((item) => item === requestedKind) ?? "ENVIRONMENT";
         return {
@@ -295,6 +314,12 @@ export async function POST(request: Request) {
           eyebrow: text(slide.eyebrow, 40),
           title: text(slide.title, 120),
           text: text(slide.text, 180),
+          attributes: Array.isArray(slide.attributes)
+            ? slide.attributes
+                .map((item) => text(item, 40))
+                .filter(Boolean)
+                .slice(0, 6)
+            : [],
         };
       })
     : [];
@@ -327,7 +352,7 @@ export async function POST(request: Request) {
     );
   const { admin, ownerId } = authenticated;
   const db = admin as unknown as Db;
-  const [template, property, images, profile] = await Promise.all([
+  const [template, property, images, profile, authority] = await Promise.all([
     db
       .from("templates")
       .select("id,renderer_key,version,formatos,ativo,config")
@@ -352,10 +377,16 @@ export async function POST(request: Request) {
     db
       .from("profiles")
       .select(
-        "nickname,primeiro_nome,sobrenome,avatar_url,logo_nickname_url,logo_nickname_white_url,creci_uf,creci_numero",
+        "nickname,primeiro_nome,sobrenome,avatar_url,logo_nickname_url,logo_nickname_white_url,creci_uf,creci_numero,frase_impacto",
       )
       .eq("id", ownerId)
       .maybeSingle(),
+    db
+      .from("profile_authority_numbers")
+      .select("valor,rotulo,ordem")
+      .eq("owner_id", ownerId)
+      .eq("visivel", true)
+      .order("ordem"),
   ]);
   const templateRow =
     template.data && !Array.isArray(template.data) ? template.data : null;
@@ -496,10 +527,18 @@ export async function POST(request: Request) {
       avatarUrl: text(profileRow.avatar_url, 1500) || null,
       logoUrl: text(profileRow.logo_nickname_url, 1500) || null,
       logoWhiteUrl: text(profileRow.logo_nickname_white_url, 1500) || null,
+      tagline: text(profileRow.frase_impacto, 90) || null,
+      authorityNumbers: (Array.isArray(authority.data) ? authority.data : [])
+        .slice(0, 3)
+        .map((item) => ({
+          value: text(item.valor, 24),
+          label: text(item.rotulo, 80),
+        }))
+        .filter((item) => item.value && item.label),
     },
     copy: { headline: "", supportingText: "", cta, titleMode: "FULL" },
     format,
-    colorTheme: editorial ? colorTheme : undefined,
+    colorTheme: editorial || carousel ? colorTheme : undefined,
     templateConfig:
       templateRow.config as PropertyCreativePayload["templateConfig"],
   };

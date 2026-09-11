@@ -68,6 +68,7 @@ type Property = {
   dormitorios: number | null;
   suites: number | null;
   vagas: number | null;
+  caracteristicas: string[] | null;
   images: string[];
   development_images: string[];
   empreendimento: { nome: string } | null;
@@ -89,6 +90,8 @@ type Profile = {
   logo_nickname_white_url: string | null;
   creci_uf: string;
   creci_numero: string;
+  frase_impacto: string | null;
+  authority_numbers: Array<{ valor: string; rotulo: string; ordem: number }>;
 };
 type Post = {
   id: string;
@@ -132,19 +135,49 @@ type CarouselSlideConfig = {
   eyebrow: string;
   title: string;
   text: string;
+  attributes?: string[];
 };
 
-function createCarouselSlides(images: string[], environments: Property["environments"] = []): CarouselSlideConfig[] {
+function withFixedPropertySlide(slides: CarouselSlideConfig[]) {
+  return slides.map((slide, index) =>
+    index === 1
+      ? {
+          ...slide,
+          kind: "NUMBERS" as const,
+          imageUrl: "",
+          eyebrow: "Visão geral",
+          title: "",
+          text: "",
+        }
+      : slide,
+  );
+}
+
+function createCarouselSlides(
+  images: string[],
+  environments: Property["environments"] = [],
+  features: string[] = [],
+): CarouselSlideConfig[] {
   const available = images.length ? images : [""];
   let environmentIndex = 0;
   return PROPERTY_JOURNEY_DEFAULTS.map((item, index) => {
     const environment = item.kind === "ENVIRONMENT" ? environments[environmentIndex++] : null;
+    if (index === 1)
+      return {
+        ...item,
+        imageUrl: "",
+        eyebrow: "Visão geral",
+        title: "",
+        text: "",
+        attributes: [],
+      };
     return {
       ...item,
       environmentId: environment?.id,
       title: environment?.title || item.title,
       text: environment ? [environment.area, environment.subtitle, ...environment.tags].filter(Boolean).slice(0, 4).join(" · ") : item.text,
       imageUrl: available[Math.min(Math.max(0, index - 1), available.length - 1)],
+      attributes: item.kind === "FEATURES" ? features.slice(0, 6) : undefined,
     };
   });
 }
@@ -248,10 +281,11 @@ export default function CreativesPage() {
       setCarouselImageUrls(payload.carousel_image_urls ?? []);
       setCarouselSlides(
         payload.carousel_slides?.length === PROPERTY_JOURNEY_SLIDES
-          ? payload.carousel_slides
+          ? withFixedPropertySlide(payload.carousel_slides)
           : createCarouselSlides(
               payload.carousel_image_urls ?? [],
               data.properties.find((item) => item.id === draft.subject_id)?.environments ?? [],
+              data.properties.find((item) => item.id === draft.subject_id)?.caracteristicas ?? [],
             ),
       );
       setPriceMode(payload.price_mode ?? "PRICE");
@@ -303,6 +337,7 @@ export default function CreativesPage() {
           ]),
         ].slice(0, 6),
         selected?.environments ?? [],
+        selected?.caracteristicas ?? [],
       ),
     );
   }
@@ -764,10 +799,40 @@ export default function CreativesPage() {
                           </>
                         ) : null}
                         {isCarousel ? (
-                          <HighlightSearchbox
-                            value={highlight}
-                            onChange={setHighlight}
-                          />
+                          <>
+                            <HighlightSearchbox
+                              value={highlight}
+                              onChange={setHighlight}
+                            />
+                            <fieldset>
+                              <legend className="text-sm font-semibold">
+                                Tema de cores
+                              </legend>
+                              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                {(
+                                  Object.entries(CREATIVE_DARK_THEMES) as Array<
+                                    [
+                                      CreativeColorTheme,
+                                      (typeof CREATIVE_DARK_THEMES)[CreativeColorTheme],
+                                    ]
+                                  >
+                                ).map(([key, theme]) => (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => setColorTheme(key)}
+                                    className={`flex items-center gap-2 rounded-xl border p-2.5 text-left text-xs font-semibold ${colorTheme === key ? "border-slate-950 ring-1 ring-slate-950" : "border-slate-200"}`}
+                                  >
+                                    <span
+                                      className="h-6 w-6 shrink-0 rounded-full border border-white shadow"
+                                      style={{ backgroundColor: theme.color }}
+                                    />
+                                    {theme.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </fieldset>
+                          </>
                         ) : null}
                         {!isEditorial ? (
                           <label className="grid gap-1.5 text-sm font-semibold">
@@ -1176,6 +1241,12 @@ const DEMO_PROFILE: Profile = {
   logo_nickname_white_url: null,
   creci_uf: "SP",
   creci_numero: "123456",
+  frase_impacto: "Conecto pessoas a imóveis que fazem sentido para suas histórias.",
+  authority_numbers: [
+    { valor: "12 anos", rotulo: "de mercado", ordem: 0 },
+    { valor: "+180", rotulo: "negócios realizados", ordem: 1 },
+    { valor: "4,9", rotulo: "avaliação dos clientes", ordem: 2 },
+  ],
 };
 
 function CarouselSlideEditor({
@@ -1197,7 +1268,7 @@ function CarouselSlideEditor({
     onChange(slides.map((slide, position) => position === index ? { ...slide, ...patch } : slide));
   const move = (index: number, direction: -1 | 1) => {
     const target = index + direction;
-    if (target < 0 || target >= slides.length) return;
+    if (index === 1 || target === 1 || target < 0 || target >= slides.length) return;
     const next = [...slides];
     [next[index], next[target]] = [next[target], next[index]];
     onChange(next);
@@ -1211,21 +1282,32 @@ function CarouselSlideEditor({
       </div>
       {slides.map((slide, index) => {
         const open = activeSlide === index;
+        const fixedPropertySlide = index === 1;
         return (
           <section key={index} className={`overflow-hidden rounded-xl border ${open ? "border-slate-950 ring-1 ring-slate-950" : "border-slate-200"}`}>
             <button type="button" onClick={() => onActiveSlide(index)} className="flex w-full items-center gap-3 p-3 text-left">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-xs font-bold text-white">{index + 1}</span>
               <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100">
-                {slide.imageUrl ? <Image src={slide.imageUrl} alt="" fill sizes="48px" className="object-cover" unoptimized /> : null}
+                {fixedPropertySlide && images[0] ? <Image src={images[0]} alt="" fill sizes="48px" className="object-cover" unoptimized /> : slide.imageUrl ? <Image src={slide.imageUrl} alt="" fill sizes="48px" className="object-cover" unoptimized /> : null}
               </span>
               <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{slide.eyebrow || `Slide ${index + 1}`}</strong><small className="block truncate text-slate-500">{slide.title || "Conteúdo automático do imóvel"}</small></span>
               <span className="text-slate-400">{open ? "−" : "+"}</span>
             </button>
             {open ? (
               <div className="space-y-4 border-t border-slate-100 bg-slate-50/60 p-4">
+                {fixedPropertySlide ? (
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+                    <p className="font-bold">Slide automático do imóvel</p>
+                    <p className="mt-1 leading-relaxed text-blue-900/75">
+                      Usa a mesma imagem da capa e apresenta automaticamente o título, a área útil, os dormitórios, as suítes e as vagas cadastradas no imóvel.
+                    </p>
+                  </div>
+                ) : null}
+                {!fixedPropertySlide ? (
+                  <>
                 <div className="flex justify-end gap-2">
-                  <button type="button" disabled={index === 0} onClick={() => move(index, -1)} className="rounded-lg border bg-white px-3 py-1.5 text-xs font-bold disabled:opacity-30">↑ Mover</button>
-                  <button type="button" disabled={index === slides.length - 1} onClick={() => move(index, 1)} className="rounded-lg border bg-white px-3 py-1.5 text-xs font-bold disabled:opacity-30">↓ Mover</button>
+                  <button type="button" disabled={index === 0 || index - 1 === 1} onClick={() => move(index, -1)} className="rounded-lg border bg-white px-3 py-1.5 text-xs font-bold disabled:opacity-30">↑ Mover</button>
+                  <button type="button" disabled={index === slides.length - 1 || index + 1 === 1} onClick={() => move(index, 1)} className="rounded-lg border bg-white px-3 py-1.5 text-xs font-bold disabled:opacity-30">↓ Mover</button>
                 </div>
                 {slide.kind !== "CONTACT" ? <div><p className="mb-2 text-xs font-bold uppercase tracking-wider text-stone-500">Imagem deste slide</p><div className="grid grid-cols-5 gap-2">{images.map((url) => <button key={url} type="button" onClick={() => update(index, { imageUrl: url })} className={`relative aspect-square overflow-hidden rounded-lg border-2 ${slide.imageUrl === url ? "border-slate-950" : "border-transparent"}`}><Image src={url} alt="" fill sizes="80px" className="object-cover" unoptimized />{slide.imageUrl === url ? <span className="absolute right-1 top-1 rounded-full bg-slate-950 p-1 text-white"><Check size={10} /></span> : null}</button>)}</div></div> : null}
                 {slide.kind === "ENVIRONMENT" && environments.length ? (
@@ -1234,9 +1316,60 @@ function CarouselSlideEditor({
                     update(index, environment ? { environmentId: environment.id, title: environment.title, text: [environment.area, environment.subtitle, ...environment.tags].filter(Boolean).slice(0, 4).join(" · ") } : { environmentId: undefined });
                   }} className="rounded-lg border bg-white px-3 py-2 text-sm font-normal"><option value="">Personalizado</option>{environments.map((environment) => <option key={environment.id} value={environment.id}>{environment.title}</option>)}</select></label>
                 ) : null}
+                {slide.kind === "FEATURES" ? (
+                  <fieldset className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <legend className="text-xs font-bold">Atributos em destaque</legend>
+                      <span className="text-xs text-slate-400">{(slide.attributes ?? []).length}/6</span>
+                    </div>
+                    {(slide.attributes ?? []).map((attribute, attributeIndex) => (
+                      <div key={attributeIndex} className="flex gap-2">
+                        <input
+                          value={attribute}
+                          maxLength={40}
+                          aria-label={`Atributo ${attributeIndex + 1}`}
+                          onChange={(event) =>
+                            update(index, {
+                              attributes: (slide.attributes ?? []).map((item, position) =>
+                                position === attributeIndex ? event.target.value : item,
+                              ),
+                            })
+                          }
+                          className="min-w-0 flex-1 rounded-lg border bg-white px-3 py-2 text-sm font-normal"
+                        />
+                        <button
+                          type="button"
+                          aria-label={`Remover atributo ${attributeIndex + 1}`}
+                          onClick={() =>
+                            update(index, {
+                              attributes: (slide.attributes ?? []).filter((_, position) => position !== attributeIndex),
+                            })
+                          }
+                          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-white text-slate-500 hover:text-red-600"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    {(slide.attributes ?? []).length < 6 ? (
+                      <button
+                        type="button"
+                        onClick={() => update(index, { attributes: [...(slide.attributes ?? []), ""] })}
+                        className="rounded-lg border border-dashed bg-white px-3 py-2 text-xs font-bold"
+                      >
+                        + Adicionar atributo
+                      </button>
+                    ) : null}
+                    <p className="text-xs font-normal text-slate-500">
+                      Até seis atributos, com 40 caracteres cada.
+                    </p>
+                  </fieldset>
+                ) : null}
                 <label className="grid gap-1 text-xs font-bold">Identificação do slide<input value={slide.eyebrow} maxLength={40} onChange={(event) => update(index, { eyebrow: event.target.value })} className="rounded-lg border bg-white px-3 py-2 text-sm font-normal" /></label>
                 <label className="grid gap-1 text-xs font-bold">Título<input value={slide.title} maxLength={120} placeholder="Usar conteúdo automático" onChange={(event) => update(index, { title: event.target.value })} className="rounded-lg border bg-white px-3 py-2 text-sm font-normal" /></label>
                 <label className="grid gap-1 text-xs font-bold">Texto de apoio<textarea value={slide.text} maxLength={180} rows={3} onChange={(event) => update(index, { text: event.target.value })} className="resize-none rounded-lg border bg-white px-3 py-2 text-sm font-normal" /></label>
+                  </>
+                ) : null}
               </div>
             ) : null}
           </section>
@@ -1291,7 +1424,11 @@ function TemplateArtwork({
       ]
         .filter((url, index, values) => values.indexOf(url) === index)
         .slice(0, 6)}
-      carouselSlides={createCarouselSlides([first, second], property?.environments ?? [])}
+      carouselSlides={createCarouselSlides(
+        [first, second],
+        property?.environments ?? [],
+        property?.caracteristicas ?? [],
+      )}
       carouselSlide={0}
       rendererKey={template.renderer_key}
       priceMode="PRICE"
@@ -1677,6 +1814,7 @@ function CreativeArtwork({
       secondaryImageUrl,
       carouselImages: carouselImageUrls,
       carouselSlides,
+      features: property?.caracteristicas ?? undefined,
       highlight,
       stats,
     },
@@ -1694,6 +1832,11 @@ function CreativeArtwork({
       avatarUrl: profile.avatar_url,
       logoUrl: profile.logo_nickname_url,
       logoWhiteUrl: profile.logo_nickname_white_url,
+      tagline: profile.frase_impacto,
+      authorityNumbers: (profile.authority_numbers ?? []).slice(0, 3).map((item) => ({
+        value: item.valor,
+        label: item.rotulo,
+      })),
     },
     copy: {
       headline: showSupportingCopy ? headline : "",

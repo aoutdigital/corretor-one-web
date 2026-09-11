@@ -1663,7 +1663,9 @@ Renderers iniciais de imóvel:
 - `property-essential-01`: uma imagem e composição editorial.
 - `property-dual-02`: duas imagens em metades iguais; aceita mídia do imóvel ou do empreendimento associado, tag curta de destaque e preço real ou “Consulte o valor”.
 - `property-editorial-03`: uma imagem em tela cheia, máscaras superior/inferior, label livre, atributos textuais e seis temas escuros com tipografia branca.
-- `property-journey-carousel-01`: carrossel editorial 4:5 com oito slides recortados de uma composição panorâmica contínua de 8640 × 1350 px. Cada slide possui configuração própria de função, imagem, identificação, título e texto; slides de ambiente podem reutilizar título, área e características de `imovel_ambientes`. A ordem é editável e o preview simula navegação horizontal e indicadores do Instagram.
+- `property-journey-carousel-01`: carrossel editorial 4:5 com oito slides recortados de uma composição panorâmica contínua de 8640 × 1350 px. Cada slide possui configuração própria de função, imagem, identificação, título e texto; slides de ambiente podem reutilizar título, área e características de `imovel_ambientes`. Possui os seis temas escuros compartilhados com o renderer editorial, usa a frase de impacto e até três números públicos de autoridade do corretor na assinatura. A ordem é editável e o preview simula navegação horizontal e indicadores do Instagram.
+
+Fluxo de criação visual: novos templates devem ser primeiramente construídos e aprovados como protótipos HTML isolados. Após a aprovação da composição, o HTML passa a ser a referência canônica para implementação no renderer, preview administrativo e geração final.
 
 Ao publicar uma versão pelo admin, o renderer gera previews imutáveis nos formatos `PORTRAIT` e `VERTICAL`, armazena as URLs no template e também no histórico da versão. A Central consome essas imagens prontas e não renderiza HTML por item na operação normal.
 

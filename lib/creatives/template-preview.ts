@@ -64,7 +64,11 @@ export function templatePreviewPayload(
       titleMode: "FULL",
     },
     format,
-    colorTheme: rendererKey === "property-editorial-03" ? "PETROL" : undefined,
+    colorTheme:
+      rendererKey === "property-editorial-03" ||
+      rendererKey === "property-journey-carousel-01"
+        ? "PETROL"
+        : undefined,
     templateConfig: config,
   };
 }

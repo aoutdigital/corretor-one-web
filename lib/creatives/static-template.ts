@@ -8,41 +8,47 @@ export type CreativeColorTheme =
   | "AUBERGINE";
 export const CREATIVE_DARK_THEMES: Record<
   CreativeColorTheme,
-  { label: string; color: string; mask: string; accent: string }
+  { label: string; color: string; deep: string; mask: string; accent: string }
 > = {
   MIDNIGHT: {
     label: "Meia-noite",
     color: "#101827",
+    deep: "#080d17",
     mask: "rgba(16,24,39,.96)",
     accent: "#d5ad67",
   },
   PETROL: {
     label: "Petróleo",
     color: "#123f42",
+    deep: "#0b292b",
     mask: "rgba(18,63,66,.96)",
     accent: "#d9aa59",
   },
   FOREST: {
     label: "Floresta",
     color: "#173c2c",
+    deep: "#0c251a",
     mask: "rgba(23,60,44,.96)",
     accent: "#d6b56f",
   },
   BURGUNDY: {
     label: "Bordô",
     color: "#551f2d",
+    deep: "#35121c",
     mask: "rgba(85,31,45,.96)",
     accent: "#e1b870",
   },
   NAVY: {
     label: "Azul-marinho",
     color: "#18375c",
+    deep: "#0d223c",
     mask: "rgba(24,55,92,.96)",
     accent: "#d6ad62",
   },
   AUBERGINE: {
     label: "Berinjela",
     color: "#41263f",
+    deep: "#291727",
     mask: "rgba(65,38,63,.96)",
     accent: "#dab16c",
   },
@@ -195,6 +201,7 @@ export type PropertyCreativePayload = {
       eyebrow: string;
       title: string;
       text: string;
+      attributes?: string[];
     }>;
     features?: string[];
     environments?: Array<{
@@ -217,6 +224,8 @@ export type PropertyCreativePayload = {
     avatarUrl: string | null;
     logoUrl: string | null;
     logoWhiteUrl: string | null;
+    tagline?: string | null;
+    authorityNumbers?: Array<{ value: string; label: string }>;
   };
   copy: {
     headline: string;
@@ -465,69 +474,100 @@ export function buildPropertyEditorialHtml(
 export const PROPERTY_JOURNEY_SLIDES = 8;
 
 export const PROPERTY_JOURNEY_DEFAULTS = [
-  { kind: "COVER", eyebrow: "O convite", title: "", text: "" },
-  { kind: "NUMBERS", eyebrow: "Essência em números", title: "", text: "" },
-  { kind: "ENVIRONMENT", eyebrow: "Ambiente 01", title: "O espaço de receber", text: "Um ambiente que amplia encontros e transforma a rotina." },
-  { kind: "ENVIRONMENT", eyebrow: "Ambiente 02", title: "Integração e movimento", text: "Fluxos leves, proporções generosas e liberdade para viver." },
-  { kind: "ENVIRONMENT", eyebrow: "Ambiente 03", title: "Pausa e privacidade", text: "Privacidade e conforto para desacelerar." },
-  { kind: "FEATURES", eyebrow: "Diferenciais", title: "O que torna este imóvel único", text: "" },
-  { kind: "LOCATION", eyebrow: "Além da porta", title: "", text: "Um endereço conectado ao seu estilo de vida." },
-  { kind: "CONTACT", eyebrow: "Contato", title: "Seu próximo capítulo pode começar aqui", text: "" },
+  { kind: "COVER", eyebrow: "Exclusividade", title: "Um endereço para viver a sua próxima história.", text: "" },
+  { kind: "NUMBERS", eyebrow: "Visão geral", title: "", text: "" },
+  { kind: "ENVIRONMENT", eyebrow: "Suíte principal", title: "Privacidade com proporções generosas.", text: "" },
+  { kind: "ENVIRONMENT", eyebrow: "Cozinha", title: "O centro da casa, aberto para os encontros.", text: "" },
+  { kind: "ENVIRONMENT", eyebrow: "Sala principal", title: "Luz, amplitude e integração.", text: "" },
+  { kind: "ENVIRONMENT", eyebrow: "Varanda", title: "Uma pausa acima da cidade.", text: "" },
+  { kind: "FEATURES", eyebrow: "Empreendimento", title: "Tudo o que amplia o seu jeito de morar.", text: "" },
+  { kind: "CONTACT", eyebrow: "Contato", title: "Conecto pessoas a imóveis que fazem sentido para suas histórias.", text: "" },
 ] as const;
+
+function buildPropertyJourneyHtmlDocument(
+  payload: PropertyCreativePayload,
+  fonts?: CreativeFonts,
+) {
+  const slide = Math.max(0, Math.min(7, payload.carouselSlide ?? 0));
+  const configured = payload.property.carouselSlides ?? [];
+  const images = payload.property.carouselImages?.length
+    ? payload.property.carouselImages
+    : [payload.property.imageUrl];
+  const imageAt = (index: number) =>
+    safeUrl(
+      configured[index]?.imageUrl ||
+        images[Math.min(index, images.length - 1)] ||
+        images[0],
+    );
+  const contentAt = (index: number) => {
+    const defaults = PROPERTY_JOURNEY_DEFAULTS[index];
+    return {
+      eyebrow: configured[index]?.eyebrow || defaults.eyebrow,
+      title: configured[index]?.title || defaults.title,
+      text: configured[index]?.text || defaults.text,
+    };
+  };
+  const content = Array.from({ length: PROPERTY_JOURNEY_SLIDES }, (_, index) =>
+    contentAt(index),
+  );
+  const avatar = safeUrl(payload.broker.avatarUrl);
+  const logo = safeUrl(payload.broker.logoWhiteUrl || payload.broker.logoUrl);
+  const theme = CREATIVE_DARK_THEMES[payload.colorTheme ?? "PETROL"];
+  const stats = payload.property.stats.slice(0, 4);
+  const features = (
+    configured[6]?.attributes?.length
+      ? configured[6].attributes
+      : payload.property.features?.length
+        ? payload.property.features
+        : [
+          "Arquitetura contemporânea",
+          "Ambientes integrados",
+          "Conforto em cada detalhe",
+          "Localização estratégica",
+          ]
+  )
+    .slice(0, 6)
+    .map((item) => `<span>${escape(item)}</span>`)
+    .join("");
+  const authority = (payload.broker.authorityNumbers ?? [])
+    .slice(0, 3)
+    .map(
+      (item) =>
+        `<div class="number"><b>${escape(item.value)}</b><span>${escape(item.label)}</span></div>`,
+    )
+    .join("");
+  const identity = `<div class="brand-row">${avatar ? `<img class="avatar-small" src="${avatar}">` : `<i class="avatar-small fallback">${escape(payload.broker.name.slice(0, 1))}</i>`}<div class="broker"><b>${escape(payload.broker.name)}</b><small>${escape(payload.broker.creci)}</small></div></div>${logo ? `<img class="logo-white" src="${logo}">` : `<b class="logo-fallback">corretor.one/${escape(payload.broker.nickname)}</b>`}`;
+  const slideBlock = (index: number, className: string, body: string) =>
+    `<section class="slide ${className}" style="left:${index * 1080}px">${body}</section>`;
+  const environment = (index: number, className: string) => {
+    const item = content[index];
+    return slideBlock(
+      index,
+      className,
+      `<div class="slide-inner"><div class="chapter">0${index + 1} · ${escape(item.eyebrow)}</div><h2 class="display">${escape(item.title)}</h2><div class="caption-rule"></div>${item.text ? `<p class="body-copy">${escape(item.text)}</p>` : ""}</div>`,
+    );
+  };
+  const split = (index: number, direction: "top" | "bottom", featureList = false) => {
+    const item = content[index];
+    return slideBlock(
+      index,
+      `split-slide slide-${index + 1} image-${direction}`,
+      `<div class="half-image"><img src="${imageAt(index)}"></div><div class="text-half"><div class="chapter">0${index + 1} · ${escape(item.eyebrow)}</div><h2 class="display">${escape(item.title)}</h2>${item.text ? `<p class="body-copy">${escape(item.text)}</p>` : ""}${featureList ? `<div class="feature-list">${features}</div>` : ""}</div>`,
+    );
+  };
+  const titleSlideOne = content[0].title || "Um endereço para viver a sua próxima história.";
+  const titleSlideTwo = content[1].title || payload.property.title;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${fontFaces(fonts)}
+*{box-sizing:border-box}html,body{margin:0;width:1080px;height:1350px;overflow:hidden;font-family:"dunbar-tall",Arial,sans-serif}.canvas{position:relative;width:1080px;height:1350px;overflow:hidden;background:${theme.color};color:#f7f4ed}.panorama{position:absolute;left:${-slide * 1080}px;top:0;width:8640px;height:1350px;background:${theme.color}.slide{position:absolute;top:0;width:1080px;height:1350px;overflow:visible;border-right:1px solid rgba(255,255,255,.08)}.slide-inner{position:absolute;z-index:4;inset:0;padding:70px 72px}.chapter{font-size:21px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:${theme.accent}}.display{margin:18px 0 0;max-width:900px;font-size:58px;font-weight:300;line-height:.98;letter-spacing:-.04em}.body-copy{max-width:800px;margin:14px 0 0;font-size:22px;line-height:1.2;color:#c4d2ce}.shared-one{position:absolute;left:540px;top:0;width:1080px;height:1350px;overflow:hidden;background:${theme.color}}.shared-one img{width:100%;height:100%;object-fit:cover;-webkit-mask-image:radial-gradient(ellipse 68% 118% at 50% 50%,#000 0%,#000 24%,rgba(0,0,0,.96) 36%,rgba(0,0,0,.72) 55%,rgba(0,0,0,.28) 76%,transparent 100%);mask-image:radial-gradient(ellipse 68% 118% at 50% 50%,#000 0%,#000 24%,rgba(0,0,0,.96) 36%,rgba(0,0,0,.72) 55%,rgba(0,0,0,.28) 76%,transparent 100%)}.mask-one{position:absolute;inset:0 auto 0 0;display:flex;width:2160px;height:100%;overflow:hidden;background:linear-gradient(to right,${theme.color},${theme.deep});mask-image:linear-gradient(90deg,#000 540px,rgba(0,0,0,.8) 600px,transparent 50%),linear-gradient(270deg,#000 540px,rgba(0,0,0,.8) 600px,transparent 50%),linear-gradient(360deg,#000 10%,#000 10%,transparent 100%)}.brand-row{position:relative;z-index:5;display:flex;align-items:center;gap:18px}.avatar-small{display:grid;place-items:center;width:76px;height:76px;border:2px solid #fff;border-radius:50%;object-fit:cover;font-style:normal}.fallback{background:${theme.deep}}.broker b,.broker small{display:block}.broker b{font-size:25px}.broker small{margin-top:4px;font-size:17px;color:rgba(255,255,255,.72)}.logo-white{position:absolute;right:72px;top:76px;width:255px;max-height:78px;object-fit:contain}.logo-fallback{position:absolute;right:72px;top:92px}.hero-copy{position:absolute;left:72px;bottom:130px;z-index:5;width:700px}.hero-copy .display{font-size:86px}.swipe{display:inline-flex;align-items:center;gap:17px;margin-top:38px;padding:14px 20px;border:1px solid rgba(255,255,255,.55);border-radius:999px;font-size:20px}.swipe i{display:block;position:relative;width:72px;height:1px;background:#fff}.swipe i:after{content:"";position:absolute;right:0;top:-5px;width:10px;height:10px;border-top:1px solid #fff;border-right:1px solid #fff;transform:rotate(45deg)}.overview-copy{display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;padding:0 72px 100px 300px;text-align:right}.overview-copy .display{max-width:690px}.facts{display:grid;grid-template-columns:repeat(4,1fr);width:708px;margin-top:34px;border-block:1px solid rgba(255,255,255,.3)}.fact{min-height:104px;padding:17px 14px 14px;border-left:1px solid rgba(255,255,255,.2)}.fact:first-child{border:0}.fact b,.fact span{display:block}.fact b{font-size:34px}.fact span{font-size:16px;color:#c4d2ce}.moon-image{position:absolute;z-index:3;overflow:hidden}.moon-image img{width:100%;height:100%;object-fit:cover}.moon-top{left:1998px;top:0;width:1404px;height:945px;border-radius:0 0 702px 702px / 0 0 240px 240px}.moon-bottom{left:3078px;bottom:0;width:1404px;height:945px;border-radius:702px 702px 0 0 / 240px 240px 0 0}.moon-image:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,${theme.color},transparent 11%,transparent 89%,${theme.color});opacity:.42}.environment-one .slide-inner{display:flex;flex-direction:column;justify-content:flex-end;padding:970px 86px 58px}.environment-two .slide-inner{padding:64px 86px 0 210px}.caption-rule{width:92px;height:3px;margin:17px 0;background:${theme.accent}}.split-slide{background:${theme.color}}.half-image{position:absolute;left:0;width:100%;height:50%;overflow:hidden}.half-image img{width:100%;height:100%;object-fit:cover}.half-image:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,${theme.color})}.image-top .half-image{top:0}.image-bottom .half-image{bottom:0}.image-bottom .half-image:after{background:linear-gradient(0deg,transparent 60%,${theme.color})}.text-half{position:absolute;z-index:4;left:86px;right:86px;height:50%;display:flex;flex-direction:column;justify-content:center}.image-top .text-half{bottom:0}.image-bottom .text-half{top:0}.slide-5 .text-half{left:250px}.split-slide .body-copy{font-size:24px}.feature-list{display:grid;grid-template-columns:1fr 1fr;gap:8px 32px;margin-top:25px}.feature-list span{padding:11px 0;border-bottom:1px solid rgba(255,255,255,.22);font-size:20px;color:#c4d2ce}.signature{background:linear-gradient(145deg,${theme.deep},${theme.color} 58%,${theme.color})}.signature .slide-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.avatar-frame{width:225px;height:225px;padding:10px;border:2px solid #fff;border-radius:50%}.avatar-frame img,.avatar-frame i{width:100%;height:100%;border-radius:50%;object-fit:cover}.signature-logo{width:380px;max-height:120px;margin-top:42px;object-fit:contain}.quote{max-width:760px;margin:40px auto 0;font-size:39px;font-weight:300;line-height:1.08}.authority{display:grid;grid-template-columns:repeat(3,1fr);width:850px;margin-top:48px;border-block:1px solid rgba(255,255,255,.28)}.number{padding:25px 15px;border-right:1px solid rgba(255,255,255,.25)}.number:last-child{border:0}.number b,.number span{display:block}.number b{font-size:38px}.number span{font-size:17px;color:#c4d2ce}.profile-url{margin-top:42px;padding:15px 30px;border:1px solid rgba(255,255,255,.5);border-radius:999px;font-size:21px}.continuity-line{position:absolute;z-index:6;left:0;top:665px;width:8640px;height:2px;background:linear-gradient(90deg,transparent 0%,${theme.accent} 4%,${theme.accent} 90.7%,transparent 90.7%,transparent 96.4%,${theme.accent} 96.4%,${theme.accent} 99%,transparent 100%)}.continuity-line span{position:absolute;top:-8px;width:18px;height:18px;border:3px solid ${theme.accent};border-radius:50%;background:${theme.color}}
+</style></head><body><div class="canvas"><div class="panorama"><div class="shared-one"><img src="${imageAt(0)}"></div><div class="mask-one"></div><div class="moon-image moon-top"><img src="${imageAt(2)}"></div><div class="moon-image moon-bottom"><img src="${imageAt(3)}"></div>${slideBlock(0,"slide-one",`<div class="slide-inner">${identity}<div class="hero-copy"><div class="chapter">${escape(payload.property.highlight || content[0].eyebrow)}</div><h1 class="display">${escape(titleSlideOne)}</h1><div class="swipe">Arraste para ver os detalhes <i></i></div></div></div>`)}${slideBlock(1,"slide-two",`<div class="slide-inner overview-copy"><div class="chapter">01 · ${escape(content[1].eyebrow)}</div><h2 class="display">${escape(titleSlideTwo)}</h2><div class="facts">${stats.map((item) => `<div class="fact"><b>${escape(item.value)}</b><span>${escape(item.label)}</span></div>`).join("")}</div></div>`)}${environment(2,"environment-one")}${environment(3,"environment-two")}${split(4,"top")}${split(5,"bottom")}${split(6,"top",true)}${slideBlock(7,"signature",`<div class="slide-inner"><div class="avatar-frame">${avatar ? `<img src="${avatar}">` : `<i>${escape(payload.broker.name.slice(0,1))}</i>`}</div>${logo ? `<img class="signature-logo" src="${logo}">` : `<b class="signature-logo">corretor.one</b>`}<p class="quote">“${escape(payload.broker.tagline || content[7].title || "Conecto pessoas a imóveis que fazem sentido para suas histórias.")}”</p>${authority ? `<div class="authority">${authority}</div>` : ""}<div class="profile-url">corretor.one/${escape(payload.broker.nickname)}</div></div>`)}<div class="continuity-line">${Array.from({length:7},(_,index)=>`<span style="left:${(index+1)*1080-9}px"></span>`).join("")}</div></div></div></body></html>`;
+}
 
 export function buildPropertyJourneyHtml(
   payload: PropertyCreativePayload,
   fonts?: CreativeFonts,
 ) {
-  const slide = Math.max(0, Math.min(7, payload.carouselSlide ?? 0));
-  const configuredSlide = payload.property.carouselSlides?.[slide];
-  const kind = configuredSlide?.kind || PROPERTY_JOURNEY_DEFAULTS[slide].kind;
-  const images = payload.property.carouselImages?.length
-    ? payload.property.carouselImages
-    : [payload.property.imageUrl];
-  const image = safeUrl(configuredSlide?.imageUrl || images[Math.min(images.length - 1, Math.max(0, slide - 1))] || images[0]);
-  const avatar = safeUrl(payload.broker.avatarUrl);
-  const logo = safeUrl(
-    kind === "CONTACT"
-      ? payload.broker.logoUrl || payload.broker.logoWhiteUrl
-      : payload.broker.logoWhiteUrl || payload.broker.logoUrl,
+  return buildPropertyJourneyHtmlDocument(payload, fonts).replace(
+    /(\.panorama\{[^}]*background:#[0-9a-f]{6})(\.slide\{)/i,
+    "$1}$2",
   );
-  const defaults = PROPERTY_JOURNEY_DEFAULTS[slide];
-  const eyebrow = configuredSlide?.eyebrow || defaults.eyebrow;
-  const customTitle = configuredSlide?.title || defaults.title;
-  const customText = configuredSlide?.text || defaults.text;
-  const stats = payload.property.stats
-    .map(
-      (item) =>
-        `<div><b>${escape(item.value)}</b><span>${escape(item.label)}</span></div>`,
-    )
-    .join("");
-  const features = (
-    payload.property.features?.length
-      ? payload.property.features
-      : [
-          "Arquitetura contemporânea",
-          "Ambientes integrados",
-          "Conforto em cada detalhe",
-          "Localização estratégica",
-        ]
-  )
-    .slice(0, 6)
-    .map((item) => `<li>${escape(item)}</li>`)
-    .join("");
-  const header = `<header><div class="identity">${avatar ? `<img src="${avatar}">` : `<i>${escape(payload.broker.name.slice(0, 1))}</i>`}<span><b>${escape(payload.broker.name)}</b><small>${escape(payload.broker.creci)}</small></span></div>${logo ? `<img class="logo" src="${logo}">` : `<b>corretor.one/${escape(payload.broker.nickname)}</b>`}</header>`;
-  const content =
-    kind === "COVER"
-      ? `<main class="cover"><em>${escape(payload.property.highlight || "Seleção especial")}</em><h1>${escape(customTitle || payload.property.title)}</h1><p>${escape(customText || payload.property.location)}</p></main>`
-      : kind === "NUMBERS"
-        ? `<main class="numbers"><h1>${escape(customTitle || payload.property.title)}</h1><div class="stats">${stats}</div><strong>${escape(payload.property.price)}</strong>${customText ? `<p>${escape(customText)}</p>` : ""}</main>`
-        : kind === "ENVIRONMENT"
-          ? `<main class="chapter"><h1>${escape(customTitle)}</h1><p>${escape(customText)}</p></main>`
-          : kind === "FEATURES"
-            ? `<main class="features"><h1>${escape(customTitle)}</h1>${customText ? `<p>${escape(customText)}</p>` : ""}<ul>${features}</ul></main>`
-            : kind === "LOCATION"
-              ? `<main class="chapter"><em>${escape(eyebrow)}</em><h1>${escape(customTitle || payload.property.location)}</h1><p>${escape(customText)}</p></main>`
-              : `<main class="contact">${avatar ? `<img src="${avatar}">` : ""}<p>${escape(customTitle)}</p><h1>${escape(payload.broker.name)}</h1><span>${escape(payload.broker.creci)}</span>${customText ? `<span>${escape(customText)}</span>` : ""}<b>corretor.one/${escape(payload.broker.nickname)}</b><strong>${escape(payload.copy.cta)}</strong></main>`;
-  const continuity = `<div class="continuity"><svg viewBox="0 0 8640 1350" preserveAspectRatio="none"><path class="ribbon" d="M0 650 C360 500 720 800 1080 650 S1800 500 2160 650 S2880 800 3240 650 S3960 500 4320 650 S5040 800 5400 650 S6120 500 6480 650 S7200 800 7560 650 S8280 500 8640 650"/><path class="thread" d="M0 650 C360 500 720 800 1080 650 S1800 500 2160 650 S2880 800 3240 650 S3960 500 4320 650 S5040 800 5400 650 S6120 500 6480 650 S7200 800 7560 650 S8280 500 8640 650"/>${Array.from({ length: 7 }, (_, index) => `<circle cx="${(index + 1) * 1080}" cy="650" r="118"/>`).join("")}</svg><div class="panoramaWord">PERCURSO · UM IMÓVEL · OITO CAPÍTULOS</div></div>`;
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${fontFaces(fonts)}*{box-sizing:border-box}html,body{margin:0;width:1080px;height:1350px;overflow:hidden;font-family:"dunbar-tall",Arial,sans-serif}.canvas{position:relative;width:1080px;height:1350px;overflow:hidden;background:#d8d1c5;color:#fff}.photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.veil{position:absolute;inset:0;background:linear-gradient(90deg,rgba(16,22,29,.78),rgba(16,22,29,.18) 72%),linear-gradient(0deg,rgba(16,22,29,.82),transparent 54%)}header{position:absolute;z-index:5;left:64px;right:64px;top:55px;display:flex;justify-content:space-between;align-items:center}.identity{display:flex;align-items:center;gap:14px}.identity img,.identity i{width:58px;height:58px;border:1px solid #fff;border-radius:50%;object-fit:cover}.identity i{display:grid;place-items:center;font-style:normal}.identity b,.identity small{display:block}.identity small{opacity:.72}.logo{width:235px;max-height:58px;object-fit:contain}.eyebrow{position:absolute;z-index:5;left:64px;top:175px;text-transform:uppercase;letter-spacing:.2em;font-weight:700}.continuity{position:absolute;z-index:3;left:${-slide * 1080}px;top:0;width:8640px;height:1350px;pointer-events:none}.continuity svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.continuity .ribbon{fill:none;stroke:rgba(200,160,91,.16);stroke-width:150}.continuity .thread{fill:none;stroke:#d8ae64;stroke-width:3}.continuity circle{fill:rgba(17,24,39,.28);stroke:#d8ae64;stroke-width:3}.panoramaWord{position:absolute;left:60px;top:558px;width:8520px;white-space:nowrap;font-size:126px;letter-spacing:.24em;color:rgba(255,255,255,.14)}.cover,.numbers,.chapter,.features,.contact{position:absolute;z-index:4;left:64px;right:64px}.cover,.chapter{bottom:90px}.cover em,.chapter em{font-style:normal;text-transform:uppercase;letter-spacing:.18em}.cover h1,.chapter h1{margin:18px 0;font-size:72px;line-height:1}.cover p,.chapter p{max-width:790px;font-size:27px}.numbers{top:720px}.numbers h1{font-size:44px;line-height:1.05}.numbers p{font-size:24px}.stats{display:grid;grid-template-columns:repeat(4,1fr);margin:35px 0;padding:25px 0;border-block:1px solid rgba(255,255,255,.35)}.stats div{padding:0 16px;border-right:1px solid rgba(255,255,255,.3)}.stats div:last-child{border:0}.stats b,.stats span{display:block}.stats b{font-size:34px}.numbers>strong{font-size:52px}.features{top:720px}.features h1{font-size:58px}.features p{font-size:24px}.features ul{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:35px;padding:0;list-style:none}.features li{padding:18px 0;border-bottom:1px solid rgba(255,255,255,.35);font-size:25px}.contact{inset:250px 64px auto;text-align:center;color:#171c27}.contact>img{width:230px;height:230px;border-radius:50%;object-fit:cover}.contact p{margin-top:45px;font-size:28px}.contact h1{margin:12px;font-size:68px}.contact span,.contact b{display:block;font-size:24px}.contact b{margin-top:55px}.contact strong{display:inline-block;margin-top:42px;padding:17px 34px;border:1px solid #171c27;border-radius:999px;font-size:22px}.light header,.light .eyebrow{color:#171c27}.light .panoramaWord{color:rgba(23,28,39,.08)}</style></head><body><div class="canvas ${kind === "CONTACT" ? "light" : ""}">${kind === "CONTACT" ? "" : `<img class="photo" src="${image}"><div class="veil"></div>`}${continuity}${header}<div class="eyebrow">0${slide + 1} · ${escape(eyebrow)}</div>${content}</div></body></html>`;
 }
