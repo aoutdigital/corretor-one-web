@@ -129,6 +129,7 @@
 
 - **/criativos** — Central de Criativos em `Objetivo > Modelo > Criativo`; aceita `?imovel=[id]`, `?etapa=[objetivo|template|editor]` e `?rascunho=[id]`
 - **/api/criativos/drafts** — cria, atualiza, lista e recupera rascunhos privados da Central de Criativos
+- A Central exibe acesso rápido aos rascunhos recentes e aos criativos já gerados; downloads devem iniciar como arquivo, sem abrir a imagem em uma nova aba.
 - **/templates** — Biblioteca de templates disponíveis
 - **/posts** — Histórico de criativos gerados
 - **/posts/[id]** — Preview, download e compartilhamento

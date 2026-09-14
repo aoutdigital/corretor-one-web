@@ -1667,6 +1667,16 @@ Renderers iniciais de imóvel:
 
 Fluxo de criação visual: novos templates devem ser primeiramente construídos e aprovados como protótipos HTML isolados. Após a aprovação da composição, o HTML passa a ser a referência canônica para implementação no renderer, preview administrativo e geração final.
 
+Escopo visual do MVP:
+
+- promover imóvel: família inicial de templates estáticos e carrossel editorial;
+- promover empreendimento: reutiliza a mesma família visual, com contrato próprio para nome, fase, tipologias, áreas, dormitórios, estrutura, diferenciais e mídia do empreendimento;
+- promover perfil: ao menos um material institucional simples;
+- material impresso em radar: placa/adesivo vertical A3 e A4 para “Vende-se” ou “Aluga-se”, com identidade do corretor e QR Code rastreável para o anúncio do imóvel;
+- material impresso em radar: cartão de visita horizontal de 9 × 5 cm.
+
+Os materiais impressos usam dimensões físicas, margem de segurança, sangria e resolução próprias; não devem reutilizar diretamente as dimensões dos formatos sociais.
+
 Ao publicar uma versão pelo admin, o renderer gera previews imutáveis nos formatos `PORTRAIT` e `VERTICAL`, armazena as URLs no template e também no histórico da versão. A Central consome essas imagens prontas e não renderiza HTML por item na operação normal.
 
 ---

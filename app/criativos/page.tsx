@@ -23,7 +23,7 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/app/_components/app-shell";
-import { apiFetchWithAuth } from "@/lib/client/auth-api";
+import { apiFetchWithAuth, getAccessToken } from "@/lib/client/auth-api";
 import {
   buildPropertyEssentialHtml,
   buildPropertyDualHtml,
@@ -112,6 +112,7 @@ type CreativeDraft = {
   template_id: string;
   subject_id: string;
   formato: CreativeFormat;
+  updated_at?: string;
   payload: {
     image_url?: string;
     secondary_image_url?: string;
@@ -137,6 +138,14 @@ type CarouselSlideConfig = {
   text: string;
   attributes?: string[];
 };
+
+const FORMAT_LABELS: Record<CreativeFormat, string> = {
+  SQUARE: "Quadrado",
+  PORTRAIT: "Retrato",
+  VERTICAL: "Stories / Status",
+};
+
+const formatLabel = (format: CreativeFormat) => FORMAT_LABELS[format];
 
 function withFixedPropertySlide(slides: CarouselSlideConfig[]) {
   return slides.map((slide, index) =>
@@ -198,6 +207,7 @@ export default function CreativesPage() {
   const [templateId, setTemplateId] = useState("");
   const [step, setStep] = useState<CreativeStep>("OBJECTIVE");
   const [draftId, setDraftId] = useState("");
+  const [drafts, setDrafts] = useState<CreativeDraft[]>([]);
   const [savingDraft, setSavingDraft] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
@@ -230,6 +240,11 @@ export default function CreativesPage() {
       result.ok ? apply(result.data) : setError(result.error),
     );
   }
+  function refreshDrafts() {
+    apiFetchWithAuth<CreativeDraft[]>("/api/criativos/drafts").then((result) => {
+      if (result.ok) setDrafts(result.data ?? []);
+    });
+  }
   useEffect(() => {
     let active = true;
     apiFetchWithAuth<Bootstrap>("/api/criativos").then((result) => {
@@ -241,6 +256,9 @@ export default function CreativesPage() {
     return () => {
       active = false;
     };
+  }, []);
+  useEffect(() => {
+    refreshDrafts();
   }, []);
   useEffect(() => {
     if (!data || propertyId) return;
@@ -396,6 +414,7 @@ export default function CreativesPage() {
     setSavingDraft(false);
     if (!result.ok) return setError(result.error);
     setDraftId(result.data.id);
+    refreshDrafts();
     const params = new URLSearchParams(window.location.search);
     params.set("rascunho", result.data.id);
     params.set("etapa", "editor");
@@ -956,9 +975,14 @@ export default function CreativesPage() {
                     </Panel>
                   </aside>
                 </div>
-                <History posts={data.posts} />
               </>
             )}
+            <DraftHistory
+              drafts={drafts}
+              templates={data.templates}
+              properties={data.properties}
+            />
+            <History posts={data.posts} />
           </>
         ) : null}
       </div>
@@ -2269,6 +2293,45 @@ function PreviewFrame({
   );
 }
 function History({ posts }: { posts: Post[] }) {
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  async function download(post: Post, slideIndex = 0) {
+    const key = `${post.id}:${slideIndex}`;
+    setDownloading(key);
+    setDownloadError(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error("Sessão inválida.");
+      const response = await fetch(
+        `/api/criativos/download?post=${encodeURIComponent(post.id)}&slide=${slideIndex}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as
+          | { error?: { message?: string } }
+          | null;
+        throw new Error(result?.error?.message ?? "Não foi possível baixar o arquivo.");
+      }
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const anchor = document.createElement("a");
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const filename = disposition.match(/filename="([^"]+)"/)?.[1];
+      anchor.href = blobUrl;
+      anchor.download = filename ?? `criativo-${post.id}.png`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1_000);
+    } catch (cause) {
+      setDownloadError(
+        cause instanceof Error ? cause.message : "Não foi possível baixar o arquivo.",
+      );
+    } finally {
+      setDownloading(null);
+    }
+  }
+
   return (
     <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
       <header className="border-b border-slate-100 p-5">
@@ -2301,28 +2364,37 @@ function History({ posts }: { posts: Post[] }) {
                   post.resultado_urls?.length ? (
                     <div className="mt-3 grid grid-cols-4 gap-1.5">
                       {post.resultado_urls.map((url, index) => (
-                        <a
+                        <button
                           key={url}
-                          href={url}
-                          target="_blank"
-                          rel="noreferrer"
+                          type="button"
+                          onClick={() => void download(post, index)}
+                          disabled={downloading === `${post.id}:${index}`}
                           className="inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-semibold"
                           title={`Baixar slide ${index + 1}`}
                         >
-                          <DownloadSimple /> {index + 1}
-                        </a>
+                          {downloading === `${post.id}:${index}` ? (
+                            <ArrowClockwise className="animate-spin" />
+                          ) : (
+                            <DownloadSimple />
+                          )}{" "}
+                          {index + 1}
+                        </button>
                       ))}
                     </div>
                   ) : (
-                    <a
-                      href={post.resultado_url}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => void download(post)}
+                      disabled={downloading === `${post.id}:0`}
                       className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm"
                     >
-                      <DownloadSimple />
-                      Baixar PNG
-                    </a>
+                      {downloading === `${post.id}:0` ? (
+                        <ArrowClockwise className="animate-spin" />
+                      ) : (
+                        <DownloadSimple />
+                      )}
+                      {downloading === `${post.id}:0` ? "Baixando..." : "Baixar PNG"}
+                    </button>
                   )
                 ) : null}
               </div>
@@ -2332,6 +2404,88 @@ function History({ posts }: { posts: Post[] }) {
       ) : (
         <p className="p-10 text-center text-sm text-slate-400">
           Nenhum criativo gerado.
+        </p>
+      )}
+      {downloadError ? (
+        <p className="px-5 pb-5 text-sm text-red-600">{downloadError}</p>
+      ) : null}
+    </section>
+  );
+}
+
+function DraftHistory({
+  drafts,
+  templates,
+  properties,
+}: {
+  drafts: CreativeDraft[];
+  templates: Template[];
+  properties: Property[];
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <header className="flex items-center justify-between border-b border-slate-100 p-5">
+        <div>
+          <h2 className="text-lg font-semibold">Rascunhos recentes</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Continue um criativo do ponto em que parou.
+          </p>
+        </div>
+        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+          {drafts.length}
+        </span>
+      </header>
+      {drafts.length ? (
+        <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
+          {drafts.map((draft) => {
+            const property = properties.find((item) => item.id === draft.subject_id);
+            const template = templates.find((item) => item.id === draft.template_id);
+            return (
+              <article
+                key={draft.id}
+                className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 p-3"
+              >
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                  {property?.images[0] ? (
+                    <Image
+                      src={property.images[0]}
+                      alt=""
+                      fill
+                      sizes="64px"
+                      className="object-cover"
+                      unoptimized
+                    />
+                  ) : null}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">
+                    {property?.display_title ?? property?.titulo ?? "Imóvel"}
+                  </p>
+                  <p className="truncate text-xs text-slate-500">
+                    {template?.nome ?? "Modelo"} · {formatLabel(draft.formato)}
+                  </p>
+                  {draft.updated_at ? (
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Editado em {new Intl.DateTimeFormat("pt-BR", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      }).format(new Date(draft.updated_at))}
+                    </p>
+                  ) : null}
+                </div>
+                <a
+                  href={`/criativos?rascunho=${encodeURIComponent(draft.id)}&etapa=editor`}
+                  className="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold hover:bg-slate-50"
+                >
+                  Continuar
+                </a>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="p-8 text-center text-sm text-slate-400">
+          Nenhum rascunho salvo.
         </p>
       )}
     </section>
