@@ -49,6 +49,7 @@ type Template = {
   preview_url: string | null;
   preview_vertical_url: string | null;
   tipo?: "STATIC" | "CAROUSEL";
+  objetivo?: "PROMOVER_IMOVEL" | "PROMOVER_EMPREENDIMENTO";
 };
 type Property = {
   id: string;
@@ -64,10 +65,10 @@ type Property = {
   estado: string;
   preco_venda: number | null;
   preco_locacao: number | null;
-  area_util: number | null;
-  dormitorios: number | null;
-  suites: number | null;
-  vagas: number | null;
+  area_util: number | string | null;
+  dormitorios: number | string | null;
+  suites: number | string | null;
+  vagas: number | string | null;
   caracteristicas: string[] | null;
   images: string[];
   development_images: string[];
@@ -95,20 +96,29 @@ type Profile = {
 };
 type Post = {
   id: string;
+  subject_id: string;
+  template_id: string;
+  subject_type?: "PROPERTY" | "DEVELOPMENT" | "PROFILE";
   formato: CreativeFormat;
   status: "GERANDO" | "PRONTO" | "ERRO";
   resultado_url: string | null;
   resultado_urls: string[] | null;
-  payload: { property?: { title?: string } };
+  created_at?: string;
+  payload: {
+    property?: { title?: string; code?: string };
+    development?: { name?: string };
+  };
 };
 type Bootstrap = {
   templates: Template[];
   properties: Property[];
+  developments: Property[];
   profile: Profile | null;
   posts: Post[];
 };
 type CreativeDraft = {
   id: string;
+  objetivo?: CreativeObjective;
   template_id: string;
   subject_id: string;
   formato: CreativeFormat;
@@ -129,6 +139,7 @@ type PreviewMode = "INSTAGRAM_FEED" | "STORY_STATUS";
 type TitleMode = "FULL" | "SHORT";
 type ImageLabelMode = "DEVELOPMENT" | "LOCATION";
 type CreativeStep = "OBJECTIVE" | "TEMPLATE" | "EDITOR";
+type CreativeObjective = "PROMOVER_IMOVEL" | "PROMOVER_EMPREENDIMENTO";
 type CarouselSlideConfig = {
   kind: "COVER" | "NUMBERS" | "ENVIRONMENT" | "FEATURES" | "LOCATION" | "CONTACT";
   environmentId?: string;
@@ -205,11 +216,13 @@ export default function CreativesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState("");
+  const [objective, setObjective] = useState<CreativeObjective>("PROMOVER_IMOVEL");
   const [step, setStep] = useState<CreativeStep>("OBJECTIVE");
   const [draftId, setDraftId] = useState("");
   const [drafts, setDrafts] = useState<CreativeDraft[]>([]);
   const [savingDraft, setSavingDraft] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [centralTab, setCentralTab] = useState<"CREATE" | "CREATED">("CREATE");
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [propertyId, setPropertyId] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -290,6 +303,8 @@ export default function CreativesPage() {
         return setError(result.ok ? "Rascunho não encontrado." : result.error);
       const draft = result.data;
       const payload = draft.payload ?? {};
+      const draftObjective = draft.objetivo ?? "PROMOVER_IMOVEL";
+      setObjective(draftObjective);
       setDraftId(draft.id);
       setTemplateId(draft.template_id);
       setPropertyId(draft.subject_id);
@@ -302,8 +317,8 @@ export default function CreativesPage() {
           ? withFixedPropertySlide(payload.carousel_slides)
           : createCarouselSlides(
               payload.carousel_image_urls ?? [],
-              data.properties.find((item) => item.id === draft.subject_id)?.environments ?? [],
-              data.properties.find((item) => item.id === draft.subject_id)?.caracteristicas ?? [],
+              (draftObjective === "PROMOVER_EMPREENDIMENTO" ? data.developments : data.properties).find((item) => item.id === draft.subject_id)?.environments ?? [],
+              (draftObjective === "PROMOVER_EMPREENDIMENTO" ? data.developments : data.properties).find((item) => item.id === draft.subject_id)?.caracteristicas ?? [],
             ),
       );
       setPriceMode(payload.price_mode ?? "PRICE");
@@ -314,15 +329,16 @@ export default function CreativesPage() {
       setStep("EDITOR");
     });
   }, [data, draftLoaded]);
+  const subjects = objective === "PROMOVER_EMPREENDIMENTO" ? (data?.developments ?? []) : (data?.properties ?? []);
   const property = useMemo(
-    () => data?.properties.find((item) => item.id === propertyId) ?? null,
-    [data, propertyId],
+    () => subjects.find((item) => item.id === propertyId) ?? null,
+    [subjects, propertyId],
   );
   const template =
     data?.templates.find((item) => item.id === templateId) ?? null;
-  const isDual = template?.renderer_key === "property-dual-02";
-  const isEditorial = template?.renderer_key === "property-editorial-03";
-  const isCarousel = template?.renderer_key === "property-journey-carousel-01";
+  const isDual = template?.renderer_key.includes("dual-02") ?? false;
+  const isEditorial = template?.renderer_key.includes("editorial-03") ?? false;
+  const isCarousel = template?.renderer_key.includes("journey-carousel-01") ?? false;
   const carouselRenderImages = [
     ...new Set(carouselSlides.map((slide) => slide.imageUrl).filter(Boolean)),
   ];
@@ -330,7 +346,7 @@ export default function CreativesPage() {
     format === "VERTICAL" ? "STORY_STATUS" : "INSTAGRAM_FEED";
   function chooseProperty(id: string) {
     setPropertyId(id);
-    const selected = data?.properties.find((item) => item.id === id);
+    const selected = subjects.find((item) => item.id === id);
     setImageUrl(selected?.images[0] ?? "");
     setSecondaryImageUrl(
       selected?.development_images[0] ??
@@ -369,6 +385,13 @@ export default function CreativesPage() {
       `${window.location.pathname}?${params}`,
     );
   }
+  function chooseObjective(nextObjective: CreativeObjective) {
+    setObjective(nextObjective);
+    setTemplateId("");
+    setPropertyId("");
+    setImageUrl("");
+    navigate("TEMPLATE");
+  }
   function chooseTemplate(item: Template) {
     setTemplateId(item.id);
     if (item.renderer_key === "property-dual-02" && property)
@@ -396,6 +419,7 @@ export default function CreativesPage() {
           id: draftId || undefined,
           template_id: template.id,
           property_id: property.id,
+          objective,
           format,
           payload: {
             image_url: imageUrl,
@@ -442,6 +466,7 @@ export default function CreativesPage() {
       body: JSON.stringify({
         template_id: template.id,
         property_id: property.id,
+        objective,
         image_url: imageUrl,
         secondary_image_url: isDual ? secondaryImageUrl : undefined,
         carousel_image_urls: isCarousel ? carouselRenderImages : undefined,
@@ -477,6 +502,29 @@ export default function CreativesPage() {
         {loading && !data ? <Loading /> : null}
         {data ? (
           <>
+            <DraftHistory
+              drafts={drafts}
+              templates={data.templates}
+              properties={[...data.properties, ...data.developments]}
+            />
+            <nav className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Seções da Central de Criativos">
+              <button
+                type="button"
+                onClick={() => setCentralTab("CREATE")}
+                className={`flex-1 rounded-xl px-4 py-3 text-sm font-bold transition ${centralTab === "CREATE" ? "bg-slate-950 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                Criar novo
+              </button>
+              <button
+                type="button"
+                onClick={() => setCentralTab("CREATED")}
+                className={`flex-1 rounded-xl px-4 py-3 text-sm font-bold transition ${centralTab === "CREATED" ? "bg-slate-950 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+              >
+                Meus criativos ({data.posts.length})
+              </button>
+            </nav>
+            {centralTab === "CREATE" ? (
+              <>
             <CreativeHeader
               step={step}
               onNavigate={navigate}
@@ -496,13 +544,13 @@ export default function CreativesPage() {
               </p>
             ) : null}
             {step === "OBJECTIVE" ? (
-              <ObjectiveSelection onSelect={() => navigate("TEMPLATE")} />
+              <ObjectiveSelection onSelect={chooseObjective} />
             ) : step === "TEMPLATE" ? (
               <TemplateSelection
-                templates={data.templates}
+                templates={data.templates.filter((item) => item.objetivo === objective)}
                 selectedId={templateId}
                 profile={data.profile}
-                property={property ?? data.properties[0] ?? null}
+                property={property ?? subjects[0] ?? null}
                 onBack={() => navigate("OBJECTIVE")}
                 onSelect={chooseTemplate}
               />
@@ -510,7 +558,7 @@ export default function CreativesPage() {
               <>
                 <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(390px,.78fr)]">
                   <div className="space-y-5">
-                    <Panel number="1" title="Imóvel e imagens">
+                    <Panel number="1" title={objective === "PROMOVER_EMPREENDIMENTO" ? "Empreendimento e imagens" : "Imóvel e imagens"}>
                       <button
                         type="button"
                         onClick={() => setPropertyPickerOpen(true)}
@@ -687,7 +735,8 @@ export default function CreativesPage() {
                     </Panel>
                     {propertyPickerOpen ? (
                       <PropertyPickerModal
-                        properties={data.properties}
+                        properties={subjects}
+                        subjectLabel={objective === "PROMOVER_EMPREENDIMENTO" ? "empreendimento" : "imóvel"}
                         selectedId={propertyId}
                         onClose={() => setPropertyPickerOpen(false)}
                         onSelect={(selected) => {
@@ -977,12 +1026,10 @@ export default function CreativesPage() {
                 </div>
               </>
             )}
-            <DraftHistory
-              drafts={drafts}
-              templates={data.templates}
-              properties={data.properties}
-            />
-            <History posts={data.posts} />
+              </>
+            ) : (
+              <History posts={data.posts} templates={data.templates} />
+            )}
           </>
         ) : null}
       </div>
@@ -1063,7 +1110,7 @@ function CreativeHeader({
   );
 }
 
-function ObjectiveSelection({ onSelect }: { onSelect: () => void }) {
+function ObjectiveSelection({ onSelect }: { onSelect: (objective: CreativeObjective) => void }) {
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10">
       <p className="text-xs font-bold uppercase tracking-[.2em] text-stone-500">
@@ -1078,7 +1125,7 @@ function ObjectiveSelection({ onSelect }: { onSelect: () => void }) {
       <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <button
           type="button"
-          onClick={onSelect}
+          onClick={() => onSelect("PROMOVER_IMOVEL")}
           className="group flex min-h-52 flex-col justify-between rounded-3xl border-2 border-slate-950 bg-slate-950 p-6 text-left text-white transition hover:-translate-y-1 hover:shadow-xl"
         >
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
@@ -1091,8 +1138,22 @@ function ObjectiveSelection({ onSelect }: { onSelect: () => void }) {
             </span>
           </span>
         </button>
+        <button
+          type="button"
+          onClick={() => onSelect("PROMOVER_EMPREENDIMENTO")}
+          className="group flex min-h-52 flex-col justify-between rounded-3xl border-2 border-slate-950 bg-white p-6 text-left text-slate-950 transition hover:-translate-y-1 hover:shadow-xl"
+        >
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+            <House size={28} />
+          </span>
+          <span>
+            <strong className="block text-2xl">Promover empreendimento</strong>
+            <span className="mt-2 block text-sm text-slate-500">
+              Apresente projeto, plantas, lazer e localização.
+            </span>
+          </span>
+        </button>
         {[
-          "Promover empreendimento",
           "Promover artigo",
           "Promover página de captura",
           "Promover perfil",
@@ -1615,11 +1676,13 @@ function normalizeSearch(value: string) {
 }
 function PropertyPickerModal({
   properties,
+  subjectLabel,
   selectedId,
   onSelect,
   onClose,
 }: {
   properties: Property[];
+  subjectLabel: "imóvel" | "empreendimento";
   selectedId: string;
   onSelect: (property: Property) => void;
   onClose: () => void;
@@ -1666,7 +1729,7 @@ function PropertyPickerModal({
               id="property-picker-title"
               className="text-3xl font-normal text-slate-950"
             >
-              Selecionar imóvel
+              Selecionar {subjectLabel}
             </h3>
             <p className="mt-2 text-sm text-slate-500">
               Busque por título, código, bairro ou cidade.
@@ -1751,7 +1814,7 @@ function PropertyPickerModal({
             </div>
           ) : (
             <div className="py-16 text-center text-sm text-slate-500">
-              Nenhum imóvel encontrado para esta busca.
+              Nenhum {subjectLabel} encontrado para esta busca.
             </div>
           )}
         </div>
@@ -1807,23 +1870,23 @@ function CreativeArtwork({
     {
       kind: "AREA" as const,
       value:
-        Number(property?.area_util) > 0 ? String(property?.area_util) : "—",
+        typeof property?.area_util === "string" && property.area_util ? property.area_util : Number(property?.area_util) > 0 ? String(property?.area_util) : "—",
       label: "m² úteis",
     },
     {
       kind: "BED" as const,
       value:
-        Number(property?.dormitorios) > 0 ? String(property?.dormitorios) : "—",
+        typeof property?.dormitorios === "string" && property.dormitorios ? property.dormitorios : Number(property?.dormitorios) > 0 ? String(property?.dormitorios) : "—",
       label: "Dormitórios",
     },
     {
       kind: "SUITE" as const,
-      value: Number(property?.suites) > 0 ? String(property?.suites) : "—",
+      value: typeof property?.suites === "string" && property.suites ? property.suites : Number(property?.suites) > 0 ? String(property?.suites) : "—",
       label: "Suítes",
     },
     {
       kind: "CAR" as const,
-      value: Number(property?.vagas) > 0 ? String(property?.vagas) : "—",
+      value: typeof property?.vagas === "string" && property.vagas ? property.vagas : Number(property?.vagas) > 0 ? String(property?.vagas) : "—",
       label: "Vagas",
     },
   ];
@@ -1873,14 +1936,15 @@ function CreativeArtwork({
     colorTheme,
     templateConfig: templateConfig ?? undefined,
   };
+  const normalizedRendererKey = rendererKey?.replace(/^development-/, "property-");
   return (
     <ExactHtmlPreview
       html={
-        rendererKey === "property-dual-02"
+        normalizedRendererKey === "property-dual-02"
           ? buildPropertyDualHtml(payload)
-          : rendererKey === "property-editorial-03"
+          : normalizedRendererKey === "property-editorial-03"
             ? buildPropertyEditorialHtml(payload)
-            : rendererKey === "property-journey-carousel-01"
+            : normalizedRendererKey === "property-journey-carousel-01"
               ? buildPropertyJourneyHtml(payload)
               : buildPropertyEssentialHtml(payload)
       }
@@ -2292,19 +2356,19 @@ function PreviewFrame({
     </div>
   );
 }
-function History({ posts }: { posts: Post[] }) {
+function History({ posts, templates }: { posts: Post[]; templates: Template[] }) {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  async function download(post: Post, slideIndex = 0) {
-    const key = `${post.id}:${slideIndex}`;
+  async function download(post: Post, slideIndex = 0, all = false) {
+    const key = `${post.id}:${all ? "all" : slideIndex}`;
     setDownloading(key);
     setDownloadError(null);
     try {
       const token = await getAccessToken();
       if (!token) throw new Error("Sessão inválida.");
       const response = await fetch(
-        `/api/criativos/download?post=${encodeURIComponent(post.id)}&slide=${slideIndex}`,
+        `/api/criativos/download?post=${encodeURIComponent(post.id)}&slide=${slideIndex}${all ? "&all=1" : ""}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!response.ok) {
@@ -2318,7 +2382,7 @@ function History({ posts }: { posts: Post[] }) {
       const disposition = response.headers.get("content-disposition") ?? "";
       const filename = disposition.match(/filename="([^"]+)"/)?.[1];
       anchor.href = blobUrl;
-      anchor.download = filename ?? `criativo-${post.id}.png`;
+      anchor.download = filename ?? `criativo-${post.id}.${all ? "zip" : "png"}`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -2335,34 +2399,59 @@ function History({ posts }: { posts: Post[] }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
       <header className="border-b border-slate-100 p-5">
-        <h2 className="text-lg font-semibold">Criativos gerados</h2>
+        <h2 className="text-lg font-semibold">Meus criativos</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Consulte e baixe os materiais já gerados.
+        </p>
       </header>
       {posts.length ? (
-        <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
-          {posts.map((post) => (
+        <div className="divide-y divide-slate-100 px-5">
+          {posts.map((post) => {
+            const template = templates.find((item) => item.id === post.template_id);
+            const subject = post.payload?.development?.name ?? post.payload?.property?.title ?? "Material sem identificação";
+            const objective = post.subject_type === "DEVELOPMENT" ? "Promover empreendimento" : post.subject_type === "PROFILE" ? "Promover perfil" : "Promover imóvel";
+            const ratio = post.formato === "SQUARE" ? "aspect-square" : post.formato === "VERTICAL" ? "aspect-[9/16]" : "aspect-[4/5]";
+            return (
             <article
               key={post.id}
-              className="overflow-hidden rounded-xl border border-slate-200"
+              className="grid gap-5 py-5 md:grid-cols-[180px_minmax(0,1fr)_auto] md:items-center"
             >
-              <div className="relative aspect-square bg-slate-100">
+              <div className={`relative mx-auto w-full max-w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-slate-50 ${ratio}`}>
                 {post.resultado_url ? (
                   <Image
                     src={post.resultado_url}
                     alt="Criativo"
                     fill
-                    sizes="300px"
-                    className="object-cover"
+                    sizes="180px"
+                    className="object-contain"
                     unoptimized
                   />
                 ) : null}
               </div>
-              <div className="p-3">
-                <p className="truncate text-sm font-semibold">
-                  {post.payload?.property?.title ?? "Imóvel"}
-                </p>
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[.16em] text-stone-500">{objective}</p>
+                <h3 className="mt-2 text-xl font-semibold text-slate-950">{subject}</h3>
+                <dl className="mt-3 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+                  <div><dt className="text-slate-400">Modelo</dt><dd className="font-medium">{template?.nome ?? "Modelo indisponível"}</dd></div>
+                  <div><dt className="text-slate-400">Formato</dt><dd className="font-medium">{formatLabel(post.formato)}</dd></div>
+                  <div><dt className="text-slate-400">Criado em</dt><dd className="font-medium">{post.created_at ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(post.created_at)) : "—"}</dd></div>
+                  <div><dt className="text-slate-400">Arquivos</dt><dd className="font-medium">{post.resultado_urls?.length ?? (post.resultado_url ? 1 : 0)}</dd></div>
+                </dl>
+              </div>
+              <div className="w-full md:w-48">
                 {post.resultado_url ? (
                   post.resultado_urls?.length ? (
-                    <div className="mt-3 grid grid-cols-4 gap-1.5">
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => void download(post, 0, true)}
+                        disabled={downloading === `${post.id}:all`}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                      >
+                        {downloading === `${post.id}:all` ? <ArrowClockwise className="animate-spin" /> : <DownloadSimple />}
+                        {downloading === `${post.id}:all` ? "Preparando..." : "Baixar tudo (.zip)"}
+                      </button>
+                      <div className="grid grid-cols-4 gap-1.5">
                       {post.resultado_urls.map((url, index) => (
                         <button
                           key={url}
@@ -2380,6 +2469,7 @@ function History({ posts }: { posts: Post[] }) {
                           {index + 1}
                         </button>
                       ))}
+                      </div>
                     </div>
                   ) : (
                     <button
@@ -2399,7 +2489,8 @@ function History({ posts }: { posts: Post[] }) {
                 ) : null}
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <p className="p-10 text-center text-sm text-slate-400">

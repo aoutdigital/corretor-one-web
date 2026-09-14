@@ -1665,6 +1665,8 @@ Renderers iniciais de imóvel:
 - `property-editorial-03`: uma imagem em tela cheia, máscaras superior/inferior, label livre, atributos textuais e seis temas escuros com tipografia branca.
 - `property-journey-carousel-01`: carrossel editorial 4:5 com oito slides recortados de uma composição panorâmica contínua de 8640 × 1350 px. Cada slide possui configuração própria de função, imagem, identificação, título e texto; slides de ambiente podem reutilizar título, área e características de `imovel_ambientes`. Possui os seis temas escuros compartilhados com o renderer editorial, usa a frase de impacto e até três números públicos de autoridade do corretor na assinatura. A ordem é editável e o preview simula navegação horizontal e indicadores do Instagram.
 
+Os equivalentes `development-essential-01`, `development-dual-02`, `development-editorial-03` e `development-journey-carousel-01` reutilizam os respectivos motores visuais com um snapshot próprio de empreendimento: nome, fase, intervalos das tipologias, localização, estrutura, diferenciais e mídias.
+
 Fluxo de criação visual: novos templates devem ser primeiramente construídos e aprovados como protótipos HTML isolados. Após a aprovação da composição, o HTML passa a ser a referência canônica para implementação no renderer, preview administrativo e geração final.
 
 Escopo visual do MVP:
@@ -1695,6 +1697,8 @@ Ao publicar uma versão pelo admin, o renderer gera previews imutáveis nos form
 - resultado_urls (text[], nullable) — conjunto ordenado dos slides quando `tipo = CAROUSEL`; `resultado_url` mantém a capa para compatibilidade.
 - storage_bucket, storage_path (text, nullable)
 - payload (jsonb) — snapshot imutável dos dados usados na renderização
+
+No download de materiais com múltiplos arquivos, a API pode empacotar `resultado_urls` em ZIP sem compressão destrutiva das imagens. Os arquivos individuais continuam disponíveis.
 
 ### creative_drafts (edições de criativos ainda não geradas)
 

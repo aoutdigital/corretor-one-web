@@ -29,10 +29,11 @@ export async function POST(request: Request) {
   const templateId = typeof body?.template_id === "string" ? body.template_id : "";
   const propertyId = typeof body?.property_id === "string" ? body.property_id : "";
   const format = typeof body?.format === "string" ? body.format : "";
+  const objective: "PROMOVER_IMOVEL" | "PROMOVER_EMPREENDIMENTO" = body?.objective === "PROMOVER_EMPREENDIMENTO" ? "PROMOVER_EMPREENDIMENTO" : "PROMOVER_IMOVEL";
   const payload = (body?.payload && typeof body.payload === "object" ? body.payload : {}) as Json;
   if (!templateId || !propertyId || !["SQUARE", "PORTRAIT", "VERTICAL"].includes(format)) return NextResponse.json({ ok: false, error: { message: "Selecione modelo, imóvel e formato." } }, { status: 400 });
   const draftId = typeof body?.id === "string" ? body.id : "";
-  const values = { owner_id: session.ownerId, objetivo: "PROMOVER_IMOVEL" as const, template_id: templateId, subject_type: "PROPERTY" as const, subject_id: propertyId, formato: format as "SQUARE" | "PORTRAIT" | "VERTICAL", payload };
+  const values = { owner_id: session.ownerId, objetivo: objective, template_id: templateId, subject_type: objective === "PROMOVER_EMPREENDIMENTO" ? "DEVELOPMENT" as const : "PROPERTY" as const, subject_id: propertyId, formato: format as "SQUARE" | "PORTRAIT" | "VERTICAL", payload };
   const result = draftId
     ? await session.admin.from("creative_drafts").update(values).eq("id", draftId).eq("owner_id", session.ownerId).select("id,updated_at").single()
     : await session.admin.from("creative_drafts").insert(values).select("id,updated_at").single();

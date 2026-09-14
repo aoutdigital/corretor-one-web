@@ -130,13 +130,12 @@ export async function GET(request: Request) {
     );
   const { admin, ownerId } = authenticated;
   const db = admin as unknown as Db;
-  const [templates, properties, media, developmentMedia, environments, profile, authority, posts] =
+  const [templates, properties, developments, developmentTypes, media, developmentMedia, environments, profile, authority, posts] =
     await Promise.all([
       db
         .from("templates")
         .select("*")
         .eq("ativo", true)
-        .eq("objetivo", "PROMOVER_IMOVEL")
         .order("nome"),
       db
         .from("imoveis")
@@ -146,6 +145,17 @@ export async function GET(request: Request) {
         .eq("owner_id", ownerId)
         .eq("status", "PUBLICADO")
         .order("updated_at", { ascending: false }),
+      db
+        .from("empreendimentos")
+        .select("*")
+        .eq("owner_id", ownerId)
+        .eq("status", "PUBLICADO")
+        .order("updated_at", { ascending: false }),
+      db
+        .from("empreendimento_tipos")
+        .select("empreendimento_id,area_privativa,dormitorios,suites,vagas")
+        .eq("owner_id", ownerId)
+        .order("ordem"),
       db
         .from("midia_relacoes")
         .select("ref_id,ordem,midia:midia_id(tipo,url)")
@@ -179,7 +189,7 @@ export async function GET(request: Request) {
       db
         .from("posts")
         .select(
-          "id,subject_id,template_id,formato,status,resultado_url,resultado_urls,payload,erro,created_at",
+          "id,subject_type,subject_id,template_id,formato,status,resultado_url,resultado_urls,payload,erro,created_at",
         )
         .eq("owner_id", ownerId)
         .order("created_at", { ascending: false })
@@ -188,6 +198,8 @@ export async function GET(request: Request) {
   const failed = [
     templates,
     properties,
+    developments,
+    developmentTypes,
     media,
     developmentMedia,
     environments,
@@ -205,6 +217,8 @@ export async function GET(request: Request) {
     ? developmentMedia.data
     : [];
   const propertyRows = Array.isArray(properties.data) ? properties.data : [];
+  const developmentRows = Array.isArray(developments.data) ? developments.data : [];
+  const developmentTypeRows = Array.isArray(developmentTypes.data) ? developmentTypes.data : [];
   const environmentRows = Array.isArray(environments.data) ? environments.data : [];
   const items = propertyRows
     .map((property) => ({
@@ -250,11 +264,34 @@ export async function GET(request: Request) {
       ),
     }))
     .filter((property) => property.images.length > 0);
+  const developmentItems = developmentRows
+    .map((development) => {
+      const typeRows = developmentTypeRows.filter((item) => item.empreendimento_id === development.id);
+      const range = (key: string) => {
+        const values = typeRows.map((item) => Number(item[key])).filter((value) => Number.isFinite(value) && value > 0);
+        if (!values.length) return null;
+        const min = Math.min(...values); const max = Math.max(...values);
+        return min === max ? String(min) : `${min}–${max}`;
+      };
+      const images = developmentMediaRows
+        .filter((item) => item.ref_id === development.id && item.midia && typeof item.midia === "object" && !Array.isArray(item.midia) && (item.midia as Row).tipo === "IMAGEM")
+        .flatMap((item) => typeof (item.midia as Row).url === "string" ? [(item.midia as Row).url as string] : []);
+      return {
+        id: String(development.id), titulo: String(development.nome ?? "Empreendimento"), display_title: String(development.nome ?? "Empreendimento"), short_title: String(development.nome ?? "Empreendimento"),
+        codigo: null, finalidade: "VENDER", tipo: String(development.categoria_imovel ?? development.tipo_uso ?? "Empreendimento"),
+        bairro_comercial: typeof development.bairro_comercial === "string" ? development.bairro_comercial : null, bairro: String(development.bairro ?? ""), cidade: String(development.cidade ?? ""), estado: String(development.estado ?? ""),
+        preco_venda: null, preco_locacao: null, area_util: range("area_privativa"), dormitorios: range("dormitorios"), suites: range("suites"), vagas: range("vagas"),
+        caracteristicas: Array.isArray(development.caracteristicas) ? development.caracteristicas : [], images, development_images: images,
+        empreendimento: { nome: String(development.nome ?? "") }, environments: [], fase: development.fase ?? null, previsao_entrega_em: development.previsao_entrega_em ?? null,
+      };
+    })
+    .filter((development) => development.images.length > 0);
   return NextResponse.json({
     ok: true,
     data: {
       templates: templates.data ?? [],
       properties: items,
+      developments: developmentItems,
       profile:
         profile.data && !Array.isArray(profile.data)
           ? { ...profile.data, authority_numbers: authority.data ?? [] }
@@ -283,6 +320,7 @@ export async function POST(request: Request) {
   if (!body || typeof body !== "object")
     return NextResponse.json({ ok: false }, { status: 400 });
   const input = body as Record<string, unknown>;
+  const developmentObjective = input.objective === "PROMOVER_EMPREENDIMENTO";
   const propertyId = text(input.property_id, 40);
   const templateId = text(input.template_id, 40);
   const imageUrl = text(input.image_url, 1500);
@@ -355,15 +393,13 @@ export async function POST(request: Request) {
   const [template, property, images, profile, authority] = await Promise.all([
     db
       .from("templates")
-      .select("id,renderer_key,version,formatos,ativo,config")
+      .select("id,objetivo,renderer_key,version,formatos,ativo,config")
       .eq("id", templateId)
       .eq("ativo", true)
       .maybeSingle(),
     db
-      .from("imoveis")
-      .select(
-        "id,titulo,codigo,finalidade,tipo_negociacao,tipo,subtipo,bairro_comercial,bairro,cidade,estado,preco_venda,preco_locacao,area_util,area_terreno,dormitorios,suites,salas,vagas,caracteristicas,status,empreendimento_id,empreendimento:empreendimento_id(nome)",
-      )
+      .from(developmentObjective ? "empreendimentos" : "imoveis")
+      .select(developmentObjective ? "*" : "id,titulo,codigo,finalidade,tipo_negociacao,tipo,subtipo,bairro_comercial,bairro,cidade,estado,preco_venda,preco_locacao,area_util,area_terreno,dormitorios,suites,salas,vagas,caracteristicas,status,empreendimento_id,empreendimento:empreendimento_id(nome)")
       .eq("id", propertyId)
       .eq("owner_id", ownerId)
       .eq("status", "PUBLICADO")
@@ -373,7 +409,7 @@ export async function POST(request: Request) {
       .select("midia:midia_id(tipo,url)")
       .eq("ref_id", propertyId)
       .eq("owner_id", ownerId)
-      .eq("ref_tipo", "IMOVEL"),
+      .eq("ref_tipo", developmentObjective ? "EMPREENDIMENTO" : "IMOVEL"),
     db
       .from("profiles")
       .select(
@@ -390,19 +426,39 @@ export async function POST(request: Request) {
   ]);
   const templateRow =
     template.data && !Array.isArray(template.data) ? template.data : null;
-  const propertyRow =
+  const rawSubjectRow =
     property.data && !Array.isArray(property.data) ? property.data : null;
+  const developmentTypes = developmentObjective
+    ? await db.from("empreendimento_tipos").select("area_privativa,dormitorios,suites,vagas").eq("owner_id", ownerId).eq("empreendimento_id", propertyId).order("ordem")
+    : { data: [], error: null };
+  const propertyRow: Row | null = rawSubjectRow && developmentObjective
+    ? (() => {
+        const typeRows = Array.isArray(developmentTypes.data) ? developmentTypes.data : [];
+        const range = (key: string) => {
+          const values = typeRows.map((item) => Number(item[key])).filter((value) => Number.isFinite(value) && value > 0);
+          if (!values.length) return null;
+          const min = Math.min(...values); const max = Math.max(...values);
+          return min === max ? String(min) : `${min}–${max}`;
+        };
+        return { ...rawSubjectRow, titulo: rawSubjectRow.nome, codigo: "", finalidade: "VENDER", tipo: rawSubjectRow.categoria_imovel ?? rawSubjectRow.tipo_uso, preco_venda: null, preco_locacao: null, area_util: range("area_privativa"), dormitorios: range("dormitorios"), suites: range("suites"), vagas: range("vagas"), empreendimento_id: rawSubjectRow.id, empreendimento: { nome: rawSubjectRow.nome } };
+      })()
+    : rawSubjectRow;
   const profileRow =
     profile.data && !Array.isArray(profile.data) ? profile.data : null;
   if (
     !templateRow ||
     !propertyRow ||
     !profileRow ||
+    templateRow.objetivo !== (developmentObjective ? "PROMOVER_EMPREENDIMENTO" : "PROMOVER_IMOVEL") ||
     ![
       "property-essential-01",
       "property-dual-02",
       "property-editorial-03",
       "property-journey-carousel-01",
+      "development-essential-01",
+      "development-dual-02",
+      "development-editorial-03",
+      "development-journey-carousel-01",
     ].includes(String(templateRow.renderer_key)) ||
     !Array.isArray(templateRow.formatos) ||
     !templateRow.formatos.includes(format)
@@ -442,9 +498,10 @@ export async function POST(request: Request) {
       : [],
   );
   const allowedImages = [...new Set([...propertyImages, ...developmentImages])];
-  const dual = templateRow.renderer_key === "property-dual-02";
-  const editorial = templateRow.renderer_key === "property-editorial-03";
-  const carousel = templateRow.renderer_key === "property-journey-carousel-01";
+  const rendererKey = String(templateRow.renderer_key).replace(/^development-/, "property-");
+  const dual = rendererKey === "property-dual-02";
+  const editorial = rendererKey === "property-editorial-03";
+  const carousel = rendererKey === "property-journey-carousel-01";
   if (
     !allowedImages.includes(imageUrl) ||
     (dual &&
@@ -472,26 +529,26 @@ export async function POST(request: Request) {
   const stats = [
     {
       kind: "AREA",
-      value: Number(p.area_util) > 0 ? String(p.area_util) : "—",
+      value: typeof p.area_util === "string" && p.area_util ? p.area_util : Number(p.area_util) > 0 ? String(p.area_util) : "—",
       label: "m² úteis",
     },
     {
       kind: "BED",
-      value: Number(p.dormitorios) > 0 ? String(p.dormitorios) : "—",
+      value: typeof p.dormitorios === "string" && p.dormitorios ? p.dormitorios : Number(p.dormitorios) > 0 ? String(p.dormitorios) : "—",
       label: "Dormitórios",
     },
     {
       kind: "SUITE",
-      value: Number(p.suites) > 0 ? String(p.suites) : "—",
+      value: typeof p.suites === "string" && p.suites ? p.suites : Number(p.suites) > 0 ? String(p.suites) : "—",
       label: "Suítes",
     },
     {
       kind: "CAR",
-      value: Number(p.vagas) > 0 ? String(p.vagas) : "—",
+      value: typeof p.vagas === "string" && p.vagas ? p.vagas : Number(p.vagas) > 0 ? String(p.vagas) : "—",
       label: "Vagas",
     },
   ] as PropertyCreativePayload["property"]["stats"];
-  const generatedTitle = buildImovelHeaderTitle(p);
+  const generatedTitle = developmentObjective ? text(p.nome ?? p.titulo, 120) : buildImovelHeaderTitle(p as Parameters<typeof buildImovelHeaderTitle>[0]);
   const developmentName = empreendimentoNome(p);
   const payload: PropertyCreativePayload = {
     property: {
@@ -509,7 +566,7 @@ export async function POST(request: Request) {
       carouselSlides: carousel ? carouselSlides : undefined,
       features: Array.isArray(p.caracteristicas)
         ? p.caracteristicas
-            .filter((item): item is string => typeof item === "string")
+            .filter((item: unknown): item is string => typeof item === "string")
             .slice(0, 6)
         : undefined,
       highlight:
@@ -542,11 +599,13 @@ export async function POST(request: Request) {
     templateConfig:
       templateRow.config as PropertyCreativePayload["templateConfig"],
   };
+  if (developmentObjective)
+    (payload as unknown as Row).development = { name: generatedTitle };
   const post = await db
     .from("posts")
     .insert({
       owner_id: ownerId,
-      subject_type: "PROPERTY",
+      subject_type: developmentObjective ? "DEVELOPMENT" : "PROPERTY",
       subject_id: propertyId,
       template_id: templateId,
       tipo: carousel ? "CAROUSEL" : "STATIC",
@@ -571,7 +630,7 @@ export async function POST(request: Request) {
     if (carousel) {
       const renderedSlides = await renderPropertyCarousel(
         payload,
-        String(templateRow.renderer_key),
+        rendererKey,
       );
       const urls: string[] = [];
       for (let index = 0; index < renderedSlides.length; index += 1) {
@@ -606,7 +665,7 @@ export async function POST(request: Request) {
     }
     const rendered = await renderPropertyCreative(
       payload,
-      String(templateRow.renderer_key),
+      rendererKey,
     );
     const path = `${ownerId}/creatives/${postId}/${format.toLowerCase()}.png`;
     const uploaded = await createMediaStorageProvider().upload({
