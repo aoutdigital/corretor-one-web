@@ -29,6 +29,7 @@ import { findRelatedProperties, type RelatedProperty, type ScoredRelatedProperty
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
+import { parsePublicImageVariants } from "@/lib/media/responsive-image";
 
 type PageProps = {
   params: Promise<{ nickname: string; operacao: string; slugImovel: string }>;
@@ -41,11 +42,11 @@ type AmbienteTableRow = Database["public"]["Tables"]["imovel_ambientes"]["Row"];
 type SocialProofTableRow = Database["public"]["Tables"]["provas_sociais"]["Row"];
 type MediaRow = Pick<
   Database["public"]["Tables"]["imovel_midia_publica"]["Row"],
-  "imovel_id" | "indice_publico" | "ordem" | "url"
+  "imovel_id" | "indice_publico" | "ordem" | "url" | "variantes"
 >;
 type EmpreendimentoMediaRow = Pick<
   Database["public"]["Tables"]["empreendimento_midia_publica"]["Row"],
-  "empreendimento_id" | "indice_publico" | "ordem" | "url"
+  "empreendimento_id" | "indice_publico" | "ordem" | "url" | "variantes"
 >;
 type PublicAmbiente = Pick<AmbienteTableRow, "id" | "tipo_ambiente" | "ordem" | "principal" | "area_m2" | "dados">;
 type CaracteristicaCatalogoPublicRow = {
@@ -320,7 +321,7 @@ export default async function PublicPropertyDetailPage({ params }: PageProps) {
     whatsappHref,
     phoneAvailable,
   } = data;
-  const heroImages = medias.map((item) => ({ url: item.url }));
+  const heroImages = medias.map((item) => ({ url: item.url, variantes: parsePublicImageVariants(item.variantes) }));
   const alternativeCtaBackgroundUrl = empreendimentoImages[0]?.url ?? heroImages[0]?.url ?? null;
   const alternativeCtaTitle = buildAlternativeCtaTitle({
     imovel,
@@ -598,7 +599,7 @@ async function getPropertyPageData(rawNickname: string, rawOperation: string, ra
   const [mediaResult, relatedRows, empreendimentoResult] = await Promise.all([
     supabase
       .from("imovel_midia_publica")
-      .select("imovel_id,indice_publico,ordem,url")
+      .select("imovel_id,indice_publico,ordem,url,variantes")
       .eq("imovel_id", imovel.id),
     findRelatedProperties({
       supabase,
@@ -672,12 +673,14 @@ async function getPropertyPageData(rawNickname: string, rawOperation: string, ra
     empreendimento: publicEmpreendimento,
     empreendimentoImages: sortMediaRows(empreendimentoMedia).map((item) => ({
       url: getPublicImageUrl(item.url) ?? item.url,
+      variantes: parsePublicImageVariants(item.variantes),
     })),
     ambientes,
     caracteristicasLabels,
     medias: sortMediaRows((mediaResult.data ?? []) as MediaRow[]).map((item) => ({
       ...item,
       url: getPublicImageUrl(item.url) ?? item.url,
+      variantes: parsePublicImageVariants(item.variantes),
     })),
     video,
     related: relatedRows.map((item) => ({
@@ -703,7 +706,7 @@ async function getFirstMediaByImovelId(imovelIds: string[]) {
   const supabase = createSupabaseServerClient();
   const result = await supabase
     .from("imovel_midia_publica")
-    .select("imovel_id,indice_publico,ordem,url")
+    .select("imovel_id,indice_publico,ordem,url,variantes")
     .in("imovel_id", imovelIds);
 
   if (result.error) {
@@ -721,7 +724,7 @@ async function getEmpreendimentoMediaById(empreendimentoId: string): Promise<Emp
   const supabase = createSupabaseServerClient();
   const result = await supabase
     .from("empreendimento_midia_publica")
-    .select("empreendimento_id,indice_publico,ordem,url")
+    .select("empreendimento_id,indice_publico,ordem,url,variantes")
     .eq("empreendimento_id", empreendimentoId)
     .order("indice_publico", { ascending: true })
     .order("ordem", { ascending: true })

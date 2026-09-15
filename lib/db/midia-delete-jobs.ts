@@ -18,26 +18,34 @@ type MidiaDeleteJobRow = {
 
 type DynamicAdminClient = ReturnType<typeof createSupabaseAdminClient>;
 
+type MidiaDeleteJobsClaimQuery = {
+  in: (column: "id", values: string[]) => MidiaDeleteJobsClaimQuery;
+  order: (column: "created_at", options: { ascending: boolean }) => {
+    limit: (value: number) => Promise<{ data: MidiaDeleteJobRow[] | null; error: { message: string } | null }>;
+  };
+};
+
 function computeRetryDelayMinutes(currentTentativas: number) {
   const exp = Math.min(8, Math.max(0, currentTentativas));
   return Math.min(12 * 60, 5 * (2 ** exp));
 }
 
-async function claimNextJobs(db: DynamicAdminClient, limit: number) {
-  const result = await (db as unknown as {
+async function claimNextJobs(db: DynamicAdminClient, limit: number, jobIds?: string[]) {
+  const query = (db as unknown as {
     from: (table: "midia_delete_jobs") => {
       select: (columns: string) => {
         in: (column: "status", values: MidiaDeleteJobStatus[]) => {
-          order: (column3: "created_at", options: { ascending: boolean }) => {
-            limit: (value3: number) => Promise<{ data: MidiaDeleteJobRow[] | null; error: { message: string } | null }>;
-          };
+          in: (column2: "id", values2: string[]) => MidiaDeleteJobsClaimQuery;
+          order: MidiaDeleteJobsClaimQuery["order"];
         };
       };
     };
   })
     .from("midia_delete_jobs")
     .select("id,owner_id,midia_id,storage_provider,storage_bucket,storage_path,status,tentativas,next_retry_at")
-    .in("status", ["PENDENTE", "ERRO"])
+    .in("status", ["PENDENTE", "ERRO"]);
+  const scopedQuery = jobIds?.length ? query.in("id", jobIds) : query;
+  const result = await scopedQuery
     .order("created_at", { ascending: true })
     .limit(limit * 3);
 
@@ -109,6 +117,7 @@ async function isStorageStillReferenced(
 
 export async function processMidiaDeleteJobs(
   limit = 20,
+  jobIds?: string[],
 ): Promise<
   ApiResult<{
     processed: number;
@@ -120,7 +129,10 @@ export async function processMidiaDeleteJobs(
   const db = createSupabaseAdminClient();
   const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(200, Math.trunc(limit))) : 20;
 
-  const next = await claimNextJobs(db, safeLimit);
+  const normalizedJobIds = jobIds
+    ? Array.from(new Set(jobIds.map((id) => id.trim()).filter(Boolean))).slice(0, 200)
+    : undefined;
+  const next = await claimNextJobs(db, safeLimit, normalizedJobIds);
   if (!next.ok) return next;
 
   let processed = 0;

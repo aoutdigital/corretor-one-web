@@ -18,6 +18,7 @@ import {
   Ruler,
   Sparkle,
   FloppyDisk,
+  Trash,
   UserCircle,
   X,
 } from "@phosphor-icons/react";
@@ -59,6 +60,7 @@ type Property = {
   codigo: string | null;
   finalidade: string;
   tipo: string;
+  fase?: string | null;
   bairro_comercial: string | null;
   bairro: string;
   cidade: string;
@@ -70,6 +72,7 @@ type Property = {
   suites: number | string | null;
   vagas: number | string | null;
   caracteristicas: string[] | null;
+  characteristic_count?: number;
   images: string[];
   development_images: string[];
   empreendimento: { nome: string } | null;
@@ -80,6 +83,17 @@ type Property = {
     area: string | null;
     tags: string[];
   }>;
+  development_meta?: {
+    address: string;
+    phase: string;
+    totalUnits: string;
+    referenceDate: string;
+    unitTypes: string;
+    bedrooms: string;
+    areas: string;
+    cityState: string;
+    startingPrice: string | null;
+  };
   creative_label?: string;
 };
 type Profile = {
@@ -131,6 +145,8 @@ type CreativeDraft = {
     price_mode?: "PRICE" | "CONSULT";
     highlight?: string;
     image_label_mode?: ImageLabelMode;
+    development_label_mode?: DevelopmentLabelMode;
+    development_footer_mode?: DevelopmentFooterMode;
     cta?: string;
     color_theme?: CreativeColorTheme;
   };
@@ -138,6 +154,8 @@ type CreativeDraft = {
 type PreviewMode = "INSTAGRAM_FEED" | "STORY_STATUS";
 type TitleMode = "FULL" | "SHORT";
 type ImageLabelMode = "DEVELOPMENT" | "LOCATION";
+type DevelopmentLabelMode = "FULL_ADDRESS" | "CITY_STATE" | "PHASE";
+type DevelopmentFooterMode = "YEAR" | "STARTING_PRICE" | "CONSULT";
 type CreativeStep = "OBJECTIVE" | "TEMPLATE" | "EDITOR";
 type CreativeObjective = "PROMOVER_IMOVEL" | "PROMOVER_EMPREENDIMENTO";
 type CarouselSlideConfig = {
@@ -194,12 +212,41 @@ function createCarouselSlides(
     return {
       ...item,
       environmentId: environment?.id,
-      title: environment?.title || item.title,
+      title: item.kind === "FEATURES" ? featureHeadline(features.length) : environment?.title || item.title,
       text: environment ? [environment.area, environment.subtitle, ...environment.tags].filter(Boolean).slice(0, 4).join(" · ") : item.text,
       imageUrl: available[Math.min(Math.max(0, index - 1), available.length - 1)],
       attributes: item.kind === "FEATURES" ? features.slice(0, 6) : undefined,
     };
   });
+}
+
+function createDevelopmentCarouselSlides(images: string[], meta?: Property["development_meta"], features: string[] = []) {
+  const available = images.length ? images : [""];
+  const content = [
+    ["COVER", "Apresentação", "Um projeto pensado por inteiro.", ""],
+    ["NUMBERS", "Visão geral", "", ""],
+    ["ENVIRONMENT", "Arquitetura", "Uma identidade para transformar a paisagem.", ""],
+    ["ENVIRONMENT", "Tipologias", meta?.unitTypes ?? "Plantas para diferentes formas de viver.", meta?.areas ?? ""],
+    ["ENVIRONMENT", "Experiência", "Áreas comuns que ampliam o jeito de morar.", ""],
+    ["LOCATION", "Localização", "Tudo o que importa, ao redor.", meta?.address ?? ""],
+    ["FEATURES", "Diferenciais", featureHeadline(features.length), ""],
+    ["CONTACT", "Contato", "Conheça o empreendimento com acompanhamento especializado.", ""],
+  ] as const;
+  return content.map(([kind, eyebrow, title, textValue], index) => ({
+    kind: kind as CarouselSlideConfig["kind"],
+    imageUrl: index === 1 || index === 7 ? "" : available[Math.min(index, available.length - 1)],
+    eyebrow,
+    title,
+    text: textValue,
+    attributes: index === 6 ? features.slice(0, 6) : undefined,
+  }));
+}
+
+function featureHeadline(count: number) {
+  if (count <= 0) return "Escolhas que valorizam cada detalhe.";
+  if (count <= 5) return `${count} diferenciais para viver melhor.`;
+  const threshold = Math.max(5, Math.floor((count - 1) / 5) * 5);
+  return `Mais de ${threshold} características ao seu dispor.`;
 }
 
 const money = (value: number | null) =>
@@ -223,6 +270,8 @@ export default function CreativesPage() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [centralTab, setCentralTab] = useState<"CREATE" | "CREATED">("CREATE");
+  const [latestGenerated, setLatestGenerated] = useState<Post | null>(null);
+  const [historyTotal, setHistoryTotal] = useState(0);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [propertyId, setPropertyId] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -243,10 +292,16 @@ export default function CreativesPage() {
   const [cta, setCta] = useState("Conheça todos os detalhes");
   const [imageLabelMode, setImageLabelMode] =
     useState<ImageLabelMode>("DEVELOPMENT");
+  const [developmentLabelMode, setDevelopmentLabelMode] =
+    useState<DevelopmentLabelMode>("FULL_ADDRESS");
+  const [developmentFooterMode, setDevelopmentFooterMode] =
+    useState<DevelopmentFooterMode>("CONSULT");
   const [generating, setGenerating] = useState(false);
   const [propertyPickerOpen, setPropertyPickerOpen] = useState(false);
+  const automaticPickerKey = useRef("");
   function apply(result: Bootstrap) {
     setData(result);
+    setHistoryTotal((current) => current || result.posts.length);
   }
   function refresh() {
     apiFetchWithAuth<Bootstrap>("/api/criativos").then((result) =>
@@ -315,16 +370,24 @@ export default function CreativesPage() {
       setCarouselSlides(
         payload.carousel_slides?.length === PROPERTY_JOURNEY_SLIDES
           ? withFixedPropertySlide(payload.carousel_slides)
-          : createCarouselSlides(
-              payload.carousel_image_urls ?? [],
-              (draftObjective === "PROMOVER_EMPREENDIMENTO" ? data.developments : data.properties).find((item) => item.id === draft.subject_id)?.environments ?? [],
-              (draftObjective === "PROMOVER_EMPREENDIMENTO" ? data.developments : data.properties).find((item) => item.id === draft.subject_id)?.caracteristicas ?? [],
-            ),
+          : draftObjective === "PROMOVER_EMPREENDIMENTO"
+            ? createDevelopmentCarouselSlides(
+                payload.carousel_image_urls ?? [],
+                data.developments.find((item) => item.id === draft.subject_id)?.development_meta,
+                data.developments.find((item) => item.id === draft.subject_id)?.caracteristicas ?? [],
+              )
+            : createCarouselSlides(
+                payload.carousel_image_urls ?? [],
+                data.properties.find((item) => item.id === draft.subject_id)?.environments ?? [],
+                data.properties.find((item) => item.id === draft.subject_id)?.caracteristicas ?? [],
+              ),
       );
       setPriceMode(payload.price_mode ?? "PRICE");
       setHighlight(payload.highlight ?? "Oportunidade");
       setImageLabelMode(payload.image_label_mode ?? "DEVELOPMENT");
-      setCta(payload.cta ?? "Conheça todos os detalhes");
+      setDevelopmentLabelMode(payload.development_label_mode ?? "FULL_ADDRESS");
+      setDevelopmentFooterMode(payload.development_footer_mode ?? "CONSULT");
+      setCta(payload.cta ?? (draftObjective === "PROMOVER_EMPREENDIMENTO" ? "Conheça o empreendimento" : "Conheça todos os detalhes"));
       setColorTheme(payload.color_theme ?? "PETROL");
       setStep("EDITOR");
     });
@@ -334,6 +397,18 @@ export default function CreativesPage() {
     () => subjects.find((item) => item.id === propertyId) ?? null,
     [subjects, propertyId],
   );
+  useEffect(() => {
+    if (step !== "EDITOR" || propertyId || !templateId) return;
+    const key = `${objective}:${templateId}`;
+    if (automaticPickerKey.current === key) return;
+    automaticPickerKey.current = key;
+    setPropertyPickerOpen(true);
+  }, [step, propertyId, templateId, objective]);
+  useEffect(() => {
+    if (!property?.development_meta) return;
+    if (developmentFooterMode === "YEAR" && property.fase !== "ENTREGUE") setDevelopmentFooterMode("CONSULT");
+    if (developmentFooterMode === "STARTING_PRICE" && !property.development_meta.startingPrice) setDevelopmentFooterMode("CONSULT");
+  }, [property, developmentFooterMode]);
   const template =
     data?.templates.find((item) => item.id === templateId) ?? null;
   const isDual = template?.renderer_key.includes("dual-02") ?? false;
@@ -363,13 +438,17 @@ export default function CreativesPage() {
       ].slice(0, 6),
     );
     setCarouselSlides(
-      createCarouselSlides(
+      objective === "PROMOVER_EMPREENDIMENTO" ? createDevelopmentCarouselSlides(
         [
           ...new Set([
             ...(selected?.images ?? []),
             ...(selected?.development_images ?? []),
           ]),
         ].slice(0, 6),
+        selected?.development_meta,
+        selected?.caracteristicas ?? [],
+      ) : createCarouselSlides(
+        [...new Set([...(selected?.images ?? []), ...(selected?.development_images ?? [])])].slice(0, 6),
         selected?.environments ?? [],
         selected?.caracteristicas ?? [],
       ),
@@ -387,21 +466,23 @@ export default function CreativesPage() {
   }
   function chooseObjective(nextObjective: CreativeObjective) {
     setObjective(nextObjective);
+    setLatestGenerated(null);
     setTemplateId("");
     setPropertyId("");
     setImageUrl("");
+    setCta(nextObjective === "PROMOVER_EMPREENDIMENTO" ? "Conheça o empreendimento" : "Conheça todos os detalhes");
     navigate("TEMPLATE");
   }
   function chooseTemplate(item: Template) {
     setTemplateId(item.id);
-    if (item.renderer_key === "property-dual-02" && property)
+    if (item.renderer_key.includes("dual-02") && property)
       setSecondaryImageUrl(
         property.development_images[0] ??
           property.images[1] ??
           property.images[0] ??
           "",
       );
-    if (item.renderer_key === "property-journey-carousel-01") {
+    if (item.renderer_key.includes("journey-carousel-01")) {
       setFormat("PORTRAIT");
       setCarouselSlide(0);
       setEditorSlide(0);
@@ -429,6 +510,8 @@ export default function CreativesPage() {
             price_mode: priceMode,
             highlight,
             image_label_mode: imageLabelMode,
+            development_label_mode: developmentLabelMode,
+            development_footer_mode: developmentFooterMode,
             cta,
             color_theme: colorTheme,
           },
@@ -461,7 +544,7 @@ export default function CreativesPage() {
       return;
     setGenerating(true);
     setError(null);
-    const result = await apiFetchWithAuth<{ url: string }>("/api/criativos", {
+    const result = await apiFetchWithAuth<{ id: string; url: string; urls?: string[] }>("/api/criativos", {
       method: "POST",
       body: JSON.stringify({
         template_id: template.id,
@@ -476,6 +559,8 @@ export default function CreativesPage() {
         color_theme: isEditorial ? colorTheme : undefined,
         format,
         image_label_mode: imageLabelMode,
+        development_label_mode: developmentLabelMode,
+        development_footer_mode: developmentFooterMode,
         cta,
       }),
     });
@@ -484,6 +569,20 @@ export default function CreativesPage() {
       setError(result.error);
       return;
     }
+    setLatestGenerated({
+      id: result.data.id,
+      subject_id: property.id,
+      template_id: template.id,
+      subject_type: objective === "PROMOVER_EMPREENDIMENTO" ? "DEVELOPMENT" : "PROPERTY",
+      formato: format,
+      status: "PRONTO",
+      resultado_url: result.data.url,
+      resultado_urls: result.data.urls ?? null,
+      created_at: new Date().toISOString(),
+      payload: objective === "PROMOVER_EMPREENDIMENTO"
+        ? { development: { name: property.display_title || property.titulo } }
+        : { property: { title: property.display_title || property.titulo, code: property.codigo ?? undefined } },
+    });
     refresh();
   }
 
@@ -502,12 +601,14 @@ export default function CreativesPage() {
         {loading && !data ? <Loading /> : null}
         {data ? (
           <>
-            <DraftHistory
-              drafts={drafts}
-              templates={data.templates}
-              properties={[...data.properties, ...data.developments]}
-            />
-            <nav className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Seções da Central de Criativos">
+            {centralTab === "CREATE" && step === "OBJECTIVE" ? (
+              <DraftHistory
+                drafts={drafts}
+                templates={data.templates}
+                properties={[...data.properties, ...data.developments]}
+              />
+            ) : null}
+            {step === "OBJECTIVE" ? <nav className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Seções da Central de Criativos">
               <button
                 type="button"
                 onClick={() => setCentralTab("CREATE")}
@@ -520,9 +621,9 @@ export default function CreativesPage() {
                 onClick={() => setCentralTab("CREATED")}
                 className={`flex-1 rounded-xl px-4 py-3 text-sm font-bold transition ${centralTab === "CREATED" ? "bg-slate-950 text-white" : "text-slate-500 hover:bg-slate-50"}`}
               >
-                Meus criativos ({data.posts.length})
+                Meus criativos ({historyTotal})
               </button>
-            </nav>
+            </nav> : null}
             {centralTab === "CREATE" ? (
               <>
             <CreativeHeader
@@ -584,23 +685,22 @@ export default function CreativesPage() {
                           {property ? (
                             <>
                               <span className="block text-xs font-bold uppercase tracking-wider text-stone-500">
-                                {property.codigo || "Sem código"}
+                                {objective === "PROMOVER_EMPREENDIMENTO" ? property.development_meta?.phase : property.codigo || "Sem código"}
                               </span>
                               <span className="mt-1 block truncate font-bold text-slate-950">
                                 {property.display_title || property.titulo}
                               </span>
                               <span className="mt-1 block truncate text-xs text-slate-500">
-                                {property.bairro_comercial || property.bairro} |{" "}
-                                {property.cidade}
+                                {objective === "PROMOVER_EMPREENDIMENTO" ? property.development_meta?.address : <>{property.bairro_comercial || property.bairro} | {property.cidade}</>}
                               </span>
                             </>
                           ) : (
                             <>
                               <span className="block font-bold">
-                                Selecionar imóvel publicado
+                                Selecionar {objective === "PROMOVER_EMPREENDIMENTO" ? "empreendimento" : "imóvel"} publicado
                               </span>
                               <span className="mt-1 block text-sm text-slate-500">
-                                Busque por título, código ou bairro
+                                {objective === "PROMOVER_EMPREENDIMENTO" ? "Busque por nome, endereço, bairro ou fase" : "Busque por título, código ou bairro"}
                               </span>
                             </>
                           )}
@@ -636,7 +736,7 @@ export default function CreativesPage() {
                           ) : null}
                           {!isCarousel ? [
                             {
-                              label: "Imagens do imóvel",
+                              label: objective === "PROMOVER_EMPREENDIMENTO" ? "Imagens do empreendimento" : "Imagens do imóvel",
                               images: property.images,
                             },
                             ...(isDual || isCarousel
@@ -723,6 +823,7 @@ export default function CreativesPage() {
                                 ]),
                               ]}
                               environments={property.environments}
+                              characteristics={property.caracteristicas ?? []}
                               onActiveSlide={(index) => {
                                 setEditorSlide(index);
                                 setCarouselSlide(index);
@@ -760,9 +861,27 @@ export default function CreativesPage() {
                       </div>
                       <div className="mt-5 grid gap-4">
                         <p className="text-sm text-slate-500">
-                          Este template utiliza sempre o título completo do
-                          imóvel.
+                          {objective === "PROMOVER_EMPREENDIMENTO" ? "O nome e os dados comerciais são carregados automaticamente do empreendimento." : "Este template utiliza sempre o título completo do imóvel."}
                         </p>
+                        {objective === "PROMOVER_EMPREENDIMENTO" && property?.development_meta ? (
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <p className="text-xs font-bold uppercase tracking-[.16em] text-stone-500">Dados do empreendimento</p>
+                            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                              {[
+                                ["Fase", property.development_meta.phase],
+                                ["Unidades totais", property.development_meta.totalUnits],
+                                [property.fase === "ENTREGUE" ? "Construção" : "Previsão", property.development_meta.referenceDate],
+                                ["Tipos de unidades", property.development_meta.unitTypes],
+                                ["Dormitórios", property.development_meta.bedrooms],
+                                ["Metragens", property.development_meta.areas],
+                              ].map(([label, value]) => (
+                                <div key={label} className="rounded-xl bg-white p-3"><dt className="text-slate-400">{label}</dt><dd className="mt-1 font-semibold text-slate-900">{value}</dd></div>
+                              ))}
+                            </dl>
+                            <p className="mt-3 text-xs text-slate-500">Esses dados são factuais e devem ser alterados no cadastro do empreendimento. O editor controla apenas a composição do criativo.</p>
+                          </div>
+                        ) : null}
+                        {objective === "PROMOVER_IMOVEL" ? (
                         <label className="grid gap-1.5 text-sm font-semibold">
                           Informação sobre a imagem
                           <select
@@ -786,8 +905,30 @@ export default function CreativesPage() {
                             automaticamente a localização.
                           </span>
                         </label>
+                        ) : null}
+                        {objective === "PROMOVER_EMPREENDIMENTO" && property?.development_meta ? (
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <label className="grid gap-1.5 text-sm font-semibold">
+                              Informação sobre a imagem
+                              <select value={developmentLabelMode} onChange={(event) => setDevelopmentLabelMode(event.target.value as DevelopmentLabelMode)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal">
+                                <option value="FULL_ADDRESS">Endereço completo</option>
+                                <option value="CITY_STATE">Bairro - Cidade / UF</option>
+                                <option value="PHASE">Fase do empreendimento</option>
+                              </select>
+                            </label>
+                            <label className="grid gap-1.5 text-sm font-semibold">
+                              Informação final
+                              <select value={developmentFooterMode} onChange={(event) => setDevelopmentFooterMode(event.target.value as DevelopmentFooterMode)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal">
+                                {property.fase === "ENTREGUE" ? <option value="YEAR">Ano de construção</option> : null}
+                                {property.development_meta.startingPrice ? <option value="STARTING_PRICE">A partir de</option> : null}
+                                <option value="CONSULT">Consulte os valores</option>
+                              </select>
+                            </label>
+                          </div>
+                        ) : null}
                         {isDual ? (
                           <>
+                            {objective === "PROMOVER_IMOVEL" ? (
                             <label className="grid gap-1.5 text-sm font-semibold">
                               Exibição do preço
                               <select
@@ -805,6 +946,7 @@ export default function CreativesPage() {
                                 </option>
                               </select>
                             </label>
+                            ) : null}
                             <label className="grid gap-1.5 text-sm font-semibold">
                               <span className="flex justify-between">
                                 <span>Tag de destaque</span>
@@ -910,11 +1052,22 @@ export default function CreativesPage() {
                               onChange={(event) => setCta(event.target.value)}
                               className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal"
                             >
-                              <option>Conheça todos os detalhes</option>
-                              <option>Agende uma visita</option>
-                              <option>Fale comigo</option>
-                              <option>Veja este imóvel</option>
-                              <option>Solicite mais informações</option>
+                              {objective === "PROMOVER_EMPREENDIMENTO" ? (
+                                <>
+                                  <option>Conheça o empreendimento</option>
+                                  <option>Veja plantas e detalhes</option>
+                                  <option>Consulte a disponibilidade</option>
+                                  <option>Fale comigo</option>
+                                </>
+                              ) : (
+                                <>
+                                  <option>Conheça todos os detalhes</option>
+                                  <option>Agende uma visita</option>
+                                  <option>Fale comigo</option>
+                                  <option>Veja este imóvel</option>
+                                  <option>Solicite mais informações</option>
+                                </>
+                              )}
                             </select>
                           </label>
                         ) : null}
@@ -932,7 +1085,7 @@ export default function CreativesPage() {
                             {carouselSlides.map((_, index) => (
                               <CreativeArtwork
                                 key={index}
-                                property={property ? { ...property, creative_label: imageLabel(property, imageLabelMode) } : null}
+                                property={property ? { ...property, creative_label: imageLabel(property, imageLabelMode, developmentLabelMode) } : null}
                                 profile={data.profile!}
                                 imageUrl={imageUrl}
                                 secondaryImageUrl={secondaryImageUrl}
@@ -941,6 +1094,7 @@ export default function CreativesPage() {
                                 carouselSlide={index}
                                 rendererKey={template?.renderer_key}
                                 priceMode={priceMode}
+                                developmentFooterMode={developmentFooterMode}
                                 highlight={highlight}
                                 colorTheme={colorTheme}
                                 format={format}
@@ -962,6 +1116,7 @@ export default function CreativesPage() {
                                     creative_label: imageLabel(
                                       property,
                                       imageLabelMode,
+                                      developmentLabelMode,
                                     ),
                                   }
                                 : null
@@ -973,6 +1128,7 @@ export default function CreativesPage() {
                             carouselSlide={carouselSlide}
                             rendererKey={template?.renderer_key}
                             priceMode={priceMode}
+                            developmentFooterMode={developmentFooterMode}
                             highlight={highlight}
                             colorTheme={colorTheme}
                             format={format}
@@ -1024,11 +1180,33 @@ export default function CreativesPage() {
                     </Panel>
                   </aside>
                 </div>
+                {latestGenerated ? (
+                  <History
+                    posts={[latestGenerated]}
+                    templates={data.templates}
+                    title="Última versão gerada"
+                    description="Seu criativo está pronto para baixar."
+                    onViewAll={() => {
+                      navigate("OBJECTIVE");
+                      setCentralTab("CREATED");
+                    }}
+                    onDeleted={() => {
+                      setLatestGenerated(null);
+                      refresh();
+                    }}
+                  />
+                ) : null}
               </>
             )}
               </>
             ) : (
-              <History posts={data.posts} templates={data.templates} />
+              <History
+                posts={data.posts}
+                templates={data.templates}
+                paginated
+                onTotalChange={setHistoryTotal}
+                onDeleted={(id) => setData((current) => current ? { ...current, posts: current.posts.filter((post) => post.id !== id) } : current)}
+              />
             )}
           </>
         ) : null}
@@ -1339,6 +1517,7 @@ function CarouselSlideEditor({
   activeSlide,
   images,
   environments,
+  characteristics,
   onActiveSlide,
   onChange,
 }: {
@@ -1346,6 +1525,7 @@ function CarouselSlideEditor({
   activeSlide: number;
   images: string[];
   environments: Property["environments"];
+  characteristics: string[];
   onActiveSlide: (index: number) => void;
   onChange: (slides: CarouselSlideConfig[]) => void;
 }) {
@@ -1409,9 +1589,8 @@ function CarouselSlideEditor({
                     </div>
                     {(slide.attributes ?? []).map((attribute, attributeIndex) => (
                       <div key={attributeIndex} className="flex gap-2">
-                        <input
+                        <select
                           value={attribute}
-                          maxLength={40}
                           aria-label={`Atributo ${attributeIndex + 1}`}
                           onChange={(event) =>
                             update(index, {
@@ -1421,7 +1600,19 @@ function CarouselSlideEditor({
                             })
                           }
                           className="min-w-0 flex-1 rounded-lg border bg-white px-3 py-2 text-sm font-normal"
-                        />
+                        >
+                          <option value="">Selecione uma característica</option>
+                          {characteristics.map((option) => {
+                            const selectedElsewhere = (slide.attributes ?? []).some(
+                              (item, position) => position !== attributeIndex && item === option,
+                            );
+                            return (
+                              <option key={option} value={option} disabled={selectedElsewhere}>
+                                {option}
+                              </option>
+                            );
+                          })}
+                        </select>
                         <button
                           type="button"
                           aria-label={`Remover atributo ${attributeIndex + 1}`}
@@ -1446,7 +1637,7 @@ function CarouselSlideEditor({
                       </button>
                     ) : null}
                     <p className="text-xs font-normal text-slate-500">
-                      Até seis atributos, com 40 caracteres cada.
+                      Até seis características cadastradas no empreendimento, sem repetição. Os diferenciais vêm selecionados primeiro.
                     </p>
                   </fieldset>
                 ) : null}
@@ -1701,6 +1892,8 @@ function PropertyPickerModal({
             property.bairro_comercial,
             property.bairro,
             property.cidade,
+            property.development_meta?.address,
+            property.development_meta?.phase,
           ]
             .filter(Boolean)
             .join(" "),
@@ -1732,7 +1925,7 @@ function PropertyPickerModal({
               Selecionar {subjectLabel}
             </h3>
             <p className="mt-2 text-sm text-slate-500">
-              Busque por título, código, bairro ou cidade.
+              {subjectLabel === "empreendimento" ? "Busque por nome, endereço, bairro, cidade ou fase." : "Busque por título, código, bairro ou cidade."}
             </p>
           </div>
           <button
@@ -1754,7 +1947,7 @@ function PropertyPickerModal({
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Título, código ou bairro"
+              placeholder={subjectLabel === "empreendimento" ? "Nome, endereço, bairro ou fase" : "Título, código ou bairro"}
               className="w-full rounded-xl border border-slate-200 py-3 pl-12 pr-4"
             />
           </label>
@@ -1782,7 +1975,7 @@ function PropertyPickerModal({
                   <span className="min-w-0 flex-1 py-1">
                     <span className="flex flex-wrap items-center gap-2">
                       <b className="text-xs uppercase tracking-wider text-stone-600">
-                        {property.codigo || "Sem código"}
+                        {subjectLabel === "empreendimento" ? property.development_meta?.phase : property.codigo || "Sem código"}
                       </b>
                       {selectedId === property.id ? (
                         <span className="rounded-full bg-slate-950 px-2 py-1 text-[10px] font-bold text-white">
@@ -1794,19 +1987,20 @@ function PropertyPickerModal({
                       {property.display_title || property.titulo}
                     </strong>
                     <span className="mt-2 block text-sm text-slate-500">
-                      {property.bairro_comercial || property.bairro} |{" "}
-                      {property.cidade} / {property.estado}
+                      {subjectLabel === "empreendimento" ? property.development_meta?.address : <>{property.bairro_comercial || property.bairro} | {property.cidade} / {property.estado}</>}
                     </span>
                     <span className="mt-2 block text-xs font-semibold text-slate-600">
-                      {[
+                      {subjectLabel === "empreendimento" ? [
+                        property.development_meta?.unitTypes,
+                        property.development_meta?.bedrooms !== "Não informado" ? `${property.development_meta?.bedrooms} dorm.` : null,
+                        property.development_meta?.areas,
+                      ].filter(Boolean).join(" · ") : [
                         property.area_util ? `${property.area_util} m²` : null,
                         property.dormitorios
                           ? `${property.dormitorios} dorm.`
                           : null,
                         property.vagas ? `${property.vagas} vagas` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
+                      ].filter(Boolean).join(" · ")}
                     </span>
                   </span>
                 </button>
@@ -1833,6 +2027,7 @@ function CreativeArtwork({
   carouselSlide = 0,
   rendererKey,
   priceMode,
+  developmentFooterMode = "CONSULT",
   highlight,
   colorTheme,
   format,
@@ -1851,6 +2046,7 @@ function CreativeArtwork({
   carouselSlide?: number;
   rendererKey?: string;
   priceMode: "PRICE" | "CONSULT";
+  developmentFooterMode?: DevelopmentFooterMode;
   highlight: string;
   colorTheme: CreativeColorTheme;
   format: CreativeFormat;
@@ -1866,7 +2062,7 @@ function CreativeArtwork({
       : property.display_title
     : "Título do imóvel";
   const showSupportingCopy = format === "VERTICAL" || titleMode === "SHORT";
-  const stats = [
+  const propertyStats = [
     {
       kind: "AREA" as const,
       value:
@@ -1890,18 +2086,34 @@ function CreativeArtwork({
       label: "Vagas",
     },
   ];
+  const stats = property?.development_meta
+    ? [
+        { kind: "PHASE" as const, value: property.development_meta.phase, label: "Fase" },
+        {
+          kind: "UNITS" as const,
+          value: property.development_meta.totalUnits,
+          label: "Unidades",
+        },
+        { kind: "BED" as const, value: property.development_meta.bedrooms, label: "Dormitórios" },
+        { kind: "AREA" as const, value: property.development_meta.areas, label: "Plantas" },
+      ]
+    : propertyStats;
   const payload: PropertyCreativePayload = {
+    subjectType: property?.development_meta ? "DEVELOPMENT" : "PROPERTY",
     property: {
       id: property?.id ?? "preview",
       title,
       location: location(property),
-      price: priceMode === "CONSULT" ? "Consulte o valor" : price(property),
+      price: property?.development_meta
+        ? developmentFooter(property, developmentFooterMode)
+        : priceMode === "CONSULT" ? "Consulte o valor" : price(property),
       code: property?.codigo ?? "",
       imageUrl,
       secondaryImageUrl,
       carouselImages: carouselImageUrls,
       carouselSlides,
       features: property?.caracteristicas ?? undefined,
+      featureCount: property?.characteristic_count ?? property?.caracteristicas?.length ?? 0,
       highlight,
       stats,
     },
@@ -2244,12 +2456,18 @@ function location(property: Property | null) {
           .join(" | ")
     : "Localização";
 }
-function imageLabel(property: Property, mode: ImageLabelMode) {
+function imageLabel(property: Property, mode: ImageLabelMode, developmentMode: DevelopmentLabelMode = "FULL_ADDRESS") {
+  if (property.development_meta) {
+    if (developmentMode === "PHASE") return property.development_meta.phase;
+    if (developmentMode === "CITY_STATE") return property.development_meta.cityState;
+    return property.development_meta.address;
+  }
   return mode === "DEVELOPMENT" && property.empreendimento?.nome
     ? property.empreendimento.nome
     : location(property);
 }
 function price(property: Property | null) {
+  if (property?.development_meta) return property.development_meta.referenceDate;
   return property
     ? money(
         property.finalidade === "ALUGAR"
@@ -2257,6 +2475,13 @@ function price(property: Property | null) {
           : property.preco_venda,
       )
     : "Consulte o valor";
+}
+function developmentFooter(property: Property, mode: DevelopmentFooterMode) {
+  const meta = property.development_meta;
+  if (!meta) return "Consulte os valores";
+  if (mode === "YEAR" && property.fase === "ENTREGUE") return meta.referenceDate;
+  if (mode === "STARTING_PRICE" && meta.startingPrice) return `A partir de ${meta.startingPrice}`;
+  return "Consulte os valores";
 }
 
 function InstagramCarouselPreview({ activeSlide, onActiveSlide, children }: { activeSlide: number; onActiveSlide: (index: number) => void; children: React.ReactNode[] }) {
@@ -2356,9 +2581,94 @@ function PreviewFrame({
     </div>
   );
 }
-function History({ posts, templates }: { posts: Post[]; templates: Template[] }) {
+function History({
+  posts,
+  templates,
+  title = "Meus criativos",
+  description = "Consulte e baixe os materiais já gerados.",
+  onViewAll,
+  onDeleted,
+  paginated = false,
+  onTotalChange,
+}: {
+  posts: Post[];
+  templates: Template[];
+  title?: string;
+  description?: string;
+  onViewAll?: () => void;
+  onDeleted?: (id: string) => void;
+  paginated?: boolean;
+  onTotalChange?: (total: number) => void;
+}) {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Post | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [items, setItems] = useState(posts);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [objectiveFilter, setObjectiveFilter] = useState("ALL");
+  const [order, setOrder] = useState<"newest" | "oldest">("newest");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(posts.length);
+  const [totalPages, setTotalPages] = useState(1);
+  const [historyVersion, setHistoryVersion] = useState(0);
+
+  useEffect(() => {
+    if (!paginated) {
+      setItems(posts);
+      setTotal(posts.length);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setPage(1);
+      setSearch(searchInput.trim());
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, paginated, posts]);
+
+  useEffect(() => {
+    if (!paginated) return;
+    let active = true;
+    setLoadingHistory(true);
+    const params = new URLSearchParams({ page: String(page), page_size: String(pageSize), order });
+    if (objectiveFilter !== "ALL") params.set("objective", objectiveFilter);
+    if (search) params.set("search", search);
+    apiFetchWithAuth<{ items: Post[]; page: number; pageSize: number; total: number; totalPages: number }>(`/api/criativos/history?${params}`).then((result) => {
+      if (!active) return;
+      setLoadingHistory(false);
+      if (!result.ok) {
+        setDownloadError(result.error);
+        return;
+      }
+      setItems(result.data.items);
+      setTotal(result.data.total);
+      setTotalPages(result.data.totalPages);
+      onTotalChange?.(result.data.total);
+    });
+    return () => { active = false; };
+  }, [paginated, page, pageSize, order, objectiveFilter, search, historyVersion, onTotalChange]);
+
+  async function removeCreative() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDownloadError(null);
+    const result = await apiFetchWithAuth<{ id: string }>(`/api/criativos?id=${encodeURIComponent(deleteTarget.id)}`, { method: "DELETE" });
+    setDeleting(false);
+    if (!result.ok) {
+      setDownloadError(result.error);
+      return;
+    }
+    const deletedId = deleteTarget.id;
+    setDeleteTarget(null);
+    setItems((current) => current.filter((post) => post.id !== deletedId));
+    setTotal((current) => Math.max(0, current - 1));
+    onDeleted?.(deletedId);
+    if (paginated && items.length === 1 && page > 1) setPage((current) => current - 1);
+    else if (paginated) setHistoryVersion((current) => current + 1);
+  }
 
   async function download(post: Post, slideIndex = 0, all = false) {
     const key = `${post.id}:${all ? "all" : slideIndex}`;
@@ -2398,15 +2708,43 @@ function History({ posts, templates }: { posts: Post[]; templates: Template[] })
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <header className="border-b border-slate-100 p-5">
-        <h2 className="text-lg font-semibold">Meus criativos</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Consulte e baixe os materiais já gerados.
-        </p>
+      <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 p-5">
+        <div>
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <p className="mt-1 text-sm text-slate-500">{description}</p>
+        </div>
+        {onViewAll ? (
+          <button type="button" onClick={onViewAll} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold hover:bg-slate-50">
+            Ver todos os criativos
+          </button>
+        ) : null}
       </header>
-      {posts.length ? (
+      {paginated ? (
+        <div className="grid gap-3 border-b border-slate-100 p-5 lg:grid-cols-[minmax(260px,1fr)_220px_210px_150px]">
+          <label className="relative block">
+            <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={19} />
+            <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Título, código, bairro, cidade ou endereço" className="h-11 w-full rounded-xl border border-slate-200 pl-10 pr-3 text-sm" />
+          </label>
+          <select value={objectiveFilter} onChange={(event) => { setObjectiveFilter(event.target.value); setPage(1); }} aria-label="Filtrar por objetivo" className="h-11 min-w-[220px] rounded-xl border border-slate-200 bg-white px-3 pr-10 text-sm">
+            <option value="ALL">Todos os objetivos</option>
+            <option value="PROPERTY">Promover imóvel</option>
+            <option value="DEVELOPMENT">Promover empreendimento</option>
+            <option value="PROFILE">Promover perfil</option>
+          </select>
+          <select value={order} onChange={(event) => { setOrder(event.target.value as "newest" | "oldest"); setPage(1); }} aria-label="Ordenar criativos" className="h-11 min-w-[210px] rounded-xl border border-slate-200 bg-white px-3 pr-10 text-sm">
+            <option value="newest">Mais recentes primeiro</option>
+            <option value="oldest">Mais antigos primeiro</option>
+          </select>
+          <select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }} aria-label="Itens por página" className="h-11 min-w-[150px] rounded-xl border border-slate-200 bg-white px-3 pr-10 text-sm">
+            <option value={10}>10 por página</option>
+            <option value={20}>20 por página</option>
+            <option value={50}>50 por página</option>
+          </select>
+        </div>
+      ) : null}
+      {loadingHistory ? <p className="p-10 text-center text-sm text-slate-400">Carregando criativos...</p> : items.length ? (
         <div className="divide-y divide-slate-100 px-5">
-          {posts.map((post) => {
+          {items.map((post) => {
             const template = templates.find((item) => item.id === post.template_id);
             const subject = post.payload?.development?.name ?? post.payload?.property?.title ?? "Material sem identificação";
             const objective = post.subject_type === "DEVELOPMENT" ? "Promover empreendimento" : post.subject_type === "PROFILE" ? "Promover perfil" : "Promover imóvel";
@@ -2487,6 +2825,14 @@ function History({ posts, templates }: { posts: Post[]; templates: Template[] })
                     </button>
                   )
                 ) : null}
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(post)}
+                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                >
+                  <Trash size={17} />
+                  Excluir
+                </button>
               </div>
             </article>
             );
@@ -2497,8 +2843,37 @@ function History({ posts, templates }: { posts: Post[]; templates: Template[] })
           Nenhum criativo gerado.
         </p>
       )}
+      {paginated && !loadingHistory && total > 0 ? (
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 p-5 text-sm">
+          <span className="text-slate-500">{total} criativo(s) · Página {page} de {totalPages}</span>
+          <div className="flex items-center gap-2">
+            <button type="button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="rounded-xl border border-slate-200 px-4 py-2 font-semibold disabled:opacity-40">Anterior</button>
+            <button type="button" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="rounded-xl border border-slate-200 px-4 py-2 font-semibold disabled:opacity-40">Próxima</button>
+          </div>
+        </footer>
+      ) : null}
       {downloadError ? (
         <p className="px-5 pb-5 text-sm text-red-600">{downloadError}</p>
+      ) : null}
+      {deleteTarget ? (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/55 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-creative-title">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 id="delete-creative-title" className="text-xl font-semibold text-slate-950">Excluir criativo?</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-500">O registro e os arquivos gerados serão removidos definitivamente do servidor.</p>
+              </div>
+              <button type="button" onClick={() => setDeleteTarget(null)} disabled={deleting} aria-label="Fechar" className="rounded-lg border border-slate-200 p-2 disabled:opacity-40"><X size={18} /></button>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setDeleteTarget(null)} disabled={deleting} className="rounded-xl border border-slate-200 px-4 py-2.5 font-semibold disabled:opacity-40">Cancelar</button>
+              <button type="button" onClick={() => void removeCreative()} disabled={deleting} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-bold text-white disabled:opacity-50">
+                {deleting ? <ArrowClockwise className="animate-spin" /> : <Trash />}
+                {deleting ? "Excluindo..." : "Excluir definitivamente"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </section>
   );

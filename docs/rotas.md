@@ -50,7 +50,7 @@
 ### Empreendimentos
 
 - **/[nickname]/empreendimentos/** — Listagem de empreendimentos
-- **/[nickname]/[slugEmpreendimento]/** — Página do empreendimento
+- **/[nickname]/[slugEmpreendimento]/** — Página do empreendimento, com galeria principal, slideshow de tipologias/plantas, diferenciais priorizados, unidades publicadas e coluna fixa de atendimento; visualizações e conversões usam o motor transversal de atribuição
 
 ### Captação
 
@@ -129,7 +129,10 @@
 
 - **/criativos** — Central de Criativos em `Objetivo > Modelo > Criativo`; aceita `?imovel=[id]`, `?etapa=[objetivo|template|editor]` e `?rascunho=[id]`
 - **/api/criativos/drafts** — cria, atualiza, lista e recupera rascunhos privados da Central de Criativos
+- **DELETE /api/criativos?id=[post_id]** — exclui um criativo pertencente ao usuário autenticado e remove seus arquivos do storage
+- **GET /api/criativos/history** — histórico privado paginado; aceita `page`, `page_size` (10, 20 ou 50), `objective` (`PROPERTY`, `DEVELOPMENT` ou `PROFILE`), `search` e `order` (`newest` ou `oldest`)
 - A Central separa `Criar novo` e `Meus criativos` em abas, mantendo os rascunhos recentes em acesso rápido acima delas. A listagem gerada preserva a proporção integral da peça e informa objetivo, assunto, modelo, formato e data. Downloads devem iniciar como arquivo, sem abrir a imagem em uma nova aba; materiais com múltiplas imagens oferecem download individual e pacote ZIP.
+- Listagens administrativas devem prever desde a implementação inicial: pesquisa pelos identificadores relevantes do recurso, filtros de contexto/status, ordenação, seletor de quantidade e paginação no backend.
 - **/templates** — Biblioteca de templates disponíveis
 - **/posts** — Histórico de criativos gerados
 - **/posts/[id]** — Preview, download e compartilhamento

@@ -3,6 +3,7 @@ import { authenticateByAccessToken } from "@/lib/db/_auth";
 import { mapDbError } from "@/lib/db/_errors";
 import type { DynamicClient } from "@/lib/db/_dynamic-client";
 import { deleteMidiaOwned, syncEmpreendimentoPublicMidia } from "@/lib/db/midia";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type Empreendimento = {
   id: string;
@@ -13,6 +14,7 @@ export type Empreendimento = {
   cidade: string;
   estado: string;
   caracteristica_ids?: string[];
+  caracteristica_destaque_ids?: string[];
   categoria_residencial?: string | null;
   tipologias_residenciais?: string[] | null;
   categoria_comercial?: string | null;
@@ -75,6 +77,7 @@ export type CreateEmpreendimentoInput = {
   tipos_cadastro?: Array<Record<string, unknown>> | null;
   caracteristicas?: string[] | null;
   caracteristica_ids?: string[] | null;
+  caracteristica_destaque_ids?: string[] | null;
   status?: string;
 };
 
@@ -235,6 +238,8 @@ type TipoCadastroPlantaDbRow = {
 type MidiaUrlDbRow = {
   id: string;
   url: string | null;
+  storage_bucket: string | null;
+  storage_path: string | null;
 };
 
 async function findDuplicateEmpreendimentoByNomeOuEndereco(
@@ -859,7 +864,7 @@ async function loadEmpreendimentoTiposCadastroMap(
     if (plantaMidiaIds.length > 0) {
       const midiaResult = await (db as unknown as {
         from: (table: "midia") => {
-          select: (columns: "id,url") => {
+          select: (columns: "id,url,storage_bucket,storage_path") => {
             eq: (column: "owner_id", value: string) => {
               in: (
                 column2: "id",
@@ -870,15 +875,54 @@ async function loadEmpreendimentoTiposCadastroMap(
         };
       })
         .from("midia")
-        .select("id,url")
+        .select("id,url,storage_bucket,storage_path")
         .eq("owner_id", ownerId)
         .in("id", plantaMidiaIds);
 
       if (midiaResult.error) return mapDbError(midiaResult.error);
 
-      for (const row of midiaResult.data ?? []) {
+      const mediaRows = midiaResult.data ?? [];
+      const privateBucket = process.env.MEDIA_PRIVATE_BUCKET_NAME ?? "midia-private";
+      const privateMediaIds = mediaRows
+        .filter((row) => row.storage_bucket === privateBucket)
+        .map((row) => row.id);
+      const variantPathById = new Map<string, string>();
+
+      if (privateMediaIds.length > 0) {
+        const variantResult = await (db as unknown as {
+          from: (table: "midia_variantes") => {
+            select: (columns: "midia_id,storage_path") => {
+              in: (column: "midia_id", values: string[]) => {
+                eq: (column2: "tipo", value: "W480") => Promise<{
+                  data: Array<{ midia_id: string; storage_path: string }> | null;
+                  error: { message: string } | null;
+                }>;
+              };
+            };
+          };
+        })
+          .from("midia_variantes")
+          .select("midia_id,storage_path")
+          .in("midia_id", privateMediaIds)
+          .eq("tipo", "W480");
+        if (variantResult.error) return mapDbError(variantResult.error);
+        for (const variant of variantResult.data ?? []) {
+          variantPathById.set(variant.midia_id, variant.storage_path);
+        }
+      }
+
+      const admin = privateMediaIds.length > 0 ? createSupabaseAdminClient() : null;
+      for (const row of mediaRows) {
         if (!row?.id) continue;
-        midiaUrlById.set(row.id, row.url ?? "");
+        if (admin && row.storage_bucket === privateBucket && row.storage_path) {
+          const previewPath = variantPathById.get(row.id) ?? row.storage_path;
+          const signedResult = await admin.storage
+            .from(row.storage_bucket)
+            .createSignedUrl(previewPath, 60 * 60);
+          midiaUrlById.set(row.id, signedResult.error ? row.url ?? "" : signedResult.data.signedUrl);
+        } else {
+          midiaUrlById.set(row.id, row.url ?? "");
+        }
       }
     }
 
@@ -948,12 +992,13 @@ export async function listEmpreendimentos(
   const empreendimentoIdSet = new Set(empreendimentoIds);
   const caracteristicasResult = await db
     .from("empreendimento_caracteristicas")
-    .select("empreendimento_id, caracteristica_id")
+    .select("empreendimento_id, caracteristica_id, destaque")
     .order("empreendimento_id", { ascending: true });
 
   if (caracteristicasResult.error) return mapDbError(caracteristicasResult.error);
 
   const caracteristicasMap = new Map<string, string[]>();
+  const caracteristicasDestaqueMap = new Map<string, string[]>();
   for (const row of caracteristicasResult.data ?? []) {
     const empreendimentoId = row.empreendimento_id;
     const caracteristicaId = row.caracteristica_id;
@@ -962,6 +1007,11 @@ export async function listEmpreendimentos(
     const current = caracteristicasMap.get(empreendimentoId) ?? [];
     current.push(caracteristicaId);
     caracteristicasMap.set(empreendimentoId, current);
+    if (row.destaque === true) {
+      const currentDestaques = caracteristicasDestaqueMap.get(empreendimentoId) ?? [];
+      currentDestaques.push(caracteristicaId);
+      caracteristicasDestaqueMap.set(empreendimentoId, currentDestaques);
+    }
   }
 
   const tiposCadastroMapResult = await loadEmpreendimentoTiposCadastroMap(
@@ -975,6 +1025,7 @@ export async function listEmpreendimentos(
   const enriched = empreendimentos.map((item) => ({
     ...item,
     caracteristica_ids: caracteristicasMap.get(item.id) ?? [],
+    caracteristica_destaque_ids: caracteristicasDestaqueMap.get(item.id) ?? [],
     tipos_cadastro: tiposCadastroMap.get(item.id) ?? item.tipos_cadastro ?? [],
   }));
   return ok(enriched);
@@ -1002,13 +1053,17 @@ export async function getEmpreendimentoById(
 
   const caracteristicasResult = await db
     .from("empreendimento_caracteristicas")
-    .select("caracteristica_id")
+    .select("caracteristica_id, destaque")
     .eq("empreendimento_id", empreendimentoId)
     .order("caracteristica_id", { ascending: true });
 
   if (caracteristicasResult.error) return mapDbError(caracteristicasResult.error);
 
   const caracteristicaIds = (caracteristicasResult.data ?? [])
+    .map((row) => row.caracteristica_id)
+    .filter((value): value is string => typeof value === "string");
+  const caracteristicaDestaqueIds = (caracteristicasResult.data ?? [])
+    .filter((row) => row.destaque === true)
     .map((row) => row.caracteristica_id)
     .filter((value): value is string => typeof value === "string");
 
@@ -1022,6 +1077,7 @@ export async function getEmpreendimentoById(
   return ok({
     ...(result.data as Empreendimento),
     caracteristica_ids: caracteristicaIds,
+    caracteristica_destaque_ids: caracteristicaDestaqueIds,
     tipos_cadastro:
       tiposCadastroMapResult.data.get(empreendimentoId) ??
       ((result.data as Empreendimento).tipos_cadastro ?? []),
@@ -1041,7 +1097,11 @@ export async function createEmpreendimento(
 
   const { user, client } = auth.data;
   const db = client as unknown as DynamicClient;
-  const { caracteristica_ids, tipos_cadastro, ...empreendimentoPayload } = input;
+  const { caracteristica_ids, caracteristica_destaque_ids, tipos_cadastro, ...empreendimentoPayload } = input;
+  const destaqueIds = [...new Set(caracteristica_destaque_ids ?? [])];
+  if (destaqueIds.length > 6 || destaqueIds.some((id) => !caracteristica_ids?.includes(id))) {
+    return fail("VALIDATION_ERROR", "Selecione até 6 diferenciais entre as características do empreendimento");
+  }
   const nextStatus = (empreendimentoPayload.status ?? "RASCUNHO") as string;
   const slugSeed =
     (typeof empreendimentoPayload.slug_publico === "string" &&
@@ -1135,12 +1195,13 @@ export async function createEmpreendimento(
     const relationRows = caracteristica_ids.map((caracteristicaId) => ({
       empreendimento_id: empreendimentoId,
       caracteristica_id: caracteristicaId,
+      destaque: destaqueIds.includes(caracteristicaId),
     }));
 
     const relationInsert = await (db as unknown as {
       from: (table: "empreendimento_caracteristicas") => {
         insert: (
-          value: { empreendimento_id: string; caracteristica_id: string }[],
+          value: { empreendimento_id: string; caracteristica_id: string; destaque: boolean }[],
         ) => Promise<{ error: { message: string } | null }>;
       };
     })
@@ -1173,13 +1234,16 @@ export async function updateEmpreendimento(
   const db = client as unknown as DynamicClient;
   const patchEmpreendimento = { ...patch };
   const caracteristicaIds = patch.caracteristica_ids;
+  const caracteristicaDestaqueIds = patch.caracteristica_destaque_ids;
   const tiposCadastro = patch.tipos_cadastro;
   delete patchEmpreendimento.caracteristica_ids;
+  delete patchEmpreendimento.caracteristica_destaque_ids;
   delete patchEmpreendimento.tipos_cadastro;
 
   if (
     Object.keys(patchEmpreendimento).length === 0 &&
     caracteristicaIds === undefined &&
+    caracteristicaDestaqueIds === undefined &&
     tiposCadastro === undefined
   ) {
     return fail("VALIDATION_ERROR", "No fields provided to update");
@@ -1449,6 +1513,13 @@ export async function updateEmpreendimento(
   }
 
   if (caracteristicaIds !== undefined) {
+    const destaqueIds = [...new Set(caracteristicaDestaqueIds ?? [])];
+    if (
+      destaqueIds.length > 6 ||
+      destaqueIds.some((id) => !Array.isArray(caracteristicaIds) || !caracteristicaIds.includes(id))
+    ) {
+      return fail("VALIDATION_ERROR", "Selecione até 6 diferenciais entre as características do empreendimento");
+    }
     const relationDelete = await (db as unknown as {
       from: (table: "empreendimento_caracteristicas") => {
         delete: () => {
@@ -1466,12 +1537,13 @@ export async function updateEmpreendimento(
       const relationRows = caracteristicaIds.map((caracteristicaId) => ({
         empreendimento_id: empreendimentoId,
         caracteristica_id: caracteristicaId,
+        destaque: destaqueIds.includes(caracteristicaId),
       }));
 
       const relationInsert = await (db as unknown as {
         from: (table: "empreendimento_caracteristicas") => {
           insert: (
-            value: { empreendimento_id: string; caracteristica_id: string }[],
+            value: { empreendimento_id: string; caracteristica_id: string; destaque: boolean }[],
           ) => Promise<{ error: { message: string } | null }>;
         };
       })

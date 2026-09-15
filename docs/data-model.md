@@ -712,6 +712,7 @@ Regras:
 - máximo de 3 imagens por tipo (ordem 0..2)
 - unique(empreendimento_tipo_id, ordem)
 - unique(empreendimento_tipo_id, midia_id)
+- Na página pública, a planta é entregue por endpoint controlado que valida empreendimento publicado + perfil ativo e serve o derivado privado `W1024`; para registros legados sem esse derivado, o endpoint gera WebP de até 1024 px em memória. A master e sua URL privada nunca são expostas.
 
 ---
 
@@ -785,6 +786,21 @@ IA
 - hash (text, nullable)
 - created_at (timestamptz)
 
+Contrato de imagens de imóveis e empreendimentos (uploads novos):
+
+- o registro em `midia` aponta para a `MASTER_1920`, normalizada para no máximo 1920 px, sem marca d'água e armazenada em bucket privado;
+- a master é a fonte canônica para criativos, vídeos, backup e regeneração de derivados;
+- `midia.url` não concede acesso público à master; respostas autenticadas devem entregar URL assinada de curta duração;
+- outros domínios (artigos, páginas de captura, perfil, provas sociais, templates e campanhas) mantêm contratos próprios e não herdam automaticamente este tratamento.
+
+Escopo dos fluxos revisados nesta versão:
+
+- cadastro multietapas e edição de imóveis: aplica o contrato privado + derivados responsivos;
+- cadastro e edição de empreendimentos, inclusive grupos de galeria/plantas: aplica o contrato privado + derivados responsivos;
+- Central de Criativos: consome a master privada por URL assinada, preservando a imagem sem marca d'água;
+- páginas públicas e lightbox de imóveis/empreendimentos: consomem os derivados públicos por `srcset`;
+- Artigos (`ARTIGO`), Páginas de Captura (`CAMPANHA`), Perfil, Provas Sociais, Templates e documentos continuam no fluxo existente até terem contrato próprio definido.
+
 ---
 
 ### midia_variantes
@@ -799,6 +815,8 @@ IA
 - created_at (timestamptz)
 
 Constraint: unique(midia_id, tipo)
+
+Para imagens de imóveis e empreendimentos, `W480`, `W768` e `W1024` são derivados WebP privados da master. `FULL_1920` referencia a própria master normalizada, sem duplicar o arquivo físico.
 
 ---
 
@@ -834,6 +852,7 @@ Constraint: unique(ref_tipo, ref_id, midia_id)
 - url (text)
 - created_at (timestamptz)
 - updated_at (timestamptz)
+- variantes (jsonb, default `{}`) _(mapa `W480|W768|W1024|FULL_1920` com URL, path, largura, altura e formato dos derivados públicos)_
 
 Índices: (owner_id, imovel_id), (imovel_id, ordem, indice_publico), (slug_publico)
 
@@ -847,8 +866,9 @@ Constraints:
 Regras:
 
 - Só recebe imagens do imóvel quando o imóvel está `PUBLICADO`.
-- URL pública da imagem usa o slug do imóvel + índice numérico (1..N).
+- URL pública da imagem usa o slug do imóvel + índice numérico (1..N) e uma identidade imutável da mídia; substituir o arquivo gera outro caminho e evita conteúdo antigo em CDN/cache.
 - As imagens públicas são geradas com marca d'água e atualizadas quando há publish/republish ou alteração da ordem.
+- Os derivados públicos são WebP com marca d'água em 480, 768, 1024 e até 1920 px; `url`/`storage_path` apontam para `W480` como fallback leve para consumidores legados, e `variantes` alimenta `srcset` e lightbox.
 - Em status diferente de `PUBLICADO`, os assets públicos do imóvel são removidos.
 
 ---
@@ -869,6 +889,7 @@ Regras:
 - url (text)
 - created_at (timestamptz)
 - updated_at (timestamptz)
+- variantes (jsonb, default `{}`) _(mapa `W480|W768|W1024|FULL_1920` com URL, path, largura, altura e formato dos derivados públicos)_
 
 Índices: (owner_id, empreendimento_id), (empreendimento_id, ordem, indice_publico), (slug_publico)
 
@@ -882,8 +903,9 @@ Constraints:
 Regras:
 
 - Só recebe imagens do empreendimento quando o empreendimento está `PUBLICADO`.
-- URL pública da imagem usa o slug do empreendimento + índice numérico (1..N).
+- URL pública da imagem usa o slug do empreendimento + índice numérico (1..N) e uma identidade imutável da mídia; substituir o arquivo gera outro caminho e evita conteúdo antigo em CDN/cache.
 - As imagens públicas são geradas com marca d'água e atualizadas quando há publish/republish ou alteração da ordem.
+- Os derivados públicos são WebP com marca d'água em 480, 768, 1024 e até 1920 px; `url`/`storage_path` apontam para `W480` como fallback leve para consumidores legados, e `variantes` alimenta `srcset` e lightbox.
 - Em status diferente de `PUBLICADO`, os assets públicos do empreendimento são removidos.
 
 ---
@@ -912,6 +934,8 @@ Regra:
 
 - Exclusão de mídia é assíncrona por fila.
 - UI remove imediatamente vínculo/registro; remoção física no storage é processada por worker/cron.
+- Em desenvolvimento local, os jobs criados pela própria exclusão são processados imediatamente após a remoção do registro; se o Storage falhar, permanecem na fila para retry.
+- Em produção, o processamento imediato fica desativado por padrão e a fila continua dependente de um agendador/worker.
 
 ---
 
@@ -1616,6 +1640,11 @@ Regras: o snapshot é congelado no envio do lead e preserva first touch, last to
 
 Constraints: unique(lead_id, empreendimento_id)
 
+Uso público:
+
+- formulários e CTAs da página do empreendimento vinculam o lead nesta tabela;
+- a conversão gera `public_events.FORM_SUBMIT` com `resource_type = DEVELOPMENT` e congela o snapshot em `lead_attributions` sem impedir a captação caso a telemetria falhe.
+
 ---
 
 ### artigo_categoria_sugestoes
@@ -1667,6 +1696,20 @@ Renderers iniciais de imóvel:
 
 Os equivalentes `development-essential-01`, `development-dual-02`, `development-editorial-03` e `development-journey-carousel-01` reutilizam os respectivos motores visuais com um snapshot próprio de empreendimento: nome, fase, intervalos das tipologias, localização, estrutura, diferenciais e mídias.
 
+Características usadas nos criativos devem resolver `caracteristicas[].chave` por `caracteristicas_catalogo.label_pt`; slugs nunca são apresentados na arte. A relação `empreendimento_caracteristicas` possui `destaque` (boolean, default `false`), limitada a seis marcações por empreendimento. Os criativos priorizam esses diferenciais e completam eventuais posições restantes com as demais características selecionadas.
+
+Hierarquia editorial inicial dos criativos de empreendimento:
+
+- identidade: nome e endereço completo;
+- momento comercial: fase (`NA_PLANTA`, `EM_CONSTRUCAO` ou `ENTREGUE`);
+- dimensão: total estrutural em `n_unidades`, calculado pelo cadastro; `empreendimento_tipos.qtd_unidades` detalha o total por tipologia quando preenchido;
+- disponibilidade comercial não deve ser inferida a partir do total estrutural nem da quantidade de anúncios vinculados; requer controle de estoque por unidade ou por tipologia;
+- temporalidade condicional: previsão de entrega para `NA_PLANTA`/`EM_CONSTRUCAO`, ano de construção para `ENTREGUE`;
+- produto: tipos cadastrados, intervalo de dormitórios e intervalo de áreas privativas;
+- apresentação: a informação sobre a imagem pode alternar entre endereço completo, bairro comercial (com fallback para bairro) + cidade/UF, ou fase; em empreendimentos residenciais entregues, a fase pública é exibida como `Pronto para morar`, mantendo `Entregue` para comerciais;
+- informação final: pode exibir ano de construção apenas para entregues, menor preço de venda entre imóveis publicados associados (`A partir de`) quando existir, ou `Consulte os valores`;
+- os dados factuais são somente leitura na Central de Criativos e devem ser corrigidos no cadastro do empreendimento; o editor do criativo controla seleção, ordem e composição, sem criar uma segunda fonte de verdade.
+
 Fluxo de criação visual: novos templates devem ser primeiramente construídos e aprovados como protótipos HTML isolados. Após a aprovação da composição, o HTML passa a ser a referência canônica para implementação no renderer, preview administrativo e geração final.
 
 Escopo visual do MVP:
@@ -1699,6 +1742,10 @@ Ao publicar uma versão pelo admin, o renderer gera previews imutáveis nos form
 - payload (jsonb) — snapshot imutável dos dados usados na renderização
 
 No download de materiais com múltiplos arquivos, a API pode empacotar `resultado_urls` em ZIP sem compressão destrutiva das imagens. Os arquivos individuais continuam disponíveis.
+
+A exclusão de um material exige confirmação explícita na interface. O backend valida `owner_id`, remove do storage o PNG ou todos os slides do carrossel e somente então exclui o registro de `posts`.
+
+O histórico é paginado no backend e pode pesquisar o snapshot por título/nome, código e localização, além de filtrar por `subject_type` e ordenar por `created_at` crescente ou decrescente.
 
 ### creative_drafts (edições de criativos ainda não geradas)
 

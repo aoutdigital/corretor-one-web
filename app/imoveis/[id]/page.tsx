@@ -3275,8 +3275,9 @@ export default function ImovelDetalhePage() {
     if (item.status === "PUBLICADO") {
       void apiFetchWithAuth<EmpreendimentoMidiaPublicaItem[]>(
         `/api/empreendimentos/${item.empreendimento_id}/midia-publica`,
+        { method: "POST" },
       ).then(async (result) => {
-        if (result.ok && result.data.length > 0) {
+        if (result.ok) {
           const ordered = [...result.data].sort((a, b) => {
             if (a.indice_publico !== b.indice_publico)
               return a.indice_publico - b.indice_publico;
@@ -3286,23 +3287,8 @@ export default function ImovelDetalhePage() {
           setLoadingMidiasEmpreendimentoRelacionadas(false);
           return;
         }
-
-        const syncResult = await apiFetchWithAuth<
-          EmpreendimentoMidiaPublicaItem[]
-        >(`/api/empreendimentos/${item.empreendimento_id}/midia-publica`, {
-          method: "POST",
-        });
         setLoadingMidiasEmpreendimentoRelacionadas(false);
-        if (!syncResult.ok) {
-          setMidiasEmpreendimentoRelacionadas([]);
-          return;
-        }
-        const ordered = [...syncResult.data].sort((a, b) => {
-          if (a.indice_publico !== b.indice_publico)
-            return a.indice_publico - b.indice_publico;
-          return a.ordem - b.ordem;
-        });
-        setMidiasEmpreendimentoRelacionadas(ordered);
+        setMidiasEmpreendimentoRelacionadas([]);
       });
       return;
     }

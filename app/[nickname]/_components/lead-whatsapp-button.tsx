@@ -4,6 +4,8 @@ import Image from "next/image";
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowRight, SpinnerGap, WhatsappLogo, X } from "@phosphor-icons/react";
+import { getBrowserAttributionContext } from "@/lib/marketing/browser-attribution";
+import { getAccessToken } from "@/lib/client/auth-api";
 
 type LeadWhatsAppButtonProps = {
   nickname: string;
@@ -15,6 +17,8 @@ type LeadWhatsAppButtonProps = {
   creci?: string | null;
   imovelId?: string | null;
   imovelTitulo?: string | null;
+  empreendimentoId?: string | null;
+  empreendimentoTitulo?: string | null;
 };
 
 type SubmitState = "idle" | "submitting" | "success" | "error";
@@ -61,6 +65,8 @@ export function LeadWhatsAppButton({
   creci,
   imovelId,
   imovelTitulo,
+  empreendimentoId,
+  empreendimentoTitulo,
 }: LeadWhatsAppButtonProps) {
   const [open, setOpen] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -75,8 +81,9 @@ export function LeadWhatsAppButton({
 
   const defaultMessage = useMemo(() => {
     if (imovelTitulo) return `Tenho interesse neste imóvel: ${imovelTitulo}`;
+    if (empreendimentoTitulo) return `Tenho interesse no empreendimento ${empreendimentoTitulo}.`;
     return "Quero conversar sobre imóveis e oportunidades.";
-  }, [imovelTitulo]);
+  }, [empreendimentoTitulo, imovelTitulo]);
 
   useEffect(() => {
     setMounted(true);
@@ -114,9 +121,13 @@ export function LeadWhatsAppButton({
     setFeedback(null);
 
     try {
+      const attribution = getBrowserAttributionContext();
+      const token = await getAccessToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
       const response = await fetch("/api/public/lead-forms", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           form_key: "whatsapp_contact",
           nickname,
@@ -126,12 +137,13 @@ export function LeadWhatsAppButton({
           email,
           mensagem: message,
           website,
-          page_url: window.location.href,
-          referrer: document.referrer,
+          ...attribution,
           utm: getUtmParams(),
           context: {
             imovel_id: imovelId ?? null,
             imovel_titulo: imovelTitulo ?? null,
+            empreendimento_id: empreendimentoId ?? null,
+            empreendimento_titulo: empreendimentoTitulo ?? null,
           },
         }),
       });

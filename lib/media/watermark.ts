@@ -280,6 +280,49 @@ export async function renderWatermarkedPublicImage(
     .toBuffer();
 }
 
+export async function renderWatermarkedPublicWebp(
+  sourceImageBuffer: Buffer,
+  input: WatermarkLogoInput & { width: number },
+): Promise<{ buffer: Buffer; width: number; height: number }> {
+  const normalizedWidth = Math.max(1, Math.min(1920, Math.round(input.width)));
+  const resized = await sharp(sourceImageBuffer, { failOn: "none" })
+    .rotate()
+    .resize({
+      width: normalizedWidth,
+      height: normalizedWidth,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .toBuffer();
+  const metadata = await sharp(resized, { failOn: "none" }).metadata();
+  if (!metadata.width || !metadata.height) {
+    throw new Error("Não foi possível ler dimensões do derivado público.");
+  }
+
+  const logoBuffer =
+    input.logoPngBuffer ??
+    (await renderCorretorOneLogoPng({
+      nickname: input.nickname,
+      theme: "white",
+    }));
+  let logoPngBase64: string | null = null;
+  if (logoBuffer) {
+    try {
+      logoPngBase64 = (await sharp(logoBuffer, { failOn: "none" }).png().toBuffer()).toString("base64");
+    } catch {
+      logoPngBase64 = null;
+    }
+  }
+
+  const overlay = await buildWatermarkOverlay(metadata.width, metadata.height, logoPngBase64);
+  const buffer = await sharp(resized, { failOn: "none" })
+    .composite([{ input: overlay, gravity: "center" }])
+    .webp({ quality: 82, effort: 4 })
+    .toBuffer();
+
+  return { buffer, width: metadata.width, height: metadata.height };
+}
+
 export async function renderCornerWatermarkedImage(
   sourceImageBuffer: Buffer,
   input: WatermarkLogoInput,

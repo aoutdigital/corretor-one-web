@@ -267,6 +267,7 @@ export type Database = {
           unidades_terreo: number | null;
           nome: string;
           numero: string;
+          obra_percentuais: Json | null;
           owner_id: string;
           previsao_entrega_em: string | null;
           publicado_em: string | null;
@@ -310,6 +311,7 @@ export type Database = {
           unidades_terreo?: number | null;
           nome: string;
           numero: string;
+          obra_percentuais?: Json | null;
           owner_id: string;
           previsao_entrega_em?: string | null;
           publicado_em?: string | null;
@@ -352,6 +354,7 @@ export type Database = {
           unidades_terreo?: number | null;
           nome?: string;
           numero?: string;
+          obra_percentuais?: Json | null;
           owner_id?: string;
           previsao_entrega_em?: string | null;
           publicado_em?: string | null;
@@ -392,6 +395,7 @@ export type Database = {
           storage_provider: Database["public"]["Enums"]["storage_provider"];
           updated_at: string;
           url: string;
+          variantes: Json;
         };
         Insert: {
           created_at?: string;
@@ -408,6 +412,7 @@ export type Database = {
           storage_provider?: Database["public"]["Enums"]["storage_provider"];
           updated_at?: string;
           url: string;
+          variantes?: Json;
         };
         Update: {
           created_at?: string;
@@ -424,6 +429,7 @@ export type Database = {
           storage_provider?: Database["public"]["Enums"]["storage_provider"];
           updated_at?: string;
           url?: string;
+          variantes?: Json;
         };
         Relationships: [
           {
@@ -1034,6 +1040,7 @@ export type Database = {
           storage_provider: Database["public"]["Enums"]["storage_provider"];
           updated_at: string;
           url: string;
+          variantes: Json;
         };
         Insert: {
           created_at?: string;
@@ -1050,6 +1057,7 @@ export type Database = {
           storage_provider?: Database["public"]["Enums"]["storage_provider"];
           updated_at?: string;
           url: string;
+          variantes?: Json;
         };
         Update: {
           created_at?: string;
@@ -1066,6 +1074,7 @@ export type Database = {
           storage_provider?: Database["public"]["Enums"]["storage_provider"];
           updated_at?: string;
           url?: string;
+          variantes?: Json;
         };
         Relationships: [
           {

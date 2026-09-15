@@ -12,18 +12,24 @@ import {
   MapPin,
   Ruler,
   UsersThree,
+  WhatsappLogo,
 } from "@phosphor-icons/react/dist/ssr";
 
 import { BrokerPublicFooter } from "@/app/[nickname]/_components/broker-public-footer";
+import { DevelopmentLeadCard } from "@/app/[nickname]/_components/development-lead-card";
+import { DevelopmentTypologiesCarousel, type PublicDevelopmentTypology } from "@/app/[nickname]/_components/development-typologies-carousel";
 import { PropertyGallery } from "@/app/[nickname]/_components/property-gallery";
 import { PublicBrokerHeader } from "@/app/[nickname]/_components/public-broker-header";
 import { LandingPagePublic } from "@/app/[nickname]/_components/landing-page-public";
+import { LeadWhatsAppButton } from "@/app/[nickname]/_components/lead-whatsapp-button";
+import { LeadVisitScheduleButton } from "@/app/[nickname]/_components/lead-visit-schedule-button";
 import { PublicAnalytics } from "@/app/[nickname]/_components/public-analytics";
 import { PublicPropertyCard, type PublicPropertyCardImovel } from "@/app/[nickname]/_components/public-property-card";
 import type { LandingPageContent } from "@/lib/landing-pages/content";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
+import { parsePublicImageVariants } from "@/lib/media/responsive-image";
 
 type PageProps = {
   params: Promise<{ nickname: string; operacao: string }>;
@@ -62,6 +68,7 @@ type EmpreendimentoRow = Pick<
   | "cep"
   | "fase"
   | "estagio_obra"
+  | "obra_percentuais"
   | "previsao_entrega_em"
   | "ano_construcao"
   | "n_torres"
@@ -84,8 +91,9 @@ type EmpreendimentoRow = Pick<
 >;
 type MediaRow = Pick<
   Database["public"]["Tables"]["empreendimento_midia_publica"]["Row"],
-  "empreendimento_id" | "indice_publico" | "ordem" | "url"
+  "empreendimento_id" | "indice_publico" | "ordem" | "url" | "variantes"
 >;
+type DevelopmentVideo = { url: string; title: string | null };
 type ImovelRow = PublicPropertyCardImovel;
 type ImovelMediaRow = {
   imovel_id: string;
@@ -102,6 +110,18 @@ type PublicLandingRow = { id:string; owner_id:string; titulo:string; subtitulo:s
 type LandingQueryResult<T>={data:T|null;error:{message:string}|null};
 type LandingQuery<T>=PromiseLike<LandingQueryResult<T>>&{select:(columns:string)=>LandingQuery<T>;eq:(column:string,value:unknown)=>LandingQuery<T>;maybeSingle:()=>PromiseLike<LandingQueryResult<T>>};
 type LandingDb={from:<T>(table:string)=>LandingQuery<T>};
+type DynamicReadResult<T> = { data: T[] | null; error: { message: string } | null };
+type DynamicReadQuery<T> = PromiseLike<DynamicReadResult<T>> & {
+  select: (columns: string) => DynamicReadQuery<T>;
+  eq: (column: string, value: unknown) => DynamicReadQuery<T>;
+  in: (column: string, values: string[]) => DynamicReadQuery<T>;
+  order: (column: string, options?: { ascending?: boolean }) => DynamicReadQuery<T>;
+};
+type DynamicReadDb = { from: <T>(table: string) => DynamicReadQuery<T> };
+type FeatureLinkRow = { caracteristica_id: string; destaque: boolean };
+type FeatureCatalogRow = { id: string; chave: string; label_pt: string; ativo: boolean };
+type DevelopmentTypeRow = { id: string; ordem: number; nome: string | null; torre_nome: string | null; tipologia: string | null; area_privativa: number | null; dormitorios: number | null; suites: number | null; banheiros: number | null; vagas: number | null; qtd_unidades: number | null };
+type DevelopmentPlantRow = { id: string; empreendimento_tipo_id: string; midia_id: string; ordem: number; alt: string | null; legenda: string | null };
 
 const PROFILE_SELECT =
   "id,nickname,primeiro_nome,sobrenome,email,telefone,whatsapp,avatar_url,logo_nickname_url,logo_nickname_white_url,creci_uf,creci_numero,creci_sufixo,status";
@@ -120,6 +140,7 @@ const EMPREENDIMENTO_SELECT = [
   "cep",
   "fase",
   "estagio_obra",
+  "obra_percentuais",
   "previsao_entrega_em",
   "ano_construcao",
   "n_torres",
@@ -231,12 +252,19 @@ export default async function PublicEmpreendimentoDetailPage({ params }: PagePro
     addressLine,
     facts,
     features,
+    featureHighlights,
+    typologies,
     locationContext,
+    video,
   } = data;
-  const heroImages = medias.map((item) => ({ url: item.url }));
+  const heroImages = medias.map((item) => ({
+    url: item.url,
+    variantes: parsePublicImageVariants(item.variantes),
+  }));
   const phaseLabel = formatPhaseLabel(empreendimento.fase);
   const descriptionHtml = sanitizeRichTextHtml(empreendimento.descricao);
   const mapQuery = encodeURIComponent(addressLine);
+  const constructionProgress = buildConstructionProgress(empreendimento);
 
   return (
     <div className="min-h-screen bg-white text-slate-950">
@@ -267,29 +295,41 @@ export default async function PublicEmpreendimentoDetailPage({ params }: PagePro
               </p>
             ) : null}
             <div className="mt-8 flex flex-wrap gap-3">
-              <a
-                href="#imoveis-disponiveis"
+              <LeadVisitScheduleButton
+                nickname={profile.nickname ?? nickname}
+                brokerName={brokerName}
+                avatarUrl={avatarUrl}
+                creci={formatCreci(profile)}
+                empreendimentoId={empreendimento.id}
+                empreendimentoTitulo={empreendimento.nome}
                 className="inline-flex items-center justify-center gap-3 rounded-lg border border-[var(--grey-olive)] bg-white px-5 py-3 text-sm font-bold text-[var(--grey-olive)] transition hover:bg-[color:rgba(145,139,118,0.08)]"
               >
-                <HouseLine size={19} />
-                Ver imóveis disponíveis
-              </a>
+                <CalendarBlank size={19} />
+                Agendar visita
+              </LeadVisitScheduleButton>
               {whatsappHref ? (
-                <a
-                  href={whatsappHref}
+                <LeadWhatsAppButton
+                  nickname={profile.nickname ?? nickname}
+                  brokerName={brokerName}
+                  avatarUrl={avatarUrl}
+                  creci={formatCreci(profile)}
+                  empreendimentoId={empreendimento.id}
+                  empreendimentoTitulo={empreendimento.nome}
+                  label="Iniciar conversa no WhatsApp"
                   className="inline-flex items-center justify-center gap-3 rounded-lg border border-[var(--grey-olive)] bg-white px-5 py-3 text-sm font-bold text-[var(--grey-olive)] transition hover:bg-[color:rgba(145,139,118,0.08)]"
                 >
-                  Falar sobre o empreendimento
-                  <ArrowRight size={18} />
-                </a>
+                  <WhatsappLogo size={19} />
+                  Iniciar conversa no WhatsApp
+                </LeadWhatsAppButton>
               ) : null}
             </div>
           </div>
 
-          <PropertyGallery title={empreendimento.nome} images={heroImages} />
+          <PropertyGallery title={empreendimento.nome} images={heroImages} video={video} />
         </section>
 
-        <section className="mx-auto max-w-7xl space-y-10 px-5 pb-16">
+        <section className="mx-auto grid max-w-7xl gap-8 px-5 pb-16 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+          <div className="min-w-0 space-y-10">
           <section className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm md:p-8">
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Empreendimento</p>
             <h2 className="mt-2 text-4xl font-light leading-tight text-slate-950">Dados principais</h2>
@@ -311,6 +351,39 @@ export default async function PublicEmpreendimentoDetailPage({ params }: PagePro
             </div>
           </section>
 
+          {constructionProgress ? (
+            <section className="overflow-hidden rounded-xl border border-stone-200 bg-slate-950 text-white shadow-sm">
+              <div className="grid gap-8 p-6 md:p-9 lg:grid-cols-[0.72fr_1.28fr]">
+                <div className="flex flex-col justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--grey-olive)]">Evolução da obra</p>
+                    <h2 className="mt-3 text-4xl font-light leading-tight">Cada etapa mais perto da entrega.</h2>
+                    <p className="mt-4 max-w-md text-base font-light leading-7 text-white/60">
+                      Acompanhe o avanço informado para as principais fases da construção.
+                    </p>
+                  </div>
+                  <div className="mt-8 flex items-end gap-3">
+                    <strong className="text-6xl font-light leading-none">{constructionProgress.overall}%</strong>
+                    <span className="pb-1 text-sm font-medium uppercase tracking-[0.14em] text-white/55">progresso geral</span>
+                  </div>
+                </div>
+                <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+                  {constructionProgress.items.map((item) => (
+                    <div key={item.label}>
+                      <div className="mb-2 flex items-center justify-between gap-4 text-sm">
+                        <span className="font-light text-white/75">{item.label}</span>
+                        <strong className="font-medium text-white">{item.value}%</strong>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full rounded-full bg-[var(--grey-olive)]" style={{ width: `${item.value}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          ) : null}
+
           {descriptionHtml ? (
             <section className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm md:p-8">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Descrição</p>
@@ -322,11 +395,29 @@ export default async function PublicEmpreendimentoDetailPage({ params }: PagePro
             </section>
           ) : null}
 
-          {features.length > 0 ? (
+          {typologies.length > 0 ? (
+            <section className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm md:p-8">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Tipologias</p>
+              <h2 className="mt-2 text-4xl font-light leading-tight text-slate-950">Conheça as plantas disponíveis</h2>
+              <p className="mb-7 mt-3 max-w-3xl text-base font-light leading-7 text-slate-600">Navegue uma tipologia por vez e compare áreas, ambientes e configurações.</p>
+              <DevelopmentTypologiesCarousel items={typologies} />
+            </section>
+          ) : null}
+
+          {features.length > 0 || featureHighlights.length > 0 ? (
             <section className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm md:p-8">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--grey-olive)]">Características</p>
               <h2 className="mt-2 text-4xl font-light leading-tight text-slate-950">Estrutura e diferenciais</h2>
-              <div className="mt-7 grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+              {featureHighlights.length > 0 ? (
+                <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                  {featureHighlights.map((feature) => (
+                    <div key={feature} className="flex items-center gap-3 rounded-lg bg-[color:rgba(145,139,118,0.1)] p-4 text-base font-medium text-slate-900">
+                      <Check size={19} weight="bold" className="shrink-0 text-[var(--grey-olive)]" /><span>{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <div className={`${featureHighlights.length > 0 ? "mt-6 border-t border-stone-200 pt-6" : "mt-7"} grid gap-x-8 gap-y-3 sm:grid-cols-2`}>
                 {features.map((feature) => (
                   <p key={feature} className="flex items-start gap-3 text-base font-light leading-7 text-slate-600">
                     <Check size={18} className="mt-1 shrink-0 text-[var(--grey-olive)]" />
@@ -374,6 +465,15 @@ export default async function PublicEmpreendimentoDetailPage({ params }: PagePro
                 ))}
               </div>
             ) : null}
+            <div className="mt-8 overflow-hidden rounded-lg border border-stone-200 bg-stone-100">
+              <iframe
+                title={`Mapa de ${addressLine}`}
+                src={`https://maps.google.com/maps?q=${mapQuery}&z=15&output=embed`}
+                className="h-[320px] w-full md:h-[380px]"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </div>
           </section>
 
           <section id="imoveis-disponiveis" className="py-4">
@@ -405,6 +505,18 @@ export default async function PublicEmpreendimentoDetailPage({ params }: PagePro
               </div>
             )}
           </section>
+          </div>
+
+          <DevelopmentLeadCard
+            nickname={profile.nickname ?? nickname}
+            developmentId={empreendimento.id}
+            title={empreendimento.nome}
+            phase={phaseLabel}
+            brokerName={brokerName}
+            brokerAvatarUrl={avatarUrl}
+            brokerCreci={formatCreci(profile)}
+            whatsappAvailable={Boolean(whatsappHref)}
+          />
         </section>
       </main>
 
@@ -460,10 +572,11 @@ async function getEmpreendimentoPageData(rawNickname: string, rawSlug: string) {
   if (!empreendimentoResult.data) return null;
 
   const empreendimento = empreendimentoResult.data as unknown as EmpreendimentoRow;
-  const [mediaResult, imoveisResult, caracteristicasLabels] = await Promise.all([
+  const admin = createSupabaseAdminClient();
+  const [mediaResult, imoveisResult, legacyCaracteristicasLabels, video] = await Promise.all([
     supabase
       .from("empreendimento_midia_publica")
-      .select("empreendimento_id,indice_publico,ordem,url")
+      .select("empreendimento_id,indice_publico,ordem,url,variantes")
       .eq("empreendimento_id", empreendimento.id)
       .order("indice_publico", { ascending: true })
       .order("ordem", { ascending: true }),
@@ -477,10 +590,60 @@ async function getEmpreendimentoPageData(rawNickname: string, rawSlug: string) {
       .order("destaque", { ascending: false })
       .order("publicado_em", { ascending: false }),
     getCaracteristicasCatalogoLabels(empreendimento.caracteristicas ?? []),
+    getFirstVideoByEmpreendimentoId(profile.id, empreendimento.id),
   ]);
 
   if (mediaResult.error) throw new Error(`Erro ao carregar midias do empreendimento: ${mediaResult.error.message}`);
   if (imoveisResult.error) throw new Error(`Erro ao carregar imoveis do empreendimento: ${imoveisResult.error.message}`);
+  const featureDb = admin as unknown as DynamicReadDb;
+  const tiposResult = await featureDb.from<DevelopmentTypeRow>("empreendimento_tipos")
+    .select("id,ordem,nome,torre_nome,tipologia,area_privativa,dormitorios,suites,banheiros,vagas,qtd_unidades")
+    .eq("owner_id", profile.id).eq("empreendimento_id", empreendimento.id).order("ordem", { ascending: true });
+  if (tiposResult.error) throw new Error(`Erro ao carregar tipologias do empreendimento: ${tiposResult.error.message}`);
+  const featureLinksResult = await featureDb.from<FeatureLinkRow>("empreendimento_caracteristicas")
+    .select("caracteristica_id,destaque").eq("empreendimento_id", empreendimento.id);
+  if (featureLinksResult.error) throw new Error(`Erro ao carregar diferenciais do empreendimento: ${featureLinksResult.error.message}`);
+  const featureIds = (featureLinksResult.data ?? []).map((item) => item.caracteristica_id);
+  const featureCatalogResult = featureIds.length > 0
+    ? await featureDb.from<FeatureCatalogRow>("caracteristicas_catalogo").select("id,chave,label_pt,ativo").in("id", featureIds).eq("ativo", true)
+    : { data: [], error: null };
+  if (featureCatalogResult.error) throw new Error(`Erro ao carregar catálogo de diferenciais: ${featureCatalogResult.error.message}`);
+  const featureCatalog = new Map((featureCatalogResult.data ?? []).map((item) => [item.id, item.label_pt]));
+  const highlightedIds = new Set((featureLinksResult.data ?? []).filter((item) => item.destaque).map((item) => item.caracteristica_id));
+  const featureHighlights = uniqueStrings(featureIds.filter((id) => highlightedIds.has(id)).map((id) => featureCatalog.get(id) ?? "").filter(Boolean));
+  const relationalFeatures = uniqueStrings(featureIds.filter((id) => !highlightedIds.has(id)).map((id) => featureCatalog.get(id) ?? "").filter(Boolean))
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+  const legacyFeatures = uniqueStrings((empreendimento.caracteristicas ?? []).map((key) => legacyCaracteristicasLabels.get(key) ?? formatEnumLabel(key) ?? "").filter(Boolean))
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
+
+  const tipoIds = (tiposResult.data ?? []).map((item) => item.id);
+  const plantsResult = tipoIds.length > 0
+    ? await featureDb.from<DevelopmentPlantRow>("empreendimento_tipos_plantas").select("id,empreendimento_tipo_id,midia_id,ordem,alt,legenda").in("empreendimento_tipo_id", tipoIds).order("ordem", { ascending: true })
+    : { data: [], error: null };
+  if (plantsResult.error) throw new Error(`Erro ao carregar plantas das tipologias: ${plantsResult.error.message}`);
+  const plantsByType = new Map<string, NonNullable<typeof plantsResult.data>>();
+  for (const plant of plantsResult.data ?? []) {
+    const current = plantsByType.get(plant.empreendimento_tipo_id) ?? [];
+    current.push(plant); plantsByType.set(plant.empreendimento_tipo_id, current);
+  }
+  const typologies: PublicDevelopmentTypology[] = (tiposResult.data ?? []).map((tipo) => ({
+    id: tipo.id,
+    name: tipo.nome || tipo.tipologia || "Tipologia",
+    tower: tipo.torre_nome,
+    typology: tipo.tipologia,
+    area: tipo.area_privativa == null ? null : String(tipo.area_privativa).replace(".", ","),
+    bedrooms: tipo.dormitorios,
+    suites: tipo.suites,
+    bathrooms: tipo.banheiros,
+    parkingSpaces: tipo.vagas,
+    units: tipo.qtd_unidades,
+    plants: (plantsByType.get(tipo.id) ?? []).map((plant) => ({
+      id: plant.id,
+      url: `/api/public/empreendimentos/${empreendimento.id}/tipologias/${tipo.id}/plantas/${plant.midia_id}`,
+      alt: plant.alt || `Planta de ${tipo.nome || tipo.tipologia || "tipologia"}`,
+      caption: plant.legenda,
+    })),
+  }));
 
   const imoveis = (imoveisResult.data ?? []) as unknown as ImovelRow[];
   const imovelMediaById = await getFirstMediaByImovelId(imoveis.map((item) => item.id));
@@ -506,13 +669,57 @@ async function getEmpreendimentoPageData(rawNickname: string, rawSlug: string) {
     phoneHref: buildPhoneHref(profile.telefone),
     addressLine,
     facts: buildFacts(empreendimento),
-    features: uniqueStrings(
-      (empreendimento.caracteristicas ?? [])
-        .map((chave) => caracteristicasLabels.get(chave) ?? formatEnumLabel(chave))
-        .filter(Boolean) as string[],
-    ),
+    features: relationalFeatures.length > 0 || featureHighlights.length > 0
+      ? relationalFeatures
+      : legacyFeatures,
+    featureHighlights,
+    typologies,
     locationContext: buildLocationContext(empreendimento.localizacao_contexto),
+    video,
   };
+}
+
+async function getFirstVideoByEmpreendimentoId(ownerId: string, empreendimentoId: string): Promise<DevelopmentVideo | null> {
+  const admin = createSupabaseAdminClient();
+  const result = await admin
+    .from("midia_relacoes")
+    .select("ordem,created_at,midia:midia_id(id,url,titulo,tipo)")
+    .eq("owner_id", ownerId)
+    .eq("ref_tipo", "EMPREENDIMENTO")
+    .eq("ref_id", empreendimentoId)
+    .eq("grupo", "YOUTUBE")
+    .order("ordem", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (result.error) throw new Error(`Erro ao carregar vídeos do empreendimento: ${result.error.message}`);
+  for (const row of result.data ?? []) {
+    const media = row.midia as { tipo?: unknown; url?: unknown; titulo?: unknown } | null;
+    if (media?.tipo !== "VIDEO" || typeof media.url !== "string") continue;
+    const url = normalizeYouTubeVideoUrl(media.url);
+    if (!url) continue;
+    return {
+      url,
+      title: typeof media.titulo === "string" && media.titulo.trim() ? media.titulo.trim() : null,
+    };
+  }
+  return null;
+}
+
+function normalizeYouTubeVideoUrl(value: string) {
+  try {
+    const parsed = new URL(value.trim());
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    const videoId = host === "youtu.be"
+      ? parsed.pathname.split("/").filter(Boolean)[0]
+      : parsed.pathname === "/watch"
+        ? parsed.searchParams.get("v")
+        : parsed.pathname.startsWith("/shorts/") || parsed.pathname.startsWith("/embed/")
+          ? parsed.pathname.split("/")[2]
+          : null;
+    return videoId ? `https://www.youtube.com/watch?v=${videoId}` : null;
+  } catch {
+    return null;
+  }
 }
 
 async function getFirstMediaByImovelId(imovelIds: string[]) {
@@ -602,6 +809,34 @@ function buildFacts(empreendimento: EmpreendimentoRow) {
     empreendimento.incorporadora ? { icon: Buildings, label: "Incorporadora", value: empreendimento.incorporadora } : null,
     empreendimento.administradora ? { icon: Buildings, label: "Administradora", value: empreendimento.administradora } : null,
   ].filter((item): item is { icon: typeof Buildings; label: string; value: string } => Boolean(item?.value));
+}
+
+function buildConstructionProgress(empreendimento: EmpreendimentoRow) {
+  if (empreendimento.fase !== "EM_CONSTRUCAO") return null;
+  const source = empreendimento.obra_percentuais;
+  if (!source || typeof source !== "object" || Array.isArray(source)) return null;
+
+  const fields = [
+    ["fundacao", "Fundação"],
+    ["estrutura", "Estrutura"],
+    ["alvenaria", "Alvenaria"],
+    ["instalacoes", "Instalações"],
+    ["revInterno", "Revestimento interno"],
+    ["revExterno", "Revestimento externo"],
+    ["piso", "Pisos"],
+    ["pintura", "Pintura"],
+    ["paisagismo", "Paisagismo"],
+  ] as const;
+  const values = source as Record<string, unknown>;
+  const items = fields.map(([key, label]) => {
+    const rawValue = typeof values[key] === "number" ? values[key] : Number(values[key]);
+    return { label, value: Number.isFinite(rawValue) ? Math.max(0, Math.min(100, Math.round(rawValue))) : 0 };
+  });
+  if (!items.some((item) => item.value > 0)) return null;
+  return {
+    items,
+    overall: Math.round(items.reduce((total, item) => total + item.value, 0) / items.length),
+  };
 }
 
 function buildLocationContext(value: unknown) {

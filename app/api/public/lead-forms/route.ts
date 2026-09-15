@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { statusFromErrorCode } from "@/lib/api/result";
 import { captureLeadByKeys } from "@/lib/db/leads";
+import { recordPublicEvent, snapshotLeadAttribution } from "@/lib/marketing/attribution";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -21,6 +22,14 @@ type PublicLeadFormPayload = {
   utm?: unknown;
   context?: unknown;
   briefing?: unknown;
+  visitor_id?: unknown;
+  session_id?: unknown;
+  source?: unknown;
+  medium?: unknown;
+  campaign?: unknown;
+  content?: unknown;
+  term?: unknown;
+  click_ids?: unknown;
 };
 
 type LeadBriefingRow = Database["public"]["Tables"]["lead_briefings"]["Row"];
@@ -77,6 +86,8 @@ type PropertyContext = {
   priceLabel: string | null;
   allowsImmediateVisit: boolean;
 };
+type DevelopmentContext = { id: string; title: string };
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const SAO_PAULO_UTC_OFFSET_HOURS = -3;
 const CONFIRMATION_BUSINESS_START_MINUTES = 8 * 60;
@@ -207,6 +218,7 @@ function mergeBriefingWithCuradoriaPriority(current: LeadBriefingRow, next: Cura
 function getFormTimelineTitle(formKey: string) {
   if (formKey === "whatsapp_contact") return "Formulário de WhatsApp preenchido";
   if (formKey === "property_info") return "Formulário de atendimento preenchido";
+  if (formKey === "development_info") return "Interesse em empreendimento recebido";
   if (formKey === "visit_schedule") return "Formulário de agendamento de visita preenchido";
   if (formKey === "curadoria") return "Formulário de curadoria preenchido";
   return "Formulário público preenchido";
@@ -220,6 +232,7 @@ async function insertPublicFormTimelineEvent(input: {
   pageUrl: string | null;
   referrer: string | null;
   property: PropertyContext | null;
+  development: DevelopmentContext | null;
   briefing: CuradoriaBriefing | null;
   visit: { label: string; scheduledAt: string } | null;
 }) {
@@ -231,6 +244,8 @@ async function insertPublicFormTimelineEvent(input: {
     imovel_id: input.property?.id ?? null,
     imovel_titulo: input.property?.title ?? null,
     imovel_codigo: input.property?.code ?? null,
+    empreendimento_id: input.development?.id ?? null,
+    empreendimento_titulo: input.development?.title ?? null,
     finalidade: input.property?.operationLabel ?? null,
     briefing: input.briefing,
     visit: input.visit,
@@ -791,6 +806,7 @@ export async function POST(request: Request) {
   if (
     formKey !== "whatsapp_contact" &&
     formKey !== "property_info" &&
+    formKey !== "development_info" &&
     formKey !== "visit_schedule" &&
     formKey !== "curadoria"
   ) {
@@ -812,14 +828,21 @@ export async function POST(request: Request) {
   const context = asObject(body.context) ? body.context : {};
   const propertyId = parseNullableString(context.imovel_id);
   const propertyTitle = parseNullableString(context.imovel_titulo);
+  const developmentId = parseNullableString(context.empreendimento_id);
+  const developmentTitle = parseNullableString(context.empreendimento_titulo);
   let property: PropertyContext | null = null;
+  let development: DevelopmentContext | null = null;
 
   if (visitorName.length < 2) return errorResponse("Informe seu nome.");
   if (!phoneE164) return errorResponse("Informe um WhatsApp válido.");
   if (!email || email === "__invalid__") return errorResponse("Informe um e-mail válido.");
-  if ((formKey === "property_info" || formKey === "visit_schedule") && !propertyId) {
+  if (formKey === "property_info" && !propertyId) {
     return errorResponse("Informe o imóvel de interesse.");
   }
+  if (formKey === "visit_schedule" && !propertyId && !developmentId) {
+    return errorResponse("Informe o imóvel ou empreendimento de interesse.");
+  }
+  if (formKey === "development_info" && !developmentId) return errorResponse("Informe o empreendimento de interesse.");
 
   const curadoria = formKey === "curadoria" ? parseCuradoriaBriefing(body.briefing) : null;
   if (curadoria && !curadoria.ok) return errorResponse(curadoria.message);
@@ -878,17 +901,25 @@ export async function POST(request: Request) {
     };
   }
 
+  if (developmentId) {
+    const developmentResult = await admin.from("empreendimentos").select("id,nome").eq("id", developmentId)
+      .eq("owner_id", profileResult.data.id).eq("status", "PUBLICADO").maybeSingle();
+    if (developmentResult.error) return NextResponse.json({ ok: false, error: { code: "DATABASE_ERROR", message: developmentResult.error.message } }, { status: 500 });
+    if (!developmentResult.data) return errorResponse("Empreendimento inválido.", 404);
+    development = { id: developmentResult.data.id, title: developmentResult.data.nome || developmentTitle || "Empreendimento" };
+  }
+
   const brokerName =
     [profileResult.data.primeiro_nome, profileResult.data.sobrenome].filter(Boolean).join(" ") ||
     profileResult.data.nickname ||
     "corretor";
 
   const visitSchedule =
-    formKey === "visit_schedule" && property
+    formKey === "visit_schedule" && (property || development)
       ? parseVisitSchedule({
           date: body.visit_date,
           time: body.visit_time,
-          allowsImmediateVisit: property.allowsImmediateVisit,
+          allowsImmediateVisit: property?.allowsImmediateVisit ?? true,
         })
       : null;
 
@@ -911,10 +942,19 @@ export async function POST(request: Request) {
           pageUrl,
           visitLabel: visitSchedule.label,
         })
+      : formKey === "visit_schedule" && development && visitSchedule?.ok
+      ? [
+          "Origem: agendamento de visita no empreendimento público Corretor.one",
+          `Visitante: ${visitorName}`,
+          `Empreendimento: ${development.title}`,
+          `Visita solicitada: ${visitSchedule.label}`,
+          pageUrl ? `Página: ${pageUrl}` : null,
+          message ? `Mensagem: ${message}` : null,
+        ].filter(Boolean).join("\n")
       : buildLeadMessage({
           brokerName,
           visitorName,
-          message,
+          message: message || (development ? `Tenho interesse no empreendimento ${development.title}.` : null),
           property,
           pageUrl,
         });
@@ -935,6 +975,8 @@ export async function POST(request: Request) {
           ? "public_visit_schedule"
           : formKey === "property_info"
             ? "public_property_info"
+            : formKey === "development_info"
+              ? "public_development_info"
             : formKey === "curadoria"
               ? "public_curadoria"
               : "public_whatsapp_contact",
@@ -961,6 +1003,7 @@ export async function POST(request: Request) {
       context: {
         ...context,
         property,
+        development,
       },
     },
   });
@@ -993,6 +1036,13 @@ export async function POST(request: Request) {
     }
   }
 
+  if (development) {
+    const relationResult = await admin.from("lead_empreendimentos").upsert({
+      owner_id: profileResult.data.id, lead_id: leadResult.data.lead_id, empreendimento_id: development.id,
+    }, { onConflict: "lead_id,empreendimento_id" });
+    if (relationResult.error) return NextResponse.json({ ok: false, error: { code: "DATABASE_ERROR", message: relationResult.error.message } }, { status: 500 });
+  }
+
   try {
     await insertPublicFormTimelineEvent({
       admin,
@@ -1002,6 +1052,7 @@ export async function POST(request: Request) {
       pageUrl,
       referrer,
       property,
+      development,
       briefing: curadoria?.ok ? curadoria.briefing : null,
       visit:
         visitSchedule?.ok
@@ -1015,11 +1066,35 @@ export async function POST(request: Request) {
     console.error("Failed to insert public form timeline event", error);
   }
 
+  if (development) {
+    const visitorId = parseNullableString(body.visitor_id);
+    const sessionId = parseNullableString(body.session_id);
+    const authorization = request.headers.get("authorization");
+    let isOwner = false;
+    if (authorization?.startsWith("Bearer ")) {
+      const authenticated = await admin.auth.getUser(authorization.slice(7));
+      isOwner = authenticated.data.user?.id === profileResult.data.id;
+    }
+    if (!isOwner && visitorId && sessionId && UUID_PATTERN.test(visitorId) && UUID_PATTERN.test(sessionId)) {
+      try {
+        const clickIds = asObject(body.click_ids)
+          ? Object.fromEntries(Object.entries(body.click_ids).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
+          : {};
+        const conversion = await recordPublicEvent(admin, {
+          ownerId: profileResult.data.id, resourceType: "DEVELOPMENT", resourceId: development.id, eventType: "FORM_SUBMIT",
+          context: { visitorId, sessionId, pageUrl, referrer, source: parseNullableString(body.source), medium: parseNullableString(body.medium), campaign: parseNullableString(body.campaign), content: parseNullableString(body.content), term: parseNullableString(body.term), clickIds },
+          metadata: { lead_id: leadResult.data.lead_id, form_key: formKey },
+        });
+        await snapshotLeadAttribution(admin, { ownerId: profileResult.data.id, leadId: leadResult.data.lead_id, conversionEventId: conversion.eventId, visitorId });
+      } catch (error) { console.error("Failed to register development attribution", error); }
+    }
+  }
+
   if (formKey === "visit_schedule") {
     let activityId: string | null = null;
     let activityCreated = false;
 
-    if (property && visitSchedule?.ok) {
+    if ((property || development) && visitSchedule?.ok) {
       const confirmationDueAt = getVisitConfirmationDueAt();
       const existingActivityResult = await admin
         .from("atividades")
@@ -1043,13 +1118,16 @@ export async function POST(request: Request) {
             modelo: "EM_ATENDIMENTO_CONFIRMAR_VISITA",
             tipo: "VISITA",
             titulo: "Confirmar visita solicitada pelo portal",
-            descricao: buildVisitActivityDescription({
-              visitorName,
-              message,
-              property,
-              pageUrl,
-              visitLabel: visitSchedule.label,
-            }),
+            descricao: property
+              ? buildVisitActivityDescription({ visitorName, message, property, pageUrl, visitLabel: visitSchedule.label })
+              : [
+                  `Visita solicitada pelo portal para ${visitSchedule.label}.`,
+                  "",
+                  `Visitante: ${visitorName}`,
+                  `Empreendimento: ${development?.title ?? "Empreendimento"}`,
+                  pageUrl ? `Página: ${pageUrl}` : null,
+                  message ? `Mensagem do visitante: ${message}` : null,
+                ].filter(Boolean).join("\n"),
             quando_em: confirmationDueAt,
             status: "PENDENTE",
           })
@@ -1091,6 +1169,10 @@ export async function POST(request: Request) {
       },
       { status: 200 },
     );
+  }
+
+  if (formKey === "development_info") {
+    return NextResponse.json({ ok: true, data: { accepted: true, action: leadResult.data.action, lead_id: leadResult.data.lead_id } }, { status: 200 });
   }
 
   if (formKey === "curadoria" && curadoria?.ok) {

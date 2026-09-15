@@ -33,6 +33,7 @@ type Query = {
   single: () => Result;
   insert: (value: unknown) => Query;
   update: (value: unknown) => Query;
+  delete: () => Query;
 } & Result;
 type Db = { from: (table: string) => Query };
 
@@ -54,6 +55,29 @@ function bufferArray(buffer: Buffer) {
     buffer.byteOffset,
     buffer.byteOffset + buffer.byteLength,
   ) as ArrayBuffer;
+}
+
+async function signPrivateMediaRows(admin: ReturnType<typeof createSupabaseAdminClient>, rows: Row[]) {
+  return Promise.all(rows.map(async (row) => {
+    const media = row.midia;
+    if (!media || typeof media !== "object" || Array.isArray(media)) return row;
+    const item = media as Row;
+    const bucket = typeof item.storage_bucket === "string" ? item.storage_bucket : "";
+    const path = typeof item.storage_path === "string" ? item.storage_path : "";
+    if (!bucket || !path || bucket !== (process.env.MEDIA_PRIVATE_BUCKET_NAME ?? "midia-private")) return row;
+    const signed = await admin.storage.from(bucket).createSignedUrl(path, 60 * 60);
+    return signed.error ? row : { ...row, midia: { ...item, url: signed.data.signedUrl } };
+  }));
+}
+
+function mediaStorageIdentity(value: string) {
+  try {
+    const url = new URL(value);
+    const match = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/);
+    return match ? `${decodeURIComponent(match[1])}/${decodeURIComponent(match[2])}` : url.toString();
+  } catch {
+    return value;
+  }
 }
 function creci(profile: Row) {
   return [
@@ -82,6 +106,18 @@ function localizacao(property: Row) {
 }
 function label(value: string) {
   return value.toLowerCase().replaceAll("_", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
+}
+function characteristicLabels(values: unknown, catalog: Map<string, string>) {
+  if (!Array.isArray(values)) return [];
+  return [...new Set(values.filter((item): item is string => typeof item === "string").map((item) => catalog.get(item) ?? label(item)))];
+}
+function phaseLabel(value: unknown, commercial = false) {
+  return value === "NA_PLANTA" ? "Na planta" : value === "EM_CONSTRUCAO" ? "Em construção" : value === "ENTREGUE" ? (commercial ? "Entregue" : "Pronto para morar") : "Não informada";
+}
+function monthYear(value: unknown) {
+  if (typeof value !== "string" || !value) return "Não informada";
+  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? "Não informada" : new Intl.DateTimeFormat("pt-BR", { month: "short", year: "numeric" }).format(date).replace(" de ", "/");
 }
 function environmentTags(type: string, data: Row) {
   const tags: string[] = [];
@@ -121,6 +157,52 @@ async function authenticate(request: Request) {
   return auth.data.user ? { admin, ownerId: auth.data.user.id } : null;
 }
 
+export async function DELETE(request: Request) {
+  const authenticated = await authenticate(request);
+  if (!authenticated)
+    return NextResponse.json({ ok: false, error: { message: "Sessão inválida" } }, { status: 401 });
+
+  const id = new URL(request.url).searchParams.get("id")?.trim();
+  if (!id)
+    return NextResponse.json({ ok: false, error: { message: "Criativo não informado." } }, { status: 400 });
+
+  const { admin, ownerId } = authenticated;
+  const db = admin as unknown as Db;
+  const result = await db
+    .from("posts")
+    .select("id,storage_bucket,storage_path,resultado_urls")
+    .eq("id", id)
+    .eq("owner_id", ownerId)
+    .maybeSingle();
+  const post = result.data && !Array.isArray(result.data) ? result.data : null;
+  if (result.error)
+    return NextResponse.json({ ok: false, error: { message: result.error.message } }, { status: 500 });
+  if (!post)
+    return NextResponse.json({ ok: false, error: { message: "Criativo não encontrado." } }, { status: 404 });
+
+  const bucket = typeof post.storage_bucket === "string" ? post.storage_bucket : "";
+  const storedPath = typeof post.storage_path === "string" ? post.storage_path : "";
+  if (bucket && storedPath) {
+    const paths = storedPath.endsWith("/")
+      ? (Array.isArray(post.resultado_urls) ? post.resultado_urls : []).map((_, index) => `${storedPath}slide-${String(index + 1).padStart(2, "0")}.png`)
+      : [storedPath];
+    try {
+      const storage = createMediaStorageProvider();
+      for (const path of paths) await storage.remove(bucket, path);
+    } catch (cause) {
+      return NextResponse.json(
+        { ok: false, error: { message: cause instanceof Error ? cause.message : "Não foi possível remover os arquivos do criativo." } },
+        { status: 502 },
+      );
+    }
+  }
+
+  const deleted = await db.from("posts").delete().eq("id", id).eq("owner_id", ownerId);
+  if (deleted.error)
+    return NextResponse.json({ ok: false, error: { message: deleted.error.message } }, { status: 500 });
+  return NextResponse.json({ ok: true, data: { id } });
+}
+
 export async function GET(request: Request) {
   const authenticated = await authenticate(request);
   if (!authenticated)
@@ -130,7 +212,7 @@ export async function GET(request: Request) {
     );
   const { admin, ownerId } = authenticated;
   const db = admin as unknown as Db;
-  const [templates, properties, developments, developmentTypes, media, developmentMedia, environments, profile, authority, posts] =
+  const [templates, properties, developments, developmentTypes, media, developmentMedia, environments, profile, authority, posts, characteristicCatalog] =
     await Promise.all([
       db
         .from("templates")
@@ -153,18 +235,18 @@ export async function GET(request: Request) {
         .order("updated_at", { ascending: false }),
       db
         .from("empreendimento_tipos")
-        .select("empreendimento_id,area_privativa,dormitorios,suites,vagas")
+        .select("empreendimento_id,nome,tipologia,area_privativa,dormitorios,suites,vagas,qtd_unidades")
         .eq("owner_id", ownerId)
         .order("ordem"),
       db
         .from("midia_relacoes")
-        .select("ref_id,ordem,midia:midia_id(tipo,url)")
+        .select("ref_id,ordem,midia:midia_id(tipo,url,storage_bucket,storage_path)")
         .eq("owner_id", ownerId)
         .eq("ref_tipo", "IMOVEL")
         .order("ordem"),
       db
         .from("midia_relacoes")
-        .select("ref_id,ordem,midia:midia_id(tipo,url)")
+        .select("ref_id,ordem,midia:midia_id(tipo,url,storage_bucket,storage_path)")
         .eq("owner_id", ownerId)
         .eq("ref_tipo", "EMPREENDIMENTO")
         .order("ordem"),
@@ -194,6 +276,10 @@ export async function GET(request: Request) {
         .eq("owner_id", ownerId)
         .order("created_at", { ascending: false })
         .limit(30),
+      db
+        .from("caracteristicas_catalogo")
+        .select("chave,label_pt")
+        .eq("ativo", true),
     ]);
   const failed = [
     templates,
@@ -206,23 +292,58 @@ export async function GET(request: Request) {
     profile,
     authority,
     posts,
+    characteristicCatalog,
   ].find((item) => item.error);
   if (failed?.error)
     return NextResponse.json(
       { ok: false, error: { message: failed.error.message } },
       { status: 500 },
     );
-  const mediaRows = Array.isArray(media.data) ? media.data : [];
-  const developmentMediaRows = Array.isArray(developmentMedia.data)
-    ? developmentMedia.data
-    : [];
+  const mediaRows = await signPrivateMediaRows(admin, Array.isArray(media.data) ? media.data : []);
+  const developmentMediaRows = await signPrivateMediaRows(
+    admin,
+    Array.isArray(developmentMedia.data) ? developmentMedia.data : [],
+  );
   const propertyRows = Array.isArray(properties.data) ? properties.data : [];
   const developmentRows = Array.isArray(developments.data) ? developments.data : [];
+  const developmentCharacteristicRelations = developmentRows.length
+    ? await db
+        .from("empreendimento_caracteristicas")
+        .select("empreendimento_id,destaque,caracteristica:caracteristica_id(label_pt)")
+        .in("empreendimento_id", developmentRows.map((item) => item.id))
+    : { data: [], error: null };
+  if (developmentCharacteristicRelations.error) {
+    return NextResponse.json(
+      { ok: false, error: { message: developmentCharacteristicRelations.error.message } },
+      { status: 500 },
+    );
+  }
   const developmentTypeRows = Array.isArray(developmentTypes.data) ? developmentTypes.data : [];
   const environmentRows = Array.isArray(environments.data) ? environments.data : [];
+  const characteristicMap = new Map(
+    (Array.isArray(characteristicCatalog.data) ? characteristicCatalog.data : []).flatMap((item) =>
+      typeof item.chave === "string" && typeof item.label_pt === "string" ? [[item.chave, item.label_pt] as const] : [],
+    ),
+  );
+  const developmentCharacteristics = new Map<string, Array<{ label: string; destaque: boolean }>>();
+  const developmentCharacteristicRows = Array.isArray(developmentCharacteristicRelations.data)
+    ? developmentCharacteristicRelations.data
+    : [];
+  for (const relation of developmentCharacteristicRows) {
+    const characteristic = relation.caracteristica;
+    const labelPt = characteristic && typeof characteristic === "object" && !Array.isArray(characteristic)
+      ? (characteristic as Row).label_pt
+      : null;
+    if (typeof relation.empreendimento_id !== "string" || typeof labelPt !== "string") continue;
+    const current = developmentCharacteristics.get(relation.empreendimento_id) ?? [];
+    current.push({ label: labelPt, destaque: relation.destaque === true });
+    developmentCharacteristics.set(relation.empreendimento_id, current);
+  }
   const items = propertyRows
     .map((property) => ({
       ...property,
+      caracteristicas: characteristicLabels(property.caracteristicas, characteristicMap),
+      characteristic_count: Array.isArray(property.caracteristicas) ? property.caracteristicas.length : 0,
       display_title: buildImovelHeaderTitle(property),
       short_title: buildImovelShortTitle(property),
       images: mediaRows
@@ -273,6 +394,30 @@ export async function GET(request: Request) {
         const min = Math.min(...values); const max = Math.max(...values);
         return min === max ? String(min) : `${min}–${max}`;
       };
+      const unitTypes = [...new Set(typeRows.map((item) => typeof item.nome === "string" && item.nome.trim() ? item.nome : item.tipologia).filter((value): value is string => typeof value === "string" && value.trim().length > 0).map((value) => label(value)))];
+      const unitsByType = typeRows.reduce((total, item) => {
+        const quantity = Number(item.qtd_unidades);
+        return total + (Number.isFinite(quantity) && quantity > 0 ? quantity : 0);
+      }, 0);
+      const totalUnits = Number(development.n_unidades) > 0
+        ? String(development.n_unidades)
+        : unitsByType > 0
+          ? String(unitsByType)
+          : "Não informado";
+      const address = [development.logradouro, development.numero, development.bairro, development.cidade, development.estado, development.cep].filter(Boolean).join(", ");
+      const phase = phaseLabel(development.fase, development.tipo_uso === "COMERCIAL");
+      const associatedPrices = propertyRows
+        .filter((property) => property.empreendimento_id === development.id)
+        .map((property) => Number(property.preco_venda))
+        .filter((value) => Number.isFinite(value) && value > 0);
+      const startingPrice = associatedPrices.length ? money(Math.min(...associatedPrices)) : null;
+      const cityState = [
+        development.bairro_comercial || development.bairro,
+        [development.cidade, development.estado].filter(Boolean).join(" / "),
+      ].filter(Boolean).join(" - ");
+      const referenceDate = development.fase === "ENTREGUE"
+        ? development.ano_construcao ? `Construído em ${development.ano_construcao}` : "Ano não informado"
+        : `Entrega ${monthYear(development.previsao_entrega_em)}`;
       const images = developmentMediaRows
         .filter((item) => item.ref_id === development.id && item.midia && typeof item.midia === "object" && !Array.isArray(item.midia) && (item.midia as Row).tipo === "IMAGEM")
         .flatMap((item) => typeof (item.midia as Row).url === "string" ? [(item.midia as Row).url as string] : []);
@@ -281,8 +426,13 @@ export async function GET(request: Request) {
         codigo: null, finalidade: "VENDER", tipo: String(development.categoria_imovel ?? development.tipo_uso ?? "Empreendimento"),
         bairro_comercial: typeof development.bairro_comercial === "string" ? development.bairro_comercial : null, bairro: String(development.bairro ?? ""), cidade: String(development.cidade ?? ""), estado: String(development.estado ?? ""),
         preco_venda: null, preco_locacao: null, area_util: range("area_privativa"), dormitorios: range("dormitorios"), suites: range("suites"), vagas: range("vagas"),
-        caracteristicas: Array.isArray(development.caracteristicas) ? development.caracteristicas : [], images, development_images: images,
+        caracteristicas: (developmentCharacteristics.get(String(development.id)) ?? [])
+          .sort((a, b) => Number(b.destaque) - Number(a.destaque) || a.label.localeCompare(b.label, "pt-BR"))
+          .map((item) => item.label),
+        characteristic_count: (developmentCharacteristics.get(String(development.id)) ?? []).length,
+        images, development_images: images,
         empreendimento: { nome: String(development.nome ?? "") }, environments: [], fase: development.fase ?? null, previsao_entrega_em: development.previsao_entrega_em ?? null,
+        development_meta: { address, cityState, phase, totalUnits, startingPrice, referenceDate, unitTypes: unitTypes.join(", ") || "Não informado", bedrooms: range("dormitorios") ?? "Não informado", areas: range("area_privativa") ? `${range("area_privativa")} m²` : "Não informada" },
       };
     })
     .filter((development) => development.images.length > 0);
@@ -365,6 +515,12 @@ export async function POST(request: Request) {
   const cta = text(input.cta, 28);
   const imageLabelMode =
     input.image_label_mode === "LOCATION" ? "LOCATION" : "DEVELOPMENT";
+  const developmentLabelMode = ["FULL_ADDRESS", "CITY_STATE", "PHASE"].includes(String(input.development_label_mode))
+    ? String(input.development_label_mode)
+    : "FULL_ADDRESS";
+  const developmentFooterMode = ["YEAR", "STARTING_PRICE", "CONSULT"].includes(String(input.development_footer_mode))
+    ? String(input.development_footer_mode)
+    : "CONSULT";
   const highlight = text(input.highlight, 28);
   const priceMode = input.price_mode === "CONSULT" ? "CONSULT" : "PRICE";
   const requestedTheme = text(input.color_theme, 20) as CreativeColorTheme;
@@ -390,7 +546,7 @@ export async function POST(request: Request) {
     );
   const { admin, ownerId } = authenticated;
   const db = admin as unknown as Db;
-  const [template, property, images, profile, authority] = await Promise.all([
+  const [template, property, images, profile, authority, characteristicCatalog] = await Promise.all([
     db
       .from("templates")
       .select("id,objetivo,renderer_key,version,formatos,ativo,config")
@@ -406,7 +562,7 @@ export async function POST(request: Request) {
       .maybeSingle(),
     db
       .from("midia_relacoes")
-      .select("midia:midia_id(tipo,url)")
+      .select("midia:midia_id(tipo,url,storage_bucket,storage_path)")
       .eq("ref_id", propertyId)
       .eq("owner_id", ownerId)
       .eq("ref_tipo", developmentObjective ? "EMPREENDIMENTO" : "IMOVEL"),
@@ -423,13 +579,26 @@ export async function POST(request: Request) {
       .eq("owner_id", ownerId)
       .eq("visivel", true)
       .order("ordem"),
+    db
+      .from("caracteristicas_catalogo")
+      .select("chave,label_pt")
+      .eq("ativo", true),
   ]);
   const templateRow =
     template.data && !Array.isArray(template.data) ? template.data : null;
   const rawSubjectRow =
     property.data && !Array.isArray(property.data) ? property.data : null;
   const developmentTypes = developmentObjective
-    ? await db.from("empreendimento_tipos").select("area_privativa,dormitorios,suites,vagas").eq("owner_id", ownerId).eq("empreendimento_id", propertyId).order("ordem")
+    ? await db.from("empreendimento_tipos").select("nome,tipologia,area_privativa,dormitorios,suites,vagas,qtd_unidades").eq("owner_id", ownerId).eq("empreendimento_id", propertyId).order("ordem")
+    : { data: [], error: null };
+  const associatedProperties = developmentObjective
+    ? await db.from("imoveis").select("preco_venda").eq("owner_id", ownerId).eq("empreendimento_id", propertyId).eq("status", "PUBLICADO")
+    : { data: [], error: null };
+  const developmentCharacteristicRelations = developmentObjective
+    ? await db
+        .from("empreendimento_caracteristicas")
+        .select("destaque,caracteristica:caracteristica_id(label_pt)")
+        .eq("empreendimento_id", propertyId)
     : { data: [], error: null };
   const propertyRow: Row | null = rawSubjectRow && developmentObjective
     ? (() => {
@@ -481,7 +650,7 @@ export async function POST(request: Request) {
   const developmentMedia = propertyRow.empreendimento_id
     ? await db
         .from("midia_relacoes")
-        .select("midia:midia_id(tipo,url)")
+        .select("midia:midia_id(tipo,url,storage_bucket,storage_path)")
         .eq("ref_id", propertyRow.empreendimento_id)
         .eq("owner_id", ownerId)
         .eq("ref_tipo", "EMPREENDIMENTO")
@@ -498,35 +667,106 @@ export async function POST(request: Request) {
       : [],
   );
   const allowedImages = [...new Set([...propertyImages, ...developmentImages])];
+  const allowedImageIdentities = new Set(allowedImages.map(mediaStorageIdentity));
+  const isAllowedImage = (url: string) => allowedImageIdentities.has(mediaStorageIdentity(url));
   const rendererKey = String(templateRow.renderer_key).replace(/^development-/, "property-");
   const dual = rendererKey === "property-dual-02";
   const editorial = rendererKey === "property-editorial-03";
   const carousel = rendererKey === "property-journey-carousel-01";
   if (
-    !allowedImages.includes(imageUrl) ||
+    !isAllowedImage(imageUrl) ||
     (dual &&
-      (!secondaryImageUrl || !allowedImages.includes(secondaryImageUrl))) ||
+      (!secondaryImageUrl || !isAllowedImage(secondaryImageUrl))) ||
     (carousel &&
       (!carouselImageUrls.length ||
-        carouselImageUrls.some((url) => !allowedImages.includes(url)) ||
+        carouselImageUrls.some((url) => !isAllowedImage(url)) ||
         carouselSlides.length !== 8 ||
-        carouselSlides.some((slide) => slide.imageUrl && !allowedImages.includes(slide.imageUrl))))
+        carouselSlides.some((slide) => slide.imageUrl && !isAllowedImage(slide.imageUrl))))
   )
     return NextResponse.json(
       {
         ok: false,
         error: {
           message:
-            "Selecione imagens válidas do imóvel ou do empreendimento associado.",
+            developmentObjective
+              ? "Selecione imagens válidas do empreendimento."
+              : "Selecione imagens válidas do imóvel ou do empreendimento associado.",
         },
       },
       { status: 400 },
     );
   const p = propertyRow;
+  const characteristicMap = new Map(
+    (Array.isArray(characteristicCatalog.data) ? characteristicCatalog.data : []).flatMap((item) =>
+      typeof item.chave === "string" && typeof item.label_pt === "string" ? [[item.chave, item.label_pt] as const] : [],
+    ),
+  );
+  const selectedCharacteristics = developmentObjective
+    ? (Array.isArray(developmentCharacteristicRelations.data)
+        ? developmentCharacteristicRelations.data
+        : [])
+        .flatMap((relation) => {
+          const characteristic = relation.caracteristica;
+          const labelPt = characteristic && typeof characteristic === "object" && !Array.isArray(characteristic)
+            ? (characteristic as Row).label_pt
+            : null;
+          return typeof labelPt === "string"
+            ? [{ label: labelPt, destaque: relation.destaque === true }]
+            : [];
+        })
+        .sort((a, b) => Number(b.destaque) - Number(a.destaque) || a.label.localeCompare(b.label, "pt-BR"))
+        .map((item) => item.label)
+    : characteristicLabels(p.caracteristicas, characteristicMap);
+  if (carousel) {
+    const allowedCharacteristics = new Set(selectedCharacteristics);
+    const invalidFeatureSlide = carouselSlides.some((slide) => {
+      if (slide.kind !== "FEATURES") return false;
+      const attributes = slide.attributes ?? [];
+      return (
+        new Set(attributes).size !== attributes.length ||
+        attributes.some((attribute) => !allowedCharacteristics.has(attribute))
+      );
+    });
+    if (invalidFeatureSlide) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            message: "Selecione características cadastradas no empreendimento, sem repetição.",
+          },
+        },
+        { status: 400 },
+      );
+    }
+  }
+  const developmentTypeRows = Array.isArray(developmentTypes.data) ? developmentTypes.data : [];
+  const developmentUnitsByType = developmentTypeRows.reduce((total, item) => {
+    const quantity = Number(item.qtd_unidades);
+    return total + (Number.isFinite(quantity) && quantity > 0 ? quantity : 0);
+  }, 0);
+  const developmentTotalUnits = Number(p.n_unidades) > 0
+    ? String(p.n_unidades)
+    : developmentUnitsByType > 0
+      ? String(developmentUnitsByType)
+      : "—";
+  const developmentUnitTypes = [...new Set(developmentTypeRows.map((item) => typeof item.nome === "string" && item.nome.trim() ? item.nome : item.tipologia).filter((value): value is string => typeof value === "string" && value.trim().length > 0).map((value) => label(value)))];
+  const developmentReference = p.fase === "ENTREGUE"
+    ? p.ano_construcao ? `Construído em ${p.ano_construcao}` : "Ano não informado"
+    : `Entrega ${monthYear(p.previsao_entrega_em)}`;
+  const associatedPrices = (Array.isArray(associatedProperties.data) ? associatedProperties.data : [])
+    .map((item) => Number(item.preco_venda))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const developmentStartingPrice = associatedPrices.length ? money(Math.min(...associatedPrices)) : null;
   const actualPrice =
     p.finalidade === "ALUGAR" ? money(p.preco_locacao) : money(p.preco_venda);
-  const price = priceMode === "CONSULT" ? "Consulte o valor" : actualPrice;
-  const stats = [
+  const price = developmentObjective
+    ? developmentFooterMode === "YEAR" && p.fase === "ENTREGUE"
+      ? developmentReference
+      : developmentFooterMode === "STARTING_PRICE" && developmentStartingPrice
+        ? `A partir de ${developmentStartingPrice}`
+        : "Consulte os valores"
+    : priceMode === "CONSULT" ? "Consulte o valor" : actualPrice;
+  const propertyStats = [
     {
       kind: "AREA",
       value: typeof p.area_util === "string" && p.area_util ? p.area_util : Number(p.area_util) > 0 ? String(p.area_util) : "—",
@@ -548,14 +788,29 @@ export async function POST(request: Request) {
       label: "Vagas",
     },
   ] as PropertyCreativePayload["property"]["stats"];
+  const stats = developmentObjective ? [
+    { kind: "PHASE" as const, value: phaseLabel(p.fase, p.tipo_uso === "COMERCIAL"), label: "Fase" },
+    { kind: "UNITS" as const, value: developmentTotalUnits, label: "Unidades" },
+    { kind: "BED" as const, value: typeof p.dormitorios === "string" && p.dormitorios ? p.dormitorios : "—", label: "Dormitórios" },
+    { kind: "AREA" as const, value: typeof p.area_util === "string" && p.area_util ? `${p.area_util} m²` : "—", label: "Plantas" },
+  ] : propertyStats;
   const generatedTitle = developmentObjective ? text(p.nome ?? p.titulo, 120) : buildImovelHeaderTitle(p as Parameters<typeof buildImovelHeaderTitle>[0]);
   const developmentName = empreendimentoNome(p);
   const payload: PropertyCreativePayload = {
+    subjectType: developmentObjective ? "DEVELOPMENT" : "PROPERTY",
     property: {
       id: propertyId,
       title: generatedTitle,
-      location:
-        imageLabelMode === "DEVELOPMENT" && developmentName
+      location: developmentObjective
+        ? developmentLabelMode === "CITY_STATE"
+          ? [
+              p.bairro_comercial || p.bairro,
+              [p.cidade, p.estado].filter(Boolean).join(" / "),
+            ].filter(Boolean).join(" - ")
+          : developmentLabelMode === "PHASE"
+            ? phaseLabel(p.fase, p.tipo_uso === "COMERCIAL")
+            : [p.logradouro, p.numero, p.bairro, p.cidade, p.estado].filter(Boolean).join(", ")
+        : imageLabelMode === "DEVELOPMENT" && developmentName
           ? developmentName
           : localizacao(p),
       price,
@@ -564,11 +819,8 @@ export async function POST(request: Request) {
       secondaryImageUrl: dual ? secondaryImageUrl : undefined,
       carouselImages: carousel ? carouselImageUrls : undefined,
       carouselSlides: carousel ? carouselSlides : undefined,
-      features: Array.isArray(p.caracteristicas)
-        ? p.caracteristicas
-            .filter((item: unknown): item is string => typeof item === "string")
-            .slice(0, 6)
-        : undefined,
+      features: selectedCharacteristics.slice(0, 6),
+      featureCount: selectedCharacteristics.length,
       highlight:
         dual || editorial || carousel
           ? highlight || "Seleção especial"

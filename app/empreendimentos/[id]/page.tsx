@@ -23,6 +23,7 @@ import {
   Megaphone,
   Robot,
   Sparkle,
+  Star,
   TextB,
   TextItalic,
   TextUnderline,
@@ -97,6 +98,7 @@ type Empreendimento = {
   tipos_cadastro?: Array<Record<string, unknown>> | null;
   caracteristicas?: string[] | null;
   caracteristica_ids?: string[] | null;
+  caracteristica_destaque_ids?: string[] | null;
   created_at: string;
   updated_at: string;
 };
@@ -122,6 +124,13 @@ type TipoCadastroPlantaItem = {
   alt: string;
   legenda: string;
   ordem: number;
+};
+
+type TipoPlantaUploadPending = {
+  id: string;
+  tipoId: string;
+  nome: string;
+  previewUrl: string;
 };
 
 type ProfileData = {
@@ -1297,8 +1306,10 @@ export default function EmpreendimentoDetalhePage() {
   const [lng, setLng] = useState<number | null>(null);
   const [addressComponents, setAddressComponents] = useState<unknown[]>([]);
   const [caracteristicaIds, setCaracteristicaIds] = useState<string[]>([]);
+  const [caracteristicaDestaqueIds, setCaracteristicaDestaqueIds] = useState<string[]>([]);
   const [tiposCadastro, setTiposCadastro] = useState<TipoCadastroItem[]>([]);
   const [uploadingTipoPlantasIds, setUploadingTipoPlantasIds] = useState<string[]>([]);
+  const [pendingTipoPlantaUploads, setPendingTipoPlantaUploads] = useState<TipoPlantaUploadPending[]>([]);
   const [collapsedTipoCadastroIds, setCollapsedTipoCadastroIds] = useState<string[]>([]);
   const [dropTargetTipoCadastroId, setDropTargetTipoCadastroId] = useState<string | null>(null);
   const [tipoPlantaDropTargetKey, setTipoPlantaDropTargetKey] = useState<string | null>(null);
@@ -1546,6 +1557,13 @@ export default function EmpreendimentoDetalhePage() {
         const loadedCaracteristicaIds = Array.isArray(empreendimentoResult.data.caracteristica_ids)
           ? empreendimentoResult.data.caracteristica_ids
           : [];
+        const loadedCaracteristicaDestaqueIds = Array.isArray(
+          empreendimentoResult.data.caracteristica_destaque_ids,
+        )
+          ? empreendimentoResult.data.caracteristica_destaque_ids.filter((id) =>
+              loadedCaracteristicaIds.includes(id),
+            )
+          : [];
         const loadedTiposCadastro = normalizeTiposCadastro(empreendimentoResult.data.tipos_cadastro);
         const loadedObraPercentuais = normalizeObraPercentuais(
           empreendimentoResult.data.obra_percentuais,
@@ -1560,6 +1578,7 @@ export default function EmpreendimentoDetalhePage() {
         setLng(loadedLng);
         setAddressComponents(loadedAddressComponents);
         setCaracteristicaIds(loadedCaracteristicaIds);
+        setCaracteristicaDestaqueIds(loadedCaracteristicaDestaqueIds);
         setTiposCadastro(loadedTiposCadastro);
         setObraPercentuais(loadedObraPercentuais);
         setInitialSnapshot(
@@ -1572,6 +1591,7 @@ export default function EmpreendimentoDetalhePage() {
             enderecoFormatado: loadedEnderecoFormatado,
             addressComponents: loadedAddressComponents,
             caracteristicaIds: [...loadedCaracteristicaIds].sort(),
+            caracteristicaDestaqueIds: [...loadedCaracteristicaDestaqueIds].sort(),
             tiposCadastro: serializeTiposCadastro(loadedTiposCadastro),
             obraPercentuais: loadedObraPercentuais,
           }),
@@ -1613,26 +1633,15 @@ export default function EmpreendimentoDetalhePage() {
         return;
       }
 
-      const listResult = await apiFetchWithAuth<MidiaPublicaItem[]>(
+      const syncResult = await apiFetchWithAuth<MidiaPublicaItem[]>(
         `/api/empreendimentos/${id}/midia-publica`,
+        { method: "POST" },
       );
-      if (!listResult.ok) {
+      if (!syncResult.ok) {
         setMediaPublica([]);
         return;
       }
-
-      let nextData = listResult.data;
-      if (nextData.length === 0) {
-        const syncResult = await apiFetchWithAuth<MidiaPublicaItem[]>(
-          `/api/empreendimentos/${id}/midia-publica`,
-          { method: "POST" },
-        );
-        if (syncResult.ok) {
-          nextData = syncResult.data;
-        }
-      }
-
-      setMediaPublica(nextData);
+      setMediaPublica(syncResult.data);
     }
 
     void loadMidiaPublicaHeader();
@@ -1943,6 +1952,7 @@ export default function EmpreendimentoDetalhePage() {
         enderecoFormatado,
         addressComponents,
         caracteristicaIds: [...caracteristicaIds].sort(),
+        caracteristicaDestaqueIds: [...caracteristicaDestaqueIds].sort(),
         tiposCadastro: serializeTiposCadastro(tiposCadastro),
         obraPercentuais,
       }),
@@ -1955,6 +1965,7 @@ export default function EmpreendimentoDetalhePage() {
       enderecoFormatado,
       addressComponents,
       caracteristicaIds,
+      caracteristicaDestaqueIds,
       tiposCadastro,
       obraPercentuais,
     ],
@@ -2157,11 +2168,12 @@ export default function EmpreendimentoDetalhePage() {
     }
     setMedia(result.data);
     if (item?.status === "PUBLICADO") {
-      const listResult = await apiFetchWithAuth<MidiaPublicaItem[]>(
+      const syncResult = await apiFetchWithAuth<MidiaPublicaItem[]>(
         `/api/empreendimentos/${id}/midia-publica`,
+        { method: "POST" },
       );
-      if (listResult.ok) {
-        setMediaPublica(listResult.data);
+      if (syncResult.ok) {
+        setMediaPublica(syncResult.data);
       }
     }
     return true;
@@ -2970,13 +2982,26 @@ Retorne somente um JSON válido com este formato:
       current.includes(tipoId) ? current : [...current, tipoId],
     );
 
-    for (const file of queue) {
+    const pendingUploads = queue.map((file) => ({
+      id: crypto.randomUUID(),
+      tipoId,
+      nome: file.name,
+      previewUrl: isHeicLikeFile(file) ? "" : URL.createObjectURL(file),
+    }));
+    setPendingTipoPlantaUploads((current) => [...current, ...pendingUploads]);
+
+    for (const [fileIndex, file] of queue.entries()) {
+      const pendingUpload = pendingUploads[fileIndex];
       if (!isSupportedImageUpload(file)) {
         setError(`Formato não permitido para planta: ${file.name}`);
+        setPendingTipoPlantaUploads((current) => current.filter((item) => item.id !== pendingUpload.id));
+        if (pendingUpload.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
         continue;
       }
       if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
         setError(`Arquivo acima de 15MB: ${file.name}`);
+        setPendingTipoPlantaUploads((current) => current.filter((item) => item.id !== pendingUpload.id));
+        if (pendingUpload.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
         continue;
       }
 
@@ -2990,6 +3015,8 @@ Retorne somente um JSON válido com este formato:
           setError(
             `A planta ${file.name} precisa ter no mínimo ${MIN_IMAGE_WIDTH}x${MIN_IMAGE_HEIGHT}px.`,
           );
+          setPendingTipoPlantaUploads((current) => current.filter((item) => item.id !== pendingUpload.id));
+          if (pendingUpload.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
           continue;
         }
       }
@@ -2998,6 +3025,7 @@ Retorne somente um JSON válido com este formato:
       formData.append("file", file);
       formData.append("alt", "");
       formData.append("legenda", "");
+      formData.append("ref_tipo", "EMPREENDIMENTO_TIPO_PLANTA");
 
       const uploadResult = await apiFetchWithAuth<{
         id: string;
@@ -3013,6 +3041,8 @@ Retorne somente um JSON válido com este formato:
 
       if (!uploadResult.ok) {
         setError(uploadResult.error);
+        setPendingTipoPlantaUploads((current) => current.filter((item) => item.id !== pendingUpload.id));
+        if (pendingUpload.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
         continue;
       }
 
@@ -3035,6 +3065,8 @@ Retorne somente um JSON válido com este formato:
           return { ...item, plantas: nextPlantas };
         }),
       );
+      setPendingTipoPlantaUploads((current) => current.filter((item) => item.id !== pendingUpload.id));
+      if (pendingUpload.previewUrl) URL.revokeObjectURL(pendingUpload.previewUrl);
     }
 
     setUploadingTipoPlantasIds((current) => current.filter((id) => id !== tipoId));
@@ -3129,6 +3161,7 @@ Retorne somente um JSON válido com este formato:
         isEstruturaVerticalEnabled && form.unidades_cobertura ? Number(form.unidades_cobertura) : null,
       tipos_cadastro: buildTiposCadastroPayload(),
       caracteristica_ids: caracteristicaIds,
+      caracteristica_destaque_ids: caracteristicaDestaqueIds,
     };
 
     if (hasLinkedImoveis) {
@@ -3225,6 +3258,7 @@ Retorne somente um JSON válido com este formato:
               isEstruturaVerticalEnabled && form.unidades_cobertura ? Number(form.unidades_cobertura) : null,
             tipos_cadastro: buildTiposCadastroPayload(),
             caracteristica_ids: [...caracteristicaIds],
+            caracteristica_destaque_ids: [...caracteristicaDestaqueIds],
           }
         : current,
     );
@@ -4360,6 +4394,7 @@ Retorne somente um JSON válido com este formato:
                         const showVagas = allowedFields.has("vagas");
                         const showQtdUnidades = allowedFields.has("qtd_unidades");
                         const isTipoPlantasUploading = uploadingTipoPlantasIds.includes(tipo.id);
+                        const pendingTipoPlantas = pendingTipoPlantaUploads.filter((item) => item.tipoId === tipo.id);
                         const isCollapsed = collapsedTipoCadastroIds.includes(tipo.id);
                         return (
                           <div key={tipo.id} className="rounded-lg border border-slate-200 bg-white p-3">
@@ -4616,12 +4651,34 @@ Retorne somente um JSON válido com este formato:
                                   {isTipoPlantasUploading ? "Enviando..." : "Adicionar plantas"}
                                 </label>
                               </div>
-                              {tipo.plantas.length === 0 ? (
+                              {tipo.plantas.length === 0 && pendingTipoPlantas.length === 0 ? (
                                 <div className="rounded-lg border border-dashed border-slate-300 bg-white px-3 py-4 text-xs text-slate-500">
                                   Nenhuma planta adicionada.
                                 </div>
                               ) : (
                                 <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+                                  {pendingTipoPlantas.map((pending) => (
+                                    <article
+                                      key={pending.id}
+                                      className="overflow-hidden rounded-lg border border-slate-200 bg-white"
+                                      aria-busy="true"
+                                    >
+                                      <div className="relative aspect-[4/3] overflow-hidden bg-slate-200">
+                                        {pending.previewUrl ? (
+                                          <img
+                                            src={pending.previewUrl}
+                                            alt=""
+                                            className="h-full w-full object-cover opacity-55"
+                                          />
+                                        ) : null}
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-slate-900/25 px-2 text-center text-white">
+                                          <CircleNotch size={20} className="animate-spin" />
+                                          <span className="text-[11px] font-medium">Processando planta...</span>
+                                        </div>
+                                      </div>
+                                      <p className="truncate p-2 text-[11px] text-slate-500">{pending.nome}</p>
+                                    </article>
+                                  ))}
                                   {tipo.plantas.map((planta) => {
                                     const plantaThumbUrl = buildThumbUrl(planta.url);
                                     return (
@@ -5104,11 +5161,11 @@ Retorne somente um JSON válido com este formato:
           {activeBlock === 5 ? (
             <section className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="mb-3 text-sm text-slate-500">
-                Selecione os diferenciais em ordem alfabética. Essas características serão usadas também na categorização de mídias.
+                Selecione as características e marque até 6 como diferencial. Elas também serão usadas na categorização de mídias e nos criativos.
               </p>
               <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
                 Tipo de uso atual: <strong>{form.tipo_uso === "RESIDENCIAL" ? "Residencial" : "Comercial"}</strong> •{" "}
-                {caracteristicaIds.length} selecionada(s)
+                {caracteristicaIds.length} selecionada(s) • {caracteristicaDestaqueIds.length}/6 diferenciais
               </div>
               <input
                 value={caracteristicaQuery}
@@ -5124,25 +5181,58 @@ Retorne somente um JSON válido com este formato:
                 <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                   {filteredCaracteristicas.map((entry) => {
                     const active = caracteristicaIds.includes(entry.id);
+                    const highlighted = caracteristicaDestaqueIds.includes(entry.id);
                     return (
-                      <button
-                        key={entry.id}
-                        type="button"
-                        onClick={() =>
-                          setCaracteristicaIds((current) =>
-                            current.includes(entry.id)
-                              ? current.filter((id) => id !== entry.id)
-                              : [...current, entry.id],
-                          )
-                        }
-                        className={`cursor-pointer rounded-lg border px-3 py-2 text-left text-sm transition ${
-                          active
-                            ? "border-[var(--grey-olive)] bg-[var(--grey-olive)]/10 text-[var(--grey-olive)]"
-                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                        }`}
-                      >
-                        {entry.label_pt}
-                      </button>
+                      <div key={entry.id} className="relative min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCaracteristicaIds((current) =>
+                              current.includes(entry.id)
+                                ? current.filter((id) => id !== entry.id)
+                                : [...current, entry.id],
+                            );
+                            if (active) {
+                              setCaracteristicaDestaqueIds((current) =>
+                                current.filter((id) => id !== entry.id),
+                              );
+                            }
+                          }}
+                          className={`w-full cursor-pointer rounded-lg border px-3 py-2 text-left text-sm transition ${
+                            active ? "pr-28 border-[var(--grey-olive)] bg-[var(--grey-olive)]/10 text-[var(--grey-olive)]" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className="block truncate">{entry.label_pt}</span>
+                        </button>
+                        {active ? (
+                          <button
+                            type="button"
+                            aria-pressed={highlighted}
+                            aria-label={`${highlighted ? "Remover" : "Marcar"} ${entry.label_pt} como diferencial`}
+                            onClick={() => {
+                              setCaracteristicaDestaqueIds((current) => {
+                                if (current.includes(entry.id)) {
+                                  return current.filter((id) => id !== entry.id);
+                                }
+                                if (current.length >= 6) {
+                                  setError("Você pode marcar até 6 características como diferencial.");
+                                  return current;
+                                }
+                                setError(null);
+                                return [...current, entry.id];
+                              });
+                            }}
+                            className={`absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition ${
+                              highlighted
+                                ? "border-[var(--grey-olive)] bg-[var(--grey-olive)] text-white"
+                                : "border-slate-300 bg-white text-slate-500 hover:border-[var(--grey-olive)] hover:text-[var(--grey-olive)]"
+                            }`}
+                          >
+                            <Star size={12} weight={highlighted ? "fill" : "regular"} />
+                            Diferencial
+                          </button>
+                        ) : null}
+                      </div>
                     );
                   })}
                 </div>

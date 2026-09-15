@@ -3,9 +3,11 @@
 import Image from "next/image";
 import { useEffect } from "react";
 import { CaretLeft, CaretRight, X } from "@phosphor-icons/react";
+import { buildPublicImageSrcSet, getPublicImageUrl, type PublicImageVariants } from "@/lib/media/responsive-image";
 
 export type LightboxImage = {
   url: string;
+  variantes?: PublicImageVariants | null;
 };
 
 type ImageLightboxProps = {
@@ -96,14 +98,23 @@ export function ImageLightbox({
           {safeActiveIndex + 1} de {images.length}
         </p>
         <div className="relative mx-auto flex max-h-[86vh] items-center justify-center overflow-hidden rounded-xl">
-          <Image
-            src={activeImage.url}
-            alt={`${title} - foto ${safeActiveIndex + 1}`}
-            width={1600}
-            height={1067}
-            className="max-h-[86vh] w-auto max-w-full object-contain"
-            unoptimized
-          />
+          <picture>
+            {buildPublicImageSrcSet(activeImage) ? (
+              <source
+                type="image/webp"
+                srcSet={buildPublicImageSrcSet(activeImage)}
+                sizes="(max-width: 1100px) 100vw, 1600px"
+              />
+            ) : null}
+            <Image
+              src={getPublicImageUrl(activeImage, "W1024")}
+              alt={`${title} - foto ${safeActiveIndex + 1}`}
+              width={1600}
+              height={1067}
+              className="max-h-[86vh] w-auto max-w-full object-contain"
+              unoptimized
+            />
+          </picture>
         </div>
       </div>
 

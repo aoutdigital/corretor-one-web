@@ -10,9 +10,11 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { ImageLightbox } from "./image-lightbox";
+import { buildPublicImageSrcSet, getPublicImageUrl, type PublicImageVariants } from "@/lib/media/responsive-image";
 
 type PropertyGalleryImage = {
   url: string;
+  variantes?: PublicImageVariants | null;
 };
 
 type PropertyGalleryProps = {
@@ -31,6 +33,16 @@ export function PropertyGallery({ title, images, video }: PropertyGalleryProps) 
   const visibleImages = useMemo(() => images.slice(0, 5), [images]);
   const extraImagesCount = Math.max(0, images.length - 1);
   const videoEmbedUrl = video ? buildYouTubeEmbedUrl(video.url) : null;
+  const desktopGridClass =
+    visibleImages.length === 1
+      ? "lg:grid-cols-1 lg:grid-rows-1"
+      : visibleImages.length === 2
+        ? "lg:grid-cols-2 lg:grid-rows-1"
+        : visibleImages.length === 3
+          ? "lg:grid-cols-[1.5fr_1fr] lg:grid-rows-2"
+          : visibleImages.length === 4
+            ? "lg:grid-cols-[1.5fr_1fr] lg:grid-rows-3"
+            : "lg:grid-cols-[1.5fr_1fr_1fr] lg:grid-rows-2";
 
   function openLightbox(index: number) {
     if (images.length === 0) return;
@@ -87,7 +99,7 @@ export function PropertyGallery({ title, images, video }: PropertyGalleryProps) 
 
   return (
     <>
-      <div className="relative grid h-full min-h-[420px] gap-3 lg:min-h-0 lg:grid-cols-[1fr_1fr_0.95fr] lg:grid-rows-[7fr_3fr]">
+      <div className={`relative grid min-h-[420px] gap-3 lg:h-[520px] ${desktopGridClass}`}>
         {visibleImages.map((image, index) => {
           const isMainImage = index === 0;
           const shouldShowOverlay = index === 1 && extraImagesCount > 0;
@@ -99,23 +111,29 @@ export function PropertyGallery({ title, images, video }: PropertyGalleryProps) 
               onClick={() => openLightbox(index)}
               className={[
                 "group relative min-h-[210px] cursor-zoom-in overflow-hidden rounded-[1.35rem] bg-stone-200 text-left shadow-lg shadow-stone-900/10 outline-none transition focus-visible:ring-4 focus-visible:ring-[color:rgba(145,139,118,0.28)] lg:min-h-0",
-                isMainImage ? "lg:col-span-2" : "",
+                isMainImage && visibleImages.length >= 3 && visibleImages.length !== 4 ? "lg:row-span-full" : "",
+                isMainImage && visibleImages.length === 4 ? "lg:row-span-3" : "",
               ].join(" ")}
               aria-label={`Ampliar imagem ${index + 1} de ${title}`}
             >
-              <Image
-                src={image.url}
-                alt={`${title} - foto ${index + 1}`}
-                fill
-                sizes={
-                  isMainImage
-                    ? "(min-width: 1024px) 38vw, 100vw"
-                    : "(min-width: 1024px) 19vw, 100vw"
-                }
-                className="object-cover transition duration-500 group-hover:scale-[1.035]"
-                priority={isMainImage}
-                unoptimized
-              />
+              <picture>
+                {buildPublicImageSrcSet(image) ? (
+                  <source
+                    type="image/webp"
+                    srcSet={buildPublicImageSrcSet(image)}
+                    sizes={isMainImage ? "(min-width: 1024px) 38vw, 100vw" : "(min-width: 1024px) 19vw, 100vw"}
+                  />
+                ) : null}
+                <Image
+                  src={getPublicImageUrl(image, isMainImage ? "W1024" : "W480")}
+                  alt={`${title} - foto ${index + 1}`}
+                  fill
+                  sizes={isMainImage ? "(min-width: 1024px) 38vw, 100vw" : "(min-width: 1024px) 19vw, 100vw"}
+                  className="object-cover transition duration-500 group-hover:scale-[1.035]"
+                  priority={isMainImage}
+                  unoptimized
+                />
+              </picture>
 
               <span className="pointer-events-none absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100">
                 <MagnifyingGlassPlus size={18} weight="bold" />

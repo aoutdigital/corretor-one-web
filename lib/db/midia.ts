@@ -5,14 +5,38 @@ import type { DynamicClient } from "@/lib/db/_dynamic-client";
 import { mapDbError } from "@/lib/db/_errors";
 import { ensureProfileNicknameLogos } from "@/lib/branding/profile-logo";
 import { createMediaStorageProvider } from "@/lib/media";
-import { renderCornerWatermarkedImage, renderWatermarkedPublicImage } from "@/lib/media/watermark";
+import { processMidiaDeleteJobs } from "@/lib/db/midia-delete-jobs";
+import { renderCornerWatermarkedImage, renderWatermarkedPublicWebp } from "@/lib/media/watermark";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type MidiaTipo = "IMAGEM" | "VIDEO" | "PDF";
-type RefTipo = "IMOVEL" | "EMPREENDIMENTO" | "PROVA_SOCIAL" | "ARTIGO" | "CAMPANHA" | "TEMPLATE" | "OUTRO";
+type RefTipo = "IMOVEL" | "EMPREENDIMENTO" | "EMPREENDIMENTO_TIPO_PLANTA" | "PROVA_SOCIAL" | "ARTIGO" | "CAMPANHA" | "TEMPLATE" | "OUTRO";
 type MidiaStorageProvider = "SUPABASE" | "S3";
-const IMOVEL_PUBLIC_WATERMARK_VERSION = "v3";
-const EMPREENDIMENTO_PUBLIC_WATERMARK_VERSION = "v3";
+const IMOVEL_PUBLIC_WATERMARK_VERSION = "v4-responsive";
+const EMPREENDIMENTO_PUBLIC_WATERMARK_VERSION = "v4-responsive";
+const PROPERTY_MEDIA_CONTRACT_REFS = new Set<RefTipo>([
+  "IMOVEL",
+  "EMPREENDIMENTO",
+  "EMPREENDIMENTO_TIPO_PLANTA",
+]);
+const PRIVATE_MEDIA_SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+type ResponsiveImageVariantKey = "W480" | "W768" | "W1024" | "FULL_1920";
+type ResponsiveImageVariant = {
+  url: string;
+  storage_path: string;
+  largura: number;
+  altura: number;
+  formato: "webp";
+};
+type ResponsiveImageVariants = Partial<Record<ResponsiveImageVariantKey, ResponsiveImageVariant>>;
+
+const RESPONSIVE_IMAGE_WIDTHS: ReadonlyArray<{ tipo: ResponsiveImageVariantKey; width: number }> = [
+  { tipo: "W480", width: 480 },
+  { tipo: "W768", width: 768 },
+  { tipo: "W1024", width: 1024 },
+  { tipo: "FULL_1920", width: 1920 },
+];
 
 function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
   const arrayBuffer = new ArrayBuffer(buffer.byteLength);
@@ -69,6 +93,7 @@ export type ImovelMidiaPublicaItem = {
   slug_publico: string;
   storage_bucket: string;
   storage_path: string;
+  variantes: ResponsiveImageVariants;
 };
 
 export type EmpreendimentoMidiaPublicaItem = {
@@ -79,6 +104,7 @@ export type EmpreendimentoMidiaPublicaItem = {
   slug_publico: string;
   storage_bucket: string;
   storage_path: string;
+  variantes: ResponsiveImageVariants;
 };
 
 type ImovelPublicMidiaAsset = {
@@ -89,6 +115,7 @@ type ImovelPublicMidiaAsset = {
   storage_bucket: string;
   storage_path: string;
   url: string;
+  variantes?: ResponsiveImageVariants | null;
 };
 
 type EmpreendimentoPublicMidiaAsset = {
@@ -99,6 +126,7 @@ type EmpreendimentoPublicMidiaAsset = {
   storage_bucket: string;
   storage_path: string;
   url: string;
+  variantes?: ResponsiveImageVariants | null;
 };
 
 export async function enqueueMidiaDeleteJob(
@@ -157,6 +185,10 @@ export async function enqueueMidiaDeleteJob(
 
 function getBucketName(): string {
   return process.env.MEDIA_BUCKET_NAME ?? "midia";
+}
+
+function getPrivateBucketName(): string {
+  return process.env.MEDIA_PRIVATE_BUCKET_NAME ?? "midia-private";
 }
 
 function detectMidiaTipo(mimeType: string): MidiaTipo {
@@ -250,6 +282,10 @@ function buildDerivedImageFileName(filenameBase: string | null | undefined, suff
   return `${base || "imagem"}-${suffix}.jpg`;
 }
 
+function buildPrivateVariantPath(ownerId: string, midiaId: string, tipo: ResponsiveImageVariantKey): string {
+  return `${ownerId}/variants/${midiaId}/${tipo.toLowerCase()}.webp`;
+}
+
 function slugifyPathToken(value: string): string {
   return value
     .normalize("NFD")
@@ -263,23 +299,27 @@ function slugifyPathToken(value: string): string {
 function buildImovelPublicImageStoragePath(
   ownerId: string,
   imovelId: string,
+  midiaId: string,
   slugPublico: string,
   indicePublico: number,
+  variant: ResponsiveImageVariantKey = "W1024",
 ): string {
   const normalizedSlug = slugifyPathToken(slugPublico.trim()) || "imovel";
   const normalizedIndex = String(indicePublico).padStart(4, "0");
-  return `${ownerId}/public/imoveis/${imovelId}/${normalizedSlug}/${IMOVEL_PUBLIC_WATERMARK_VERSION}/${normalizedSlug}-${normalizedIndex}.jpg`;
+  return `${ownerId}/public/imoveis/${imovelId}/${normalizedSlug}/${IMOVEL_PUBLIC_WATERMARK_VERSION}/${midiaId}/${normalizedSlug}-${normalizedIndex}-${variant.toLowerCase()}.webp`;
 }
 
 function buildEmpreendimentoPublicImageStoragePath(
   ownerId: string,
   empreendimentoId: string,
+  midiaId: string,
   slugPublico: string,
   indicePublico: number,
+  variant: ResponsiveImageVariantKey = "W1024",
 ): string {
   const normalizedSlug = slugifyPathToken(slugPublico.trim()) || "empreendimento";
   const normalizedIndex = String(indicePublico).padStart(4, "0");
-  return `${ownerId}/public/empreendimentos/${empreendimentoId}/${normalizedSlug}/${EMPREENDIMENTO_PUBLIC_WATERMARK_VERSION}/${normalizedSlug}-${normalizedIndex}.jpg`;
+  return `${ownerId}/public/empreendimentos/${empreendimentoId}/${normalizedSlug}/${EMPREENDIMENTO_PUBLIC_WATERMARK_VERSION}/${midiaId}/${normalizedSlug}-${normalizedIndex}-${variant.toLowerCase()}.webp`;
 }
 
 async function storageObjectExists(bucketRaw: string, pathRaw: string): Promise<boolean> {
@@ -305,10 +345,62 @@ async function storageObjectExists(bucketRaw: string, pathRaw: string): Promise<
   }
 }
 
+async function createPrivateSignedUrl(bucket: string, path: string): Promise<string | null> {
+  try {
+    const admin = createSupabaseAdminClient();
+    const result = await admin.storage
+      .from(bucket)
+      .createSignedUrl(path, PRIVATE_MEDIA_SIGNED_URL_TTL_SECONDS);
+    return result.error ? null : result.data.signedUrl;
+  } catch {
+    return null;
+  }
+}
+
+async function resolvePrivatePreviewUrls(db: DynamicClient, items: MidiaRelacaoItem[]): Promise<MidiaRelacaoItem[]> {
+  const privateItems = items.filter(
+    (item) => item.tipo === "IMAGEM" && item.storage_bucket === getPrivateBucketName(),
+  );
+  if (privateItems.length === 0) return items;
+
+  const result = await (db as unknown as {
+    from: (table: "midia_variantes") => {
+      select: (columns: "midia_id,storage_path") => {
+        in: (column: "midia_id", values: string[]) => {
+          eq: (column2: "tipo", value: "W480") => Promise<{ data: Array<{ midia_id: string; storage_path: string }> | null; error: { message: string } | null }>;
+        };
+      };
+    };
+  })
+    .from("midia_variantes")
+    .select("midia_id,storage_path")
+    .in("midia_id", privateItems.map((item) => item.midia_id))
+    .eq("tipo", "W480");
+
+  const previewPathByMedia = new Map((result.data ?? []).map((row) => [row.midia_id, row.storage_path]));
+  return Promise.all(items.map(async (item) => {
+    if (item.tipo !== "IMAGEM" || item.storage_bucket !== getPrivateBucketName()) return item;
+    const previewPath = previewPathByMedia.get(item.midia_id) ?? item.storage_path;
+    return {
+      ...item,
+      url: (await createPrivateSignedUrl(item.storage_bucket, previewPath)) ?? item.url,
+    };
+  }));
+}
+
 async function removeStoragePaths(paths: Array<{ bucket: string; path: string }>): Promise<void> {
   if (paths.length === 0) return;
   const storage = createMediaStorageProvider();
-  for (const item of paths) {
+  const uniquePaths = Array.from(
+    new Map(
+      paths.map((item) => {
+        const bucket = item.bucket.trim();
+        const path = item.path.trim().replace(/^\/+/, "");
+        return [`${bucket}::${path}`, { bucket, path }];
+      }),
+    ).values(),
+  );
+  for (const item of uniquePaths) {
     const bucket = item.bucket.trim();
     const path = item.path.trim();
     if (!bucket || !path) continue;
@@ -322,6 +414,104 @@ async function removeStoragePaths(paths: Array<{ bucket: string; path: string }>
       });
     }
   }
+}
+
+function getVariantStoragePaths(variants: ResponsiveImageVariants | null | undefined): string[] {
+  if (!variants || typeof variants !== "object") return [];
+  return Object.values(variants)
+    .map((item) => item?.storage_path?.trim() ?? "")
+    .filter(Boolean);
+}
+
+async function getPublicAssetPathsByRelation(
+  db: DynamicClient,
+  table: "imovel_midia_publica" | "empreendimento_midia_publica",
+  relationId: string,
+): Promise<ApiResult<Array<{ bucket: string; path: string }>>> {
+  const result = await (db as unknown as {
+    from: (tableName: "imovel_midia_publica" | "empreendimento_midia_publica") => {
+      select: (columns: "storage_bucket,storage_path,variantes") => {
+        eq: (column: "midia_relacao_id", value: string) => {
+          maybeSingle: () => Promise<{
+            data: { storage_bucket: string; storage_path: string; variantes: ResponsiveImageVariants | null } | null;
+            error: { message: string; code?: string } | null;
+          }>;
+        };
+      };
+    };
+  })
+    .from(table)
+    .select("storage_bucket,storage_path,variantes")
+    .eq("midia_relacao_id", relationId)
+    .maybeSingle();
+
+  if (result.error) return mapDbError(result.error);
+  if (!result.data) return ok([]);
+
+  const paths = [result.data.storage_path, ...getVariantStoragePaths(result.data.variantes)];
+  return ok(paths.map((path) => ({ bucket: result.data!.storage_bucket, path })));
+}
+
+function hasAllPublicResponsiveVariants(variants: ResponsiveImageVariants | null | undefined): boolean {
+  return RESPONSIVE_IMAGE_WIDTHS.every((variant) => {
+    const item = variants?.[variant.tipo];
+    return Boolean(item?.url?.trim() && item.storage_path?.trim());
+  });
+}
+
+async function generatePublicResponsiveImages(input: {
+  source: Buffer;
+  nickname: string | null;
+  logoPngBuffer: Buffer | null;
+  bucket: string;
+  fileBase: string;
+  pathFor: (variant: ResponsiveImageVariantKey) => string;
+}): Promise<ApiResult<{ url: string; storagePath: string; variantes: ResponsiveImageVariants }>> {
+  const storage = createMediaStorageProvider();
+  const variantes: ResponsiveImageVariants = {};
+
+  for (const variant of RESPONSIVE_IMAGE_WIDTHS) {
+    let rendered: Awaited<ReturnType<typeof renderWatermarkedPublicWebp>>;
+    try {
+      rendered = await renderWatermarkedPublicWebp(input.source, {
+        nickname: input.nickname,
+        logoPngBuffer: input.logoPngBuffer,
+        width: variant.width,
+      });
+    } catch (error) {
+      return fail("DATABASE_ERROR", `Falha ao gerar derivado público ${variant.tipo}.`, {
+        message: (error as Error).message,
+      });
+    }
+
+    const storagePath = input.pathFor(variant.tipo);
+    try {
+      const uploaded = await storage.upload({
+        bucket: input.bucket,
+        path: storagePath,
+        file: new File([bufferToArrayBuffer(rendered.buffer)], `${input.fileBase}-${variant.tipo.toLowerCase()}.webp`, {
+          type: "image/webp",
+        }),
+        contentType: "image/webp",
+        upsert: true,
+      });
+      variantes[variant.tipo] = {
+        url: uploaded.publicUrl,
+        storage_path: uploaded.path,
+        largura: rendered.width,
+        altura: rendered.height,
+        formato: "webp",
+      };
+    } catch (error) {
+      return fail("DATABASE_ERROR", `Falha ao salvar derivado público ${variant.tipo}.`, {
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  const fallback = variantes.W480 ?? variantes.W1024 ?? variantes.FULL_1920;
+  if (!fallback) return fail("DATABASE_ERROR", "Derivado público principal não foi gerado.");
+  return ok({ url: fallback.url, storagePath: fallback.storage_path, variantes });
 }
 
 async function fetchSourceImageBuffer(input: {
@@ -404,13 +594,13 @@ async function clearImovelPublicMidiaAssets(
 ): Promise<ApiResult<{ total: number }>> {
   const existingResult = await (db as unknown as {
     from: (table: "imovel_midia_publica") => {
-      select: (columns: "id,storage_bucket,storage_path") => {
+      select: (columns: "id,storage_bucket,storage_path,variantes") => {
         eq: (column: "owner_id", value: string) => {
           eq: (
             column2: "imovel_id",
             value2: string,
           ) => Promise<{
-            data: Array<{ id: string; storage_bucket: string; storage_path: string }> | null;
+            data: Array<{ id: string; storage_bucket: string; storage_path: string; variantes?: ResponsiveImageVariants | null }> | null;
             error: { message: string; details?: string | null; hint?: string | null; code?: string } | null;
           }>;
         };
@@ -423,7 +613,7 @@ async function clearImovelPublicMidiaAssets(
     };
   })
     .from("imovel_midia_publica")
-    .select("id,storage_bucket,storage_path")
+    .select("id,storage_bucket,storage_path,variantes")
     .eq("owner_id", ownerId)
     .eq("imovel_id", imovelId);
 
@@ -447,10 +637,10 @@ async function clearImovelPublicMidiaAssets(
   if (deleteResult.error) return mapDbError(deleteResult.error);
 
   await removeStoragePaths(
-    existingRows.map((row) => ({
+    existingRows.flatMap((row) => [row.storage_path, ...getVariantStoragePaths(row.variantes)].map((path) => ({
       bucket: row.storage_bucket,
-      path: row.storage_path,
-    })),
+      path,
+    }))),
   );
 
   return ok({ total: existingRows.length });
@@ -463,13 +653,13 @@ async function clearEmpreendimentoPublicMidiaAssets(
 ): Promise<ApiResult<{ total: number }>> {
   const existingResult = await (db as unknown as {
     from: (table: "empreendimento_midia_publica") => {
-      select: (columns: "id,storage_bucket,storage_path") => {
+      select: (columns: "id,storage_bucket,storage_path,variantes") => {
         eq: (column: "owner_id", value: string) => {
           eq: (
             column2: "empreendimento_id",
             value2: string,
           ) => Promise<{
-            data: Array<{ id: string; storage_bucket: string; storage_path: string }> | null;
+            data: Array<{ id: string; storage_bucket: string; storage_path: string; variantes?: ResponsiveImageVariants | null }> | null;
             error: { message: string; details?: string | null; hint?: string | null; code?: string } | null;
           }>;
         };
@@ -482,7 +672,7 @@ async function clearEmpreendimentoPublicMidiaAssets(
     };
   })
     .from("empreendimento_midia_publica")
-    .select("id,storage_bucket,storage_path")
+    .select("id,storage_bucket,storage_path,variantes")
     .eq("owner_id", ownerId)
     .eq("empreendimento_id", empreendimentoId);
 
@@ -506,10 +696,10 @@ async function clearEmpreendimentoPublicMidiaAssets(
   if (deleteResult.error) return mapDbError(deleteResult.error);
 
   await removeStoragePaths(
-    existingRows.map((row) => ({
+    existingRows.flatMap((row) => [row.storage_path, ...getVariantStoragePaths(row.variantes)].map((path) => ({
       bucket: row.storage_bucket,
-      path: row.storage_path,
-    })),
+      path,
+    }))),
   );
 
   return ok({ total: existingRows.length });
@@ -809,7 +999,7 @@ export async function syncImovelPublicMidia(
   const existingAssetsResult = await (db as unknown as {
     from: (table: "imovel_midia_publica") => {
       select: (
-        columns: "id,midia_relacao_id,midia_id,indice_publico,storage_bucket,storage_path,url",
+        columns: "id,midia_relacao_id,midia_id,indice_publico,storage_bucket,storage_path,url,variantes",
       ) => {
         eq: (column: "owner_id", value: string) => {
           eq: (
@@ -824,7 +1014,7 @@ export async function syncImovelPublicMidia(
     };
   })
     .from("imovel_midia_publica")
-    .select("id,midia_relacao_id,midia_id,indice_publico,storage_bucket,storage_path,url")
+    .select("id,midia_relacao_id,midia_id,indice_publico,storage_bucket,storage_path,url,variantes")
     .eq("owner_id", user.id)
     .eq("imovel_id", imovelId);
 
@@ -863,15 +1053,29 @@ export async function syncImovelPublicMidia(
     const midia = row.midia!;
     const indicePublico = index + 1;
     const ordem = typeof row.ordem === "number" ? row.ordem : index;
-    const storagePath = buildImovelPublicImageStoragePath(user.id, imovelId, slugPublico, indicePublico);
+    const storagePath = buildImovelPublicImageStoragePath(
+      user.id,
+      imovelId,
+      midia.id,
+      slugPublico,
+      indicePublico,
+      "W480",
+    );
     const existing = existingByRelacaoId.get(row.id) ?? null;
     activeRelacaoIds.add(row.id);
     activePublicStorageKeys.add(`${storageBucket}::${storagePath}`);
 
     let uploadedUrl = existing?.url ?? "";
+    let uploadedVariants = existing?.variantes ?? {};
+    for (const path of getVariantStoragePaths(uploadedVariants)) {
+      activePublicStorageKeys.add(`${storageBucket}::${path}`);
+    }
 
     let mustRegenerate =
-      !existing || existing.storage_path !== storagePath || existing.indice_publico !== indicePublico;
+      !existing ||
+      existing.storage_path !== storagePath ||
+      existing.indice_publico !== indicePublico ||
+      !hasAllPublicResponsiveVariants(existing.variantes);
 
     if (!mustRegenerate) {
       const existsInStorage = await storageObjectExists(storageBucket, storagePath);
@@ -887,38 +1091,26 @@ export async function syncImovelPublicMidia(
       });
       if (!sourceBufferResult.ok) return sourceBufferResult;
 
-      let watermarkedBuffer: Buffer;
-      try {
-        watermarkedBuffer = await renderWatermarkedPublicImage(sourceBufferResult.data, {
-          nickname: nickname || null,
-          logoPngBuffer: logoWhiteBuffer,
-        });
-      } catch (error) {
-        return fail("DATABASE_ERROR", "Falha ao aplicar marca d'água na imagem pública.", {
-          message: (error as Error).message,
-        });
-      }
-
-      try {
-        const file = new File(
-          [bufferToArrayBuffer(watermarkedBuffer)],
-          `${slugPublico}-${String(indicePublico).padStart(4, "0")}.jpg`,
-          {
-            type: "image/jpeg",
-          },
-        );
-        const uploaded = await storage.upload({
-          bucket: storageBucket,
-          path: storagePath,
-          file,
-          contentType: "image/jpeg",
-          upsert: true,
-        });
-        uploadedUrl = uploaded.publicUrl;
-      } catch (error) {
-        return fail("DATABASE_ERROR", "Falha ao salvar imagem pública com marca d'água.", {
-          message: (error as Error).message,
-        });
+      const generated = await generatePublicResponsiveImages({
+        source: sourceBufferResult.data,
+        nickname: nickname || null,
+        logoPngBuffer: logoWhiteBuffer,
+        bucket: storageBucket,
+        fileBase: `${slugPublico}-${String(indicePublico).padStart(4, "0")}`,
+        pathFor: (variant) => buildImovelPublicImageStoragePath(
+          user.id,
+          imovelId,
+          midia.id,
+          slugPublico,
+          indicePublico,
+          variant,
+        ),
+      });
+      if (!generated.ok) return generated;
+      uploadedUrl = generated.data.url;
+      uploadedVariants = generated.data.variantes;
+      for (const path of getVariantStoragePaths(uploadedVariants)) {
+        activePublicStorageKeys.add(`${storageBucket}::${path}`);
       }
 
       if (existing && existing.storage_path !== storagePath) {
@@ -926,6 +1118,9 @@ export async function syncImovelPublicMidia(
           bucket: existing.storage_bucket,
           path: existing.storage_path,
         });
+        for (const path of getVariantStoragePaths(existing.variantes)) {
+          oldPathsToDelete.push({ bucket: existing.storage_bucket, path });
+        }
       }
     }
 
@@ -951,6 +1146,7 @@ export async function syncImovelPublicMidia(
           storage_bucket: storageBucket,
           storage_path: storagePath,
           url: uploadedUrl,
+          variantes: uploadedVariants,
         },
         { onConflict: "midia_relacao_id" },
       );
@@ -996,6 +1192,9 @@ export async function syncImovelPublicMidia(
         bucket: stale.storage_bucket,
         path: stale.storage_path,
       });
+      for (const path of getVariantStoragePaths(stale.variantes)) {
+        oldPathsToDelete.push({ bucket: stale.storage_bucket, path });
+      }
     }
   }
 
@@ -1130,7 +1329,7 @@ export async function syncEmpreendimentoPublicMidia(
   const existingAssetsResult = await (db as unknown as {
     from: (table: "empreendimento_midia_publica") => {
       select: (
-        columns: "id,midia_relacao_id,midia_id,indice_publico,storage_bucket,storage_path,url",
+        columns: "id,midia_relacao_id,midia_id,indice_publico,storage_bucket,storage_path,url,variantes",
       ) => {
         eq: (column: "owner_id", value: string) => {
           eq: (
@@ -1145,7 +1344,7 @@ export async function syncEmpreendimentoPublicMidia(
     };
   })
     .from("empreendimento_midia_publica")
-    .select("id,midia_relacao_id,midia_id,indice_publico,storage_bucket,storage_path,url")
+    .select("id,midia_relacao_id,midia_id,indice_publico,storage_bucket,storage_path,url,variantes")
     .eq("owner_id", user.id)
     .eq("empreendimento_id", empreendimentoId);
 
@@ -1187,17 +1386,26 @@ export async function syncEmpreendimentoPublicMidia(
     const storagePath = buildEmpreendimentoPublicImageStoragePath(
       user.id,
       empreendimentoId,
+      midia.id,
       slugPublico,
       indicePublico,
+      "W480",
     );
     const existing = existingByRelacaoId.get(row.id) ?? null;
     activeRelacaoIds.add(row.id);
     activePublicStorageKeys.add(`${storageBucket}::${storagePath}`);
 
     let uploadedUrl = existing?.url ?? "";
+    let uploadedVariants = existing?.variantes ?? {};
+    for (const path of getVariantStoragePaths(uploadedVariants)) {
+      activePublicStorageKeys.add(`${storageBucket}::${path}`);
+    }
 
     let mustRegenerate =
-      !existing || existing.storage_path !== storagePath || existing.indice_publico !== indicePublico;
+      !existing ||
+      existing.storage_path !== storagePath ||
+      existing.indice_publico !== indicePublico ||
+      !hasAllPublicResponsiveVariants(existing.variantes);
 
     if (!mustRegenerate) {
       const existsInStorage = await storageObjectExists(storageBucket, storagePath);
@@ -1213,38 +1421,26 @@ export async function syncEmpreendimentoPublicMidia(
       });
       if (!sourceBufferResult.ok) return sourceBufferResult;
 
-      let watermarkedBuffer: Buffer;
-      try {
-        watermarkedBuffer = await renderWatermarkedPublicImage(sourceBufferResult.data, {
-          nickname: nickname || null,
-          logoPngBuffer: logoWhiteBuffer,
-        });
-      } catch (error) {
-        return fail("DATABASE_ERROR", "Falha ao aplicar marca d'água na imagem pública.", {
-          message: (error as Error).message,
-        });
-      }
-
-      try {
-        const file = new File(
-          [bufferToArrayBuffer(watermarkedBuffer)],
-          `${slugPublico}-${String(indicePublico).padStart(4, "0")}.jpg`,
-          {
-            type: "image/jpeg",
-          },
-        );
-        const uploaded = await storage.upload({
-          bucket: storageBucket,
-          path: storagePath,
-          file,
-          contentType: "image/jpeg",
-          upsert: true,
-        });
-        uploadedUrl = uploaded.publicUrl;
-      } catch (error) {
-        return fail("DATABASE_ERROR", "Falha ao salvar imagem pública com marca d'água.", {
-          message: (error as Error).message,
-        });
+      const generated = await generatePublicResponsiveImages({
+        source: sourceBufferResult.data,
+        nickname: nickname || null,
+        logoPngBuffer: logoWhiteBuffer,
+        bucket: storageBucket,
+        fileBase: `${slugPublico}-${String(indicePublico).padStart(4, "0")}`,
+        pathFor: (variant) => buildEmpreendimentoPublicImageStoragePath(
+          user.id,
+          empreendimentoId,
+          midia.id,
+          slugPublico,
+          indicePublico,
+          variant,
+        ),
+      });
+      if (!generated.ok) return generated;
+      uploadedUrl = generated.data.url;
+      uploadedVariants = generated.data.variantes;
+      for (const path of getVariantStoragePaths(uploadedVariants)) {
+        activePublicStorageKeys.add(`${storageBucket}::${path}`);
       }
 
       if (existing && existing.storage_path !== storagePath) {
@@ -1252,6 +1448,9 @@ export async function syncEmpreendimentoPublicMidia(
           bucket: existing.storage_bucket,
           path: existing.storage_path,
         });
+        for (const path of getVariantStoragePaths(existing.variantes)) {
+          oldPathsToDelete.push({ bucket: existing.storage_bucket, path });
+        }
       }
     }
 
@@ -1277,6 +1476,7 @@ export async function syncEmpreendimentoPublicMidia(
           storage_bucket: storageBucket,
           storage_path: storagePath,
           url: uploadedUrl,
+          variantes: uploadedVariants,
         },
         { onConflict: "midia_relacao_id" },
       );
@@ -1322,6 +1522,9 @@ export async function syncEmpreendimentoPublicMidia(
         bucket: stale.storage_bucket,
         path: stale.storage_path,
       });
+      for (const path of getVariantStoragePaths(stale.variantes)) {
+        oldPathsToDelete.push({ bucket: stale.storage_bucket, path });
+      }
     }
   }
 
@@ -1352,7 +1555,10 @@ export async function uploadMidia(
   const { user, client } = auth.data;
   const db = client as unknown as DynamicClient;
 
-  const bucket = getBucketName();
+  const usesPropertyMediaContract = Boolean(
+    input.ref_tipo && PROPERTY_MEDIA_CONTRACT_REFS.has(input.ref_tipo) && input.file.type.startsWith("image/"),
+  );
+  const bucket = usesPropertyMediaContract ? getPrivateBucketName() : getBucketName();
   const storagePath = buildStoragePath(user.id, input.file.name || "arquivo", input.filename_base);
   const tipo = detectMidiaTipo(input.file.type || "application/pdf");
 
@@ -1442,7 +1648,31 @@ export async function uploadMidia(
   if (currentMidia.error) return mapDbError(currentMidia.error);
   if (!currentMidia.data) return fail("NOT_FOUND", "Midia not found");
 
-  return ok(currentMidia.data as UploadMidiaResult);
+  const result = currentMidia.data as UploadMidiaResult;
+  if (usesPropertyMediaContract) {
+    const previewResult = await (db as unknown as {
+      from: (table: "midia_variantes") => {
+        select: (columns: "storage_path") => {
+          eq: (column: "midia_id", value: string) => {
+            eq: (column2: "tipo", value: "W480") => {
+              maybeSingle: () => Promise<{ data: { storage_path: string } | null; error: { message: string } | null }>;
+            };
+          };
+        };
+      };
+    })
+      .from("midia_variantes")
+      .select("storage_path")
+      .eq("midia_id", midiaId)
+      .eq("tipo", "W480")
+      .maybeSingle();
+    const signedUrl = await createPrivateSignedUrl(
+      result.storage_bucket,
+      previewResult.data?.storage_path ?? result.storage_path,
+    );
+    if (signedUrl) result.url = signedUrl;
+  }
+  return ok(result);
 }
 
 export async function listMidiaEmpreendimento(
@@ -1510,7 +1740,8 @@ export async function listMidiaEmpreendimento(
       return a.created_at.localeCompare(b.created_at);
     });
 
-  return ok(mapped);
+  const signed = await resolvePrivatePreviewUrls(db, mapped);
+  return ok(signed);
 }
 
 export async function listMidiaImovel(
@@ -1578,7 +1809,8 @@ export async function listMidiaImovel(
       return a.created_at.localeCompare(b.created_at);
     });
 
-  return ok(mapped);
+  const signed = await resolvePrivatePreviewUrls(db, mapped);
+  return ok(signed);
 }
 
 export async function listMidiaPublicaEmpreendimento(
@@ -1597,7 +1829,7 @@ export async function listMidiaPublicaEmpreendimento(
   const result = await (db as unknown as {
     from: (table: "empreendimento_midia_publica") => {
       select: (
-        columns: "midia_id,indice_publico,ordem,url,slug_publico,storage_bucket,storage_path",
+        columns: "midia_id,indice_publico,ordem,url,slug_publico,storage_bucket,storage_path,variantes",
       ) => {
         eq: (column: "owner_id", value: string) => {
           eq: (
@@ -1617,7 +1849,7 @@ export async function listMidiaPublicaEmpreendimento(
     };
   })
     .from("empreendimento_midia_publica")
-    .select("midia_id,indice_publico,ordem,url,slug_publico,storage_bucket,storage_path")
+    .select("midia_id,indice_publico,ordem,url,slug_publico,storage_bucket,storage_path,variantes")
     .eq("owner_id", user.id)
     .eq("empreendimento_id", empreendimentoId)
     .order("indice_publico", { ascending: true });
@@ -1648,7 +1880,7 @@ export async function listMidiaPublicaImovel(
   const result = await (db as unknown as {
     from: (table: "imovel_midia_publica") => {
       select: (
-        columns: "midia_id,indice_publico,ordem,url,slug_publico,storage_bucket,storage_path",
+        columns: "midia_id,indice_publico,ordem,url,slug_publico,storage_bucket,storage_path,variantes",
       ) => {
         eq: (column: "owner_id", value: string) => {
           eq: (
@@ -1668,7 +1900,7 @@ export async function listMidiaPublicaImovel(
     };
   })
     .from("imovel_midia_publica")
-    .select("midia_id,indice_publico,ordem,url,slug_publico,storage_bucket,storage_path")
+    .select("midia_id,indice_publico,ordem,url,slug_publico,storage_bucket,storage_path,variantes")
     .eq("owner_id", user.id)
     .eq("imovel_id", imovelId)
     .order("indice_publico", { ascending: true });
@@ -1856,6 +2088,24 @@ export async function removeMidiaEmpreendimento(
   const own = await assertOwnEmpreendimento(db, user.id, empreendimentoId);
   if (!own.ok) return own;
 
+  const relationResult = await db
+    .from("midia_relacoes")
+    .select("id")
+    .eq("owner_id", user.id)
+    .eq("ref_tipo", "EMPREENDIMENTO")
+    .eq("ref_id", empreendimentoId)
+    .eq("midia_id", midiaId)
+    .maybeSingle();
+  if (relationResult.error) return mapDbError(relationResult.error);
+  if (!relationResult.data) return fail("NOT_FOUND", "Media link not found");
+
+  const publicPathsResult = await getPublicAssetPathsByRelation(
+    db,
+    "empreendimento_midia_publica",
+    relationResult.data.id as string,
+  );
+  if (!publicPathsResult.ok) return publicPathsResult;
+
   const result = await db
     .from("midia_relacoes")
     .delete()
@@ -1868,6 +2118,8 @@ export async function removeMidiaEmpreendimento(
 
   if (result.error) return mapDbError(result.error);
   if (!result.data) return fail("NOT_FOUND", "Media link not found");
+
+  await removeStoragePaths(publicPathsResult.data);
 
   const refsRemainingResult = await (db as unknown as {
     from: (table: "midia_relacoes") => {
@@ -1916,6 +2168,24 @@ export async function removeMidiaImovel(
   const own = await assertOwnImovel(db, user.id, imovelId);
   if (!own.ok) return own;
 
+  const relationResult = await db
+    .from("midia_relacoes")
+    .select("id")
+    .eq("owner_id", user.id)
+    .eq("ref_tipo", "IMOVEL")
+    .eq("ref_id", imovelId)
+    .eq("midia_id", midiaId)
+    .maybeSingle();
+  if (relationResult.error) return mapDbError(relationResult.error);
+  if (!relationResult.data) return fail("NOT_FOUND", "Media link not found");
+
+  const publicPathsResult = await getPublicAssetPathsByRelation(
+    db,
+    "imovel_midia_publica",
+    relationResult.data.id as string,
+  );
+  if (!publicPathsResult.ok) return publicPathsResult;
+
   const result = await db
     .from("midia_relacoes")
     .delete()
@@ -1928,6 +2198,8 @@ export async function removeMidiaImovel(
 
   if (result.error) return mapDbError(result.error);
   if (!result.data) return fail("NOT_FOUND", "Media link not found");
+
+  await removeStoragePaths(publicPathsResult.data);
 
   const refsRemainingResult = await (db as unknown as {
     from: (table: "midia_relacoes") => {
@@ -1998,6 +2270,19 @@ export async function deleteMidiaOwned(
     storagePath.length > 0 &&
     !storagePath.startsWith("youtube:");
 
+  const variantsResult = await (db as unknown as {
+    from: (table: "midia_variantes") => {
+      select: (columns: "storage_path") => {
+        eq: (column: "midia_id", value: string) => Promise<{ data: Array<{ storage_path: string }> | null; error: { message: string; code?: string } | null }>;
+      };
+    };
+  })
+    .from("midia_variantes")
+    .select("storage_path")
+    .eq("midia_id", midia.id);
+  if (variantsResult.error) return mapDbError(variantsResult.error);
+
+  const deleteJobIds: string[] = [];
   if (shouldDeleteFile) {
     const enqueueResult = await enqueueMidiaDeleteJob(db, user.id, {
       midiaId: midia.id,
@@ -2006,6 +2291,20 @@ export async function deleteMidiaOwned(
       storagePath,
     });
     if (!enqueueResult.ok) return enqueueResult;
+    deleteJobIds.push(enqueueResult.data.id);
+
+    const variantPaths = Array.from(new Set((variantsResult.data ?? []).map((item) => item.storage_path.trim())))
+      .filter((path) => path && path !== storagePath);
+    for (const variantPath of variantPaths) {
+      const variantJob = await enqueueMidiaDeleteJob(db, user.id, {
+        midiaId: midia.id,
+        storageProvider: midia.storage_provider,
+        storageBucket,
+        storagePath: variantPath,
+      });
+      if (!variantJob.ok) return variantJob;
+      deleteJobIds.push(variantJob.data.id);
+    }
   }
 
   const deleteResult = await db
@@ -2018,6 +2317,21 @@ export async function deleteMidiaOwned(
 
   if (deleteResult.error) return mapDbError(deleteResult.error);
   if (!deleteResult.data) return fail("NOT_FOUND", "Midia not found");
+
+  const immediateDeleteEnabled =
+    process.env.MEDIA_DELETE_IMMEDIATE === "true" ||
+    (process.env.NODE_ENV === "development" && process.env.MEDIA_DELETE_IMMEDIATE !== "false");
+  if (immediateDeleteEnabled && deleteJobIds.length > 0) {
+    const processed = await processMidiaDeleteJobs(deleteJobIds.length, deleteJobIds);
+    if (!processed.ok || processed.data.failed > 0) {
+      console.error("[deleteMidiaOwned] exclusão física imediata incompleta; jobs mantidos para retry", {
+        midiaId,
+        jobIds: deleteJobIds,
+        error: processed.ok ? null : processed.error,
+        result: processed.ok ? processed.data : null,
+      });
+    }
+  }
 
   return ok({ id: deleteResult.data.id as string });
 }
@@ -2074,6 +2388,7 @@ export async function optimizeMidiaOwnedTo1920(
   if (!sourceBufferResult.ok) return sourceBufferResult;
 
   let renderedBuffer: Buffer;
+  let renderedMetadata: sharp.Metadata;
   try {
     renderedBuffer = await sharp(sourceBufferResult.data, { failOn: "none" })
       .rotate()
@@ -2085,6 +2400,7 @@ export async function optimizeMidiaOwnedTo1920(
       })
       .jpeg({ quality: 82, mozjpeg: true })
       .toBuffer();
+    renderedMetadata = await sharp(renderedBuffer, { failOn: "none" }).metadata();
   } catch (error) {
     return fail("DATABASE_ERROR", "Falha ao otimizar imagem para 1920px", {
       message: (error as Error).message,
@@ -2121,6 +2437,8 @@ export async function optimizeMidiaOwnedTo1920(
       storage_path: uploaded.path,
       url: uploaded.publicUrl,
       tamanho_bytes: uploaded.size,
+      largura: renderedMetadata.width ?? null,
+      altura: renderedMetadata.height ?? null,
     })
     .eq("id", midia.id)
     .eq("owner_id", user.id)
@@ -2129,6 +2447,21 @@ export async function optimizeMidiaOwnedTo1920(
 
   if (updateResult.error) return mapDbError(updateResult.error);
   if (!updateResult.data) return fail("NOT_FOUND", "Midia not found");
+
+  const isPropertyContract = oldBucket === getPrivateBucketName();
+  if (isPropertyContract) {
+    const variantsResult = await createPrivateResponsiveVariants({
+      db,
+      ownerId: user.id,
+      midiaId: midia.id,
+      bucket: uploaded.bucket,
+      masterPath: uploaded.path,
+      masterBuffer: renderedBuffer,
+      masterWidth: renderedMetadata.width ?? 0,
+      masterHeight: renderedMetadata.height ?? 0,
+    });
+    if (!variantsResult.ok) return variantsResult;
+  }
 
   if (oldPath !== uploaded.path) {
     try {
@@ -2142,6 +2475,80 @@ export async function optimizeMidiaOwnedTo1920(
   }
 
   return ok({ id: midia.id });
+}
+
+async function createPrivateResponsiveVariants(input: {
+  db: DynamicClient;
+  ownerId: string;
+  midiaId: string;
+  bucket: string;
+  masterPath: string;
+  masterBuffer: Buffer;
+  masterWidth: number;
+  masterHeight: number;
+}): Promise<ApiResult<null>> {
+  const storage = createMediaStorageProvider();
+  const rows: Array<Record<string, unknown>> = [
+    {
+      midia_id: input.midiaId,
+      tipo: "FULL_1920",
+      largura: input.masterWidth,
+      altura: input.masterHeight,
+      storage_path: input.masterPath,
+      tamanho_bytes: input.masterBuffer.byteLength,
+    },
+  ];
+
+  for (const variant of RESPONSIVE_IMAGE_WIDTHS.filter((item) => item.tipo !== "FULL_1920")) {
+    let buffer: Buffer;
+    let metadata: sharp.Metadata;
+    try {
+      buffer = await sharp(input.masterBuffer, { failOn: "none" })
+        .resize({ width: variant.width, height: variant.width, fit: "inside", withoutEnlargement: true })
+        .webp({ quality: 80, effort: 4 })
+        .toBuffer();
+      metadata = await sharp(buffer, { failOn: "none" }).metadata();
+    } catch (error) {
+      return fail("DATABASE_ERROR", `Falha ao gerar variante ${variant.tipo}`, {
+        message: (error as Error).message,
+      });
+    }
+
+    const path = buildPrivateVariantPath(input.ownerId, input.midiaId, variant.tipo);
+    try {
+      await storage.upload({
+        bucket: input.bucket,
+        path,
+        file: new File([bufferToArrayBuffer(buffer)], `${variant.tipo.toLowerCase()}.webp`, { type: "image/webp" }),
+        contentType: "image/webp",
+        upsert: true,
+      });
+    } catch (error) {
+      return fail("DATABASE_ERROR", `Falha ao salvar variante ${variant.tipo}`, {
+        message: (error as Error).message,
+      });
+    }
+
+    rows.push({
+      midia_id: input.midiaId,
+      tipo: variant.tipo,
+      largura: metadata.width ?? Math.min(input.masterWidth, variant.width),
+      altura: metadata.height ?? Math.round((input.masterHeight / Math.max(1, input.masterWidth)) * Math.min(input.masterWidth, variant.width)),
+      storage_path: path,
+      tamanho_bytes: buffer.byteLength,
+    });
+  }
+
+  const upsert = await (input.db as unknown as {
+    from: (table: "midia_variantes") => {
+      upsert: (values: Array<Record<string, unknown>>, options: { onConflict: string }) => Promise<{ error: { message: string; code?: string } | null }>;
+    };
+  })
+    .from("midia_variantes")
+    .upsert(rows, { onConflict: "midia_id,tipo" });
+
+  if (upsert.error) return mapDbError(upsert.error);
+  return ok(null);
 }
 
 async function applyArticleCornerWatermarkToMidia(

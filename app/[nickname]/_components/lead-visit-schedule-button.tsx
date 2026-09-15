@@ -13,8 +13,10 @@ type LeadVisitScheduleButtonProps = {
   children?: ReactNode;
   avatarUrl?: string | null;
   creci?: string | null;
-  imovelId: string;
-  imovelTitulo: string;
+  imovelId?: string | null;
+  imovelTitulo?: string | null;
+  empreendimentoId?: string | null;
+  empreendimentoTitulo?: string | null;
   permiteVisitaImediata?: boolean | null;
 };
 
@@ -198,8 +200,12 @@ export function LeadVisitScheduleButton({
   creci,
   imovelId,
   imovelTitulo,
+  empreendimentoId,
+  empreendimentoTitulo,
   permiteVisitaImediata,
 }: LeadVisitScheduleButtonProps) {
+  const resourceTitle = imovelTitulo || empreendimentoTitulo || "Imóvel";
+  const resourceKind = empreendimentoId ? "empreendimento" : "imóvel";
   const allowsImmediateVisit = permiteVisitaImediata !== false;
   const today = useMemo(() => new Date(), []);
   const minDateObject = useMemo(() => {
@@ -218,7 +224,7 @@ export function LeadVisitScheduleButton({
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState(`Tenho interesse em visitar este imóvel: ${imovelTitulo}`);
+  const [message, setMessage] = useState(`Tenho interesse em visitar este ${resourceKind}: ${resourceTitle}`);
   const [website, setWebsite] = useState("");
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -348,8 +354,10 @@ export function LeadVisitScheduleButton({
           referrer: document.referrer,
           utm: getUtmParams(),
           context: {
-            imovel_id: imovelId,
-            imovel_titulo: imovelTitulo,
+            imovel_id: imovelId ?? null,
+            imovel_titulo: imovelTitulo ?? null,
+            empreendimento_id: empreendimentoId ?? null,
+            empreendimento_titulo: empreendimentoTitulo ?? null,
             permite_visita_imediata: allowsImmediateVisit,
           },
         }),
@@ -412,9 +420,9 @@ export function LeadVisitScheduleButton({
                   </div>
                 </div>
                 <h2 className="mt-4 text-3xl font-light leading-tight text-slate-950">
-                  Vamos encontrar o melhor horário para você conhecer este imóvel.
+                  Vamos encontrar o melhor horário para você conhecer este {resourceKind}.
                 </h2>
-                <p className="mt-3 text-sm font-light leading-6 text-slate-600">{imovelTitulo}</p>
+                <p className="mt-3 text-sm font-light leading-6 text-slate-600">{resourceTitle}</p>
               </div>
 
               {submitState === "success" ? (

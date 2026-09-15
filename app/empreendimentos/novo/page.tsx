@@ -19,6 +19,7 @@ import {
   PencilSimpleLine,
   Robot,
   StackSimple,
+  Star,
   TextB,
   TextItalic,
   TextUnderline,
@@ -161,6 +162,7 @@ type EmpreendimentoDetailApi = {
     resumo_local?: string | null;
   } | null;
   caracteristica_ids?: string[] | null;
+  caracteristica_destaque_ids?: string[] | null;
 };
 
 type LocalizacaoContextoState = {
@@ -1033,6 +1035,7 @@ function NovoEmpreendimentoContent() {
   const [youtubeVideos, setYoutubeVideos] = useState<YoutubeVideoDraftItem[]>([]);
   const [addingYoutube, setAddingYoutube] = useState(false);
   const [caracteristicaIds, setCaracteristicaIds] = useState<string[]>([]);
+  const [caracteristicaDestaqueIds, setCaracteristicaDestaqueIds] = useState<string[]>([]);
   const [caracteristicasCatalogo, setCaracteristicasCatalogo] = useState<CaracteristicaCatalogoItem[]>([]);
   const [loadingCaracteristicas, setLoadingCaracteristicas] = useState(false);
   const [caracteristicasCatalogoTipoUsoLoaded, setCaracteristicasCatalogoTipoUsoLoaded] =
@@ -1239,6 +1242,7 @@ function NovoEmpreendimentoContent() {
       })),
       youtubeVideos,
       caracteristicaIds,
+      caracteristicaDestaqueIds,
       descricaoEmpreendimento,
       aykaResumoCurto,
       aykaSeoTitle,
@@ -1283,6 +1287,7 @@ function NovoEmpreendimentoContent() {
       imagemItems,
       youtubeVideos,
       caracteristicaIds,
+      caracteristicaDestaqueIds,
       descricaoEmpreendimento,
       aykaResumoCurto,
       aykaSeoTitle,
@@ -1523,6 +1528,7 @@ function NovoEmpreendimentoContent() {
       unidades_cobertura:
         isEstruturaVerticalEnabled && unidadesCobertura.trim() ? Number(unidadesCobertura) : null,
       caracteristica_ids: caracteristicaIds,
+      caracteristica_destaque_ids: caracteristicaDestaqueIds,
       caracteristicas: caracteristicasDisponiveis
         .filter((item) => caracteristicaIds.includes(item.id))
         .map((item) => item.chave),
@@ -1539,6 +1545,7 @@ function NovoEmpreendimentoContent() {
     bairroComercial,
     localizacaoContexto,
     caracteristicaIds,
+    caracteristicaDestaqueIds,
     caracteristicasDisponiveis,
     categoriaComercial,
     categoriaResidencial,
@@ -2027,6 +2034,11 @@ function NovoEmpreendimentoContent() {
       setCaracteristicaIds(
         Array.isArray(empreendimento.caracteristica_ids) ? empreendimento.caracteristica_ids : [],
       );
+      setCaracteristicaDestaqueIds(
+        Array.isArray(empreendimento.caracteristica_destaque_ids)
+          ? empreendimento.caracteristica_destaque_ids
+          : [],
+      );
 
       const midiaResult = await apiFetchWithAuth<MidiaRelacaoApi[]>(
         `/api/empreendimentos/${empreendimentoFromUrl}/midia`,
@@ -2424,6 +2436,9 @@ Retorne somente um JSON válido com este formato:
     if (caracteristicasCatalogoTipoUsoLoaded !== tipoUso) return;
     const allowedIds = new Set(caracteristicasDisponiveis.map((item) => item.id));
     setCaracteristicaIds((current) =>
+      current.filter((item) => allowedIds.has(item)),
+    );
+    setCaracteristicaDestaqueIds((current) =>
       current.filter((item) => allowedIds.has(item)),
     );
   }, [
@@ -4080,10 +4095,10 @@ Retorne somente um JSON válido com este formato:
           <section className="rounded-2xl border border-slate-200 bg-white p-5">
             <h3 className="mb-4 text-2xl text-slate-900">Características do empreendimento</h3>
             <p className="mb-4 text-sm text-slate-500">
-              Selecione os diferenciais em ordem alfabética. Essas características serão reutilizadas na categorização de mídias das páginas públicas.
+              Selecione as características e marque até 6 como diferencial. Elas serão reutilizadas na categorização de mídias e nos criativos.
             </p>
             <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-              Tipo de uso atual: <strong>{tipoUso === "RESIDENCIAL" ? "Residencial" : "Comercial"}</strong> • {caracteristicaIds.length} selecionada(s)
+              Tipo de uso atual: <strong>{tipoUso === "RESIDENCIAL" ? "Residencial" : "Comercial"}</strong> • {caracteristicaIds.length} selecionada(s) • {caracteristicaDestaqueIds.length}/6 diferenciais
             </div>
             {loadingCaracteristicas ? (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
@@ -4093,25 +4108,58 @@ Retorne somente um JSON válido com este formato:
               <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {caracteristicasDisponiveis.map((item) => {
                   const active = caracteristicaIds.includes(item.id);
+                  const highlighted = caracteristicaDestaqueIds.includes(item.id);
                   return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() =>
-                        setCaracteristicaIds((current) =>
-                          current.includes(item.id)
-                            ? current.filter((value) => value !== item.id)
-                            : [...current, item.id],
-                        )
-                      }
-                      className={`cursor-pointer rounded-lg border px-3 py-2 text-left text-sm transition ${
-                        active
-                          ? "border-[var(--grey-olive)] bg-[var(--grey-olive)]/10 text-[var(--grey-olive)]"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      {item.label_pt}
-                    </button>
+                    <div key={item.id} className="relative min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCaracteristicaIds((current) =>
+                            current.includes(item.id)
+                              ? current.filter((value) => value !== item.id)
+                              : [...current, item.id],
+                          );
+                          if (active) {
+                            setCaracteristicaDestaqueIds((current) =>
+                              current.filter((value) => value !== item.id),
+                            );
+                          }
+                        }}
+                        className={`w-full cursor-pointer rounded-lg border px-3 py-2 text-left text-sm transition ${
+                          active ? "pr-28 border-[var(--grey-olive)] bg-[var(--grey-olive)]/10 text-[var(--grey-olive)]" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span className="block truncate">{item.label_pt}</span>
+                      </button>
+                      {active ? (
+                        <button
+                          type="button"
+                          aria-pressed={highlighted}
+                          aria-label={`${highlighted ? "Remover" : "Marcar"} ${item.label_pt} como diferencial`}
+                          onClick={() => {
+                            setCaracteristicaDestaqueIds((current) => {
+                              if (current.includes(item.id)) {
+                                return current.filter((value) => value !== item.id);
+                              }
+                              if (current.length >= 6) {
+                                setError("Você pode marcar até 6 características como diferencial.");
+                                return current;
+                              }
+                              setError(null);
+                              return [...current, item.id];
+                            });
+                          }}
+                          className={`absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition ${
+                            highlighted
+                              ? "border-[var(--grey-olive)] bg-[var(--grey-olive)] text-white"
+                              : "border-slate-300 bg-white text-slate-500 hover:border-[var(--grey-olive)] hover:text-[var(--grey-olive)]"
+                          }`}
+                        >
+                          <Star size={12} weight={highlighted ? "fill" : "regular"} />
+                          Diferencial
+                        </button>
+                      ) : null}
+                    </div>
                   );
                 })}
               </div>

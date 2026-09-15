@@ -184,6 +184,7 @@ export const DEFAULT_CREATIVE_CONFIG: Record<
 };
 
 export type PropertyCreativePayload = {
+  subjectType?: "PROPERTY" | "DEVELOPMENT";
   property: {
     id: string;
     title: string;
@@ -204,6 +205,7 @@ export type PropertyCreativePayload = {
       attributes?: string[];
     }>;
     features?: string[];
+    featureCount?: number;
     environments?: Array<{
       id: string;
       title: string;
@@ -212,7 +214,7 @@ export type PropertyCreativePayload = {
       tags: string[];
     }>;
     stats: Array<{
-      kind: "BED" | "SUITE" | "CAR" | "AREA";
+      kind: "BED" | "SUITE" | "CAR" | "AREA" | "PHASE" | "UNITS";
       value: string;
       label: string;
     }>;
@@ -338,6 +340,10 @@ export function resolveCreativeFormatConfig(
 function statIcon(
   kind: PropertyCreativePayload["property"]["stats"][number]["kind"],
 ) {
+  if (kind === "PHASE")
+    return `<svg viewBox="0 0 24 24"><path d="M4 20V8l8-4 8 4v12M8 20v-8h8v8M3 20h18"/></svg>`;
+  if (kind === "UNITS")
+    return `<svg viewBox="0 0 24 24"><path d="M5 20V4h14v16M9 8h2m2 0h2m-6 4h2m2 0h2m-6 4h2m2 0h2M3 20h18"/></svg>`;
   if (kind === "BED")
     return `<svg viewBox="0 0 24 24"><path d="M3 18v-7m18 7v-5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v5m-4-2h18M7 11V8a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3"/></svg>`;
   if (kind === "SUITE")
@@ -510,6 +516,8 @@ function buildPropertyJourneyHtmlDocument(
   const content = Array.from({ length: PROPERTY_JOURNEY_SLIDES }, (_, index) =>
     contentAt(index),
   );
+  if (content[6] && payload.property.featureCount && !configured[6]?.title)
+    content[6].title = featureHeadline(payload.property.featureCount);
   const avatar = safeUrl(payload.broker.avatarUrl);
   const logo = safeUrl(payload.broker.logoWhiteUrl || payload.broker.logoUrl);
   const theme = CREATIVE_DARK_THEMES[payload.colorTheme ?? "PETROL"];
@@ -560,6 +568,13 @@ function buildPropertyJourneyHtmlDocument(
   return `<!doctype html><html><head><meta charset="utf-8"><style>${fontFaces(fonts)}
 *{box-sizing:border-box}html,body{margin:0;width:1080px;height:1350px;overflow:hidden;font-family:"dunbar-tall",Arial,sans-serif}.canvas{position:relative;width:1080px;height:1350px;overflow:hidden;background:${theme.color};color:#f7f4ed}.panorama{position:absolute;left:${-slide * 1080}px;top:0;width:8640px;height:1350px;background:${theme.color}.slide{position:absolute;top:0;width:1080px;height:1350px;overflow:visible;border-right:1px solid rgba(255,255,255,.08)}.slide-inner{position:absolute;z-index:4;inset:0;padding:70px 72px}.chapter{font-size:21px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:${theme.accent}}.display{margin:18px 0 0;max-width:900px;font-size:58px;font-weight:300;line-height:.98;letter-spacing:-.04em}.body-copy{max-width:800px;margin:14px 0 0;font-size:22px;line-height:1.2;color:#c4d2ce}.shared-one{position:absolute;left:540px;top:0;width:1080px;height:1350px;overflow:hidden;background:${theme.color}}.shared-one img{width:100%;height:100%;object-fit:cover;-webkit-mask-image:radial-gradient(ellipse 68% 118% at 50% 50%,#000 0%,#000 24%,rgba(0,0,0,.96) 36%,rgba(0,0,0,.72) 55%,rgba(0,0,0,.28) 76%,transparent 100%);mask-image:radial-gradient(ellipse 68% 118% at 50% 50%,#000 0%,#000 24%,rgba(0,0,0,.96) 36%,rgba(0,0,0,.72) 55%,rgba(0,0,0,.28) 76%,transparent 100%)}.mask-one{position:absolute;inset:0 auto 0 0;display:flex;width:2160px;height:100%;overflow:hidden;background:linear-gradient(to right,${theme.color},${theme.deep});mask-image:linear-gradient(90deg,#000 540px,rgba(0,0,0,.8) 600px,transparent 50%),linear-gradient(270deg,#000 540px,rgba(0,0,0,.8) 600px,transparent 50%),linear-gradient(360deg,#000 10%,#000 10%,transparent 100%)}.brand-row{position:relative;z-index:5;display:flex;align-items:center;gap:18px}.avatar-small{display:grid;place-items:center;width:76px;height:76px;border:2px solid #fff;border-radius:50%;object-fit:cover;font-style:normal}.fallback{background:${theme.deep}}.broker b,.broker small{display:block}.broker b{font-size:25px}.broker small{margin-top:4px;font-size:17px;color:rgba(255,255,255,.72)}.logo-white{position:absolute;right:72px;top:76px;width:255px;max-height:78px;object-fit:contain}.logo-fallback{position:absolute;right:72px;top:92px}.hero-copy{position:absolute;left:72px;bottom:130px;z-index:5;width:700px}.hero-copy .display{font-size:86px}.swipe{display:inline-flex;align-items:center;gap:17px;margin-top:38px;padding:14px 20px;border:1px solid rgba(255,255,255,.55);border-radius:999px;font-size:20px}.swipe i{display:block;position:relative;width:72px;height:1px;background:#fff}.swipe i:after{content:"";position:absolute;right:0;top:-5px;width:10px;height:10px;border-top:1px solid #fff;border-right:1px solid #fff;transform:rotate(45deg)}.overview-copy{display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;padding:0 72px 100px 300px;text-align:right}.overview-copy .display{max-width:690px}.facts{display:grid;grid-template-columns:repeat(4,1fr);width:708px;margin-top:34px;border-block:1px solid rgba(255,255,255,.3)}.fact{min-height:104px;padding:17px 14px 14px;border-left:1px solid rgba(255,255,255,.2)}.fact:first-child{border:0}.fact b,.fact span{display:block}.fact b{font-size:34px}.fact span{font-size:16px;color:#c4d2ce}.moon-image{position:absolute;z-index:3;overflow:hidden}.moon-image img{width:100%;height:100%;object-fit:cover}.moon-top{left:1998px;top:0;width:1404px;height:945px;border-radius:0 0 702px 702px / 0 0 240px 240px}.moon-bottom{left:3078px;bottom:0;width:1404px;height:945px;border-radius:702px 702px 0 0 / 240px 240px 0 0}.moon-image:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,${theme.color},transparent 11%,transparent 89%,${theme.color});opacity:.42}.environment-one .slide-inner{display:flex;flex-direction:column;justify-content:flex-end;padding:970px 86px 58px}.environment-two .slide-inner{padding:64px 86px 0 210px}.caption-rule{width:92px;height:3px;margin:17px 0;background:${theme.accent}}.split-slide{background:${theme.color}}.half-image{position:absolute;left:0;width:100%;height:50%;overflow:hidden}.half-image img{width:100%;height:100%;object-fit:cover}.half-image:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,${theme.color})}.image-top .half-image{top:0}.image-bottom .half-image{bottom:0}.image-bottom .half-image:after{background:linear-gradient(0deg,transparent 60%,${theme.color})}.text-half{position:absolute;z-index:4;left:86px;right:86px;height:50%;display:flex;flex-direction:column;justify-content:center}.image-top .text-half{bottom:0}.image-bottom .text-half{top:0}.slide-5 .text-half{left:250px}.split-slide .body-copy{font-size:24px}.feature-list{display:grid;grid-template-columns:1fr 1fr;gap:8px 32px;margin-top:25px}.feature-list span{padding:11px 0;border-bottom:1px solid rgba(255,255,255,.22);font-size:20px;color:#c4d2ce}.signature{background:linear-gradient(145deg,${theme.deep},${theme.color} 58%,${theme.color})}.signature .slide-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.avatar-frame{width:225px;height:225px;padding:10px;border:2px solid #fff;border-radius:50%}.avatar-frame img,.avatar-frame i{width:100%;height:100%;border-radius:50%;object-fit:cover}.signature-logo{width:380px;max-height:120px;margin-top:42px;object-fit:contain}.quote{max-width:760px;margin:40px auto 0;font-size:39px;font-weight:300;line-height:1.08}.authority{display:grid;grid-template-columns:repeat(3,1fr);width:850px;margin-top:48px;border-block:1px solid rgba(255,255,255,.28)}.number{padding:25px 15px;border-right:1px solid rgba(255,255,255,.25)}.number:last-child{border:0}.number b,.number span{display:block}.number b{font-size:38px}.number span{font-size:17px;color:#c4d2ce}.profile-url{margin-top:42px;padding:15px 30px;border:1px solid rgba(255,255,255,.5);border-radius:999px;font-size:21px}.continuity-line{position:absolute;z-index:6;left:0;top:665px;width:8640px;height:2px;background:linear-gradient(90deg,transparent 0%,${theme.accent} 4%,${theme.accent} 90.7%,transparent 90.7%,transparent 96.4%,${theme.accent} 96.4%,${theme.accent} 99%,transparent 100%)}.continuity-line span{position:absolute;top:-8px;width:18px;height:18px;border:3px solid ${theme.accent};border-radius:50%;background:${theme.color}}
 </style></head><body><div class="canvas"><div class="panorama"><div class="shared-one"><img src="${imageAt(0)}"></div><div class="mask-one"></div><div class="moon-image moon-top"><img src="${imageAt(2)}"></div><div class="moon-image moon-bottom"><img src="${imageAt(3)}"></div>${slideBlock(0,"slide-one",`<div class="slide-inner">${identity}<div class="hero-copy"><div class="chapter">${escape(payload.property.highlight || content[0].eyebrow)}</div><h1 class="display">${escape(titleSlideOne)}</h1><div class="swipe">Arraste para ver os detalhes <i></i></div></div></div>`)}${slideBlock(1,"slide-two",`<div class="slide-inner overview-copy"><div class="chapter">01 · ${escape(content[1].eyebrow)}</div><h2 class="display">${escape(titleSlideTwo)}</h2><div class="facts">${stats.map((item) => `<div class="fact"><b>${escape(item.value)}</b><span>${escape(item.label)}</span></div>`).join("")}</div></div>`)}${environment(2,"environment-one")}${environment(3,"environment-two")}${split(4,"top")}${split(5,"bottom")}${split(6,"top",true)}${slideBlock(7,"signature",`<div class="slide-inner"><div class="avatar-frame">${avatar ? `<img src="${avatar}">` : `<i>${escape(payload.broker.name.slice(0,1))}</i>`}</div>${logo ? `<img class="signature-logo" src="${logo}">` : `<b class="signature-logo">corretor.one</b>`}<p class="quote">“${escape(payload.broker.tagline || content[7].title || "Conecto pessoas a imóveis que fazem sentido para suas histórias.")}”</p>${authority ? `<div class="authority">${authority}</div>` : ""}<div class="profile-url">corretor.one/${escape(payload.broker.nickname)}</div></div>`)}<div class="continuity-line">${Array.from({length:7},(_,index)=>`<span style="left:${(index+1)*1080-9}px"></span>`).join("")}</div></div></div></body></html>`;
+}
+
+function featureHeadline(count: number) {
+  if (count <= 0) return "Escolhas que valorizam cada detalhe.";
+  if (count <= 5) return `${count} diferenciais para viver melhor.`;
+  const threshold = Math.max(5, Math.floor((count - 1) / 5) * 5);
+  return `Mais de ${threshold} características ao seu dispor.`;
 }
 
 export function buildPropertyJourneyHtml(
